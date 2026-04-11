@@ -1,0 +1,388 @@
+#!/usr/bin/env ys-0
+
+# ysc - Convert JSON Schema to YAML Schema (succinct DSL).
+#
+# Reads a JSON Schema document from an explicit input path. Use "-" to read
+# from stdin. Builds the equivalent YAML Schema as a YS data structure, dumps
+# it via yaml/dump, and post-processes the result for `# TODO` comments and
+# the blank line separator between `$defs` and the document body.
+#
+# Feature scope (v1): the 15 "direct mapping" features from the plan's
+# JSON Schema Mapping table. Features requiring further design (oneOf,
+# allOf, not, if/then/else, patternProperties, etc.) are emitted as a
+# `# TODO: <keyword>` comment so the user can spot them.
+
+defn main(*args):
+  opts =: parse-args(args)
+  target =: output-format(opts)
+  when target != 'ysc.yaml':
+    usage: "unsupported output format: $target"
+  path =: opts.get('input')
+  text =: (path == '-').if(IN path):read
+  data =: text:json/load
+  output =: convert(data)
+  emit-output: output opts.get('output')
+
+defn parse-args(args):
+  opts =: atom({})
+  expect =: atom(nil)
+  inputs =: atom([])
+  each arg args:
+    pending =: expect.@
+    when pending:
+      set-pending!: opts expect pending arg
+    when pending.!!:
+      handle-arg!: expect inputs arg
+  when expect.@:
+    usage: "missing value for $(expect.@)"
+  inputs-val =: deref(inputs)
+  when inputs-val.# != 1:
+    usage: 'expected exactly one input'
+  opts-val =: deref(opts)
+  when nil?(opts-val.get('to')):
+    when nil?(opts-val.get('output')):
+      usage: 'expected -t/--to or -o/--output'
+  assoc!: opts 'input' inputs-val.0
+  deref: opts
+
+defn set-pending!(opts expect key value):
+  assoc!: opts key value
+  reset!: expect nil
+
+defn handle-arg!(expect inputs arg):
+  handled =: atom(false)
+  when in?(arg ['-t', '--to']):
+    reset!: expect 'to'
+    reset!: handled true
+  when in?(arg ['-o', '--output']):
+    reset!: expect 'output'
+    reset!: handled true
+  when not(deref(handled)):
+    handle-input!: inputs arg
+
+defn handle-input!(inputs arg):
+  when arg =~ /^-/:
+    when arg != '-':
+      usage: "unknown option $arg"
+  when arg == '-':
+    swap!: inputs \(_ + arg)
+  when not(arg =~ /^-/):
+    swap!: inputs \(_ + arg)
+
+defn output-format(opts):
+  fmt =: opts.get('to') || infer-output-format(opts.get('output'))
+  fmt ||: 'ysc.yaml'
+
+defn infer-output-format(output):
+  fmt =: atom(nil)
+  when output.?:
+    when output != '-':
+      when output =~ /\.schema\.json$/:
+        reset!: fmt 'schema.json'
+      when output =~ /\.ysc\.yaml$/:
+        reset!: fmt 'ysc.yaml'
+      when output =~ /\.ysc$/:
+        reset!: fmt 'ysc'
+  deref: fmt
+
+defn emit-output(text output):
+  when output.?:
+    when output != '-':
+      write: output "$text\n"
+  when nil?(output):
+    say: text
+  when output == '-':
+    say: text
+
+defn usage(msg):
+  err: "ysc: $msg\n"
+  err: "Usage: ysc (-t FORMAT | -o FILE) INPUT\n"
+  exit: 2
+
+defn convert(schema):
+  doc =: build-doc(schema)
+  text =: yaml/dump(doc)
+  post-process: text
+
+# Build the top-level data structure for the whole document.
+defn build-doc(schema):
+  defs =: schema.'$defs' ||
+          schema.definitions ||
+          {}
+  result =: atom({})
+  add-defs!: result defs
+  add-body!: result schema
+  deref: result
+
+defn add-defs!(result defs):
+  each [name sub] defs:
+    val =: build-value(sub)
+    assoc!: result "+$name" val
+
+defn add-body!(result schema):
+  if object-with-props?(schema):
+    add-properties!: result schema
+    add-block!: result schema
+
+defn add-properties!(result schema):
+  props =: schema.properties
+  required =: set(schema.required)
+  each [name sub] props:
+    is-req =: required.has?(name)
+    array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
+    value-sub =: array?.if(array-item-schema(sub) sub)
+    key =: key-for(name sub is-req array?)
+    val =: build-value(value-sub)
+    assoc!: result key val
+
+# Return the value side of a property (or def) — either a scalar in
+# succinct form, or a nested map (object with properties / expanded
+# directive block).
+defn build-value(schema):
+  scalar =: succinct-scalar(schema)
+  cond:
+    scalar: scalar
+    object-with-props?(schema): build-properties-map(schema)
+    else: build-block-map(schema)
+
+defn build-properties-map(schema):
+  result =: atom({})
+  add-properties!: result schema
+  deref: result
+
+defn build-block-map(schema):
+  result =: atom({})
+  add-block!: result schema
+  deref: result
+
+# Add the directive entries for an expanded schema-block (-type, -size,
+# -enum, -init, etc.) into the result map. Also walks nested items /
+# properties when present.
+defn add-block!(result schema):
+  add-todos!: result schema
+  t =: json-type(schema)
+  ts =: type-sym(t)
+  has-type =: t.? && (t != 'array') && (t != 'object')
+  is-array =: t.eq('array')
+
+  when+ schema.'$ref':
+    assoc!: result '-type' ref-sym(_)
+  when has-type:
+    assoc!: result '-type' ts
+  when is-array:
+    assoc!: result '-list' true
+  when+ schema.pattern:
+    assoc!: result '-like' regex-literal(_)
+  when+ schema.enum:
+    assoc!: result '-enum' enum-block-list(_)
+  when+ schema.const:
+    assoc!: result '-type' literal-value(_)
+  when schema.uniqueItems:
+    assoc!: result '-uniq' true
+  when+ schema.default:
+    assoc!: result '-init' literal-value(_)
+  when schema.minimum.? || schema.maximum.?:
+    assoc!: result '-size' size-pair(schema.minimum schema.maximum)
+  when schema.minLength.? || schema.maxLength.?:
+    assoc!: result '-size' size-pair(schema.minLength schema.maxLength)
+  when schema.minItems.? || schema.maxItems.?:
+    assoc!: result '-size' size-pair(schema.minItems schema.maxItems)
+  when schema.minProperties.? || schema.maxProperties.?:
+    assoc!: result '-size' size-pair(schema.minProperties schema.maxProperties)
+  when is-array && schema.items.?:
+    items =: schema.items
+    item-scalar =: succinct-scalar(items)
+    if item-scalar:
+      assoc!: result '-type' item-scalar
+      assoc!: result '-item' build-block-map(items)
+  when (t == 'object') && object-with-props?(schema):
+    add-properties!: result schema
+
+# Insert sentinel keys for unsupported keywords. Post-processing turns
+# them into `# TODO: <keyword>` comments.
+defn add-todos!(result schema):
+  todos =: qw(allOf anyOf oneOf not if then else dependentRequired
+              dependentSchemas patternProperties propertyNames
+              prefixItems contains additionalProperties
+              unevaluatedItems unevaluatedProperties
+              exclusiveMinimum exclusiveMaximum format)
+  each k todos:
+    when schema.has?(k):
+      assoc!: result "__TODO_$k" ''
+
+defn assoc!(result k v):
+  swap!: result \(_.assoc(k v))
+
+# --------------------------------------------------------------------
+# Succinct-form helpers (unchanged from the original by-hand emitter).
+# --------------------------------------------------------------------
+
+defn succinct-scalar(schema):
+  cond:
+    map?(schema).!!: nil
+    schema.has?('$ref'):
+      only-ref?(schema).when(ref-sym(schema.'$ref'))
+    schema.has?('const'):
+      only-const?(schema).when(literal-value(schema.const))
+    schema.has?('enum'):
+      only-enum?(schema).when(enum-pipe(schema.enum))
+    schema.has?('pattern'):
+      pattern-only?(schema).when(regex-literal(schema.pattern))
+    numeric-range-only?(schema):
+      range-scalar(schema)
+    type-only?(schema):
+      type-sym(schema.type)
+
+defn key-set(schema):
+  schema:keys:vec:set
+
+defn only-ref?(schema):
+  ref-ks =: set(['$ref'])
+  key-set(schema) ==: ref-ks
+
+defn only-const?(schema):
+  const-ks =: +['const']:set
+  key-set(schema) ==: const-ks
+
+defn only-enum?(schema):
+  enum-ks =: +['enum']:set
+  key-set(schema) ==: enum-ks
+
+defn pattern-only?(schema):
+  ks =: key-set(schema)
+  pat-ks =: set(qw(pattern))
+  pat-type-ks =: set(qw(pattern type))
+  just-pat =: ks == pat-ks
+  pat-and-str =:
+    and:
+      ks.eq(pat-type-ks)
+      schema.type.eq('string')
+  just-pat ||: pat-and-str
+
+defn type-only?(schema):
+  type-ks =: +['type']:set
+  eq: key-set(schema) type-ks
+
+defn numeric-range-only?(schema):
+  ks =: key-set(schema)
+  t =: schema.type
+  allowed =: set(qw(type minimum maximum))
+  has-any-bound =: ks.has?('minimum') || ks.has?('maximum')
+  is-num =: t.eq('integer') || t.eq('number')
+  all-allowed =: ks.every?(\(allowed.has?(_)))
+  and: all-allowed is-num has-any-bound
+
+defn object-with-props?(schema):
+  map?(schema).and(schema.has?('properties'))
+
+# True when an array schema's only keys are {type, items, minItems,
+# maxItems, uniqueItems} — i.e. the whole thing can be expressed as
+# a `[]` key suffix plus the inner item value.
+defn array-as-suffix?(schema):
+  every? \(_.in?(qw(type items minItems maxItems uniqueItems))):
+    key-set(schema)
+
+defn array-item-schema(schema):
+  schema.items || {}
+
+defn key-for(name sub is-required array?):
+  suffix =: array?.if(list-suffix(sub) '')
+  opt =: is-required.if('' '?')
+  str: name opt suffix
+
+defn list-suffix(sub):
+  mn =: sub.minItems
+  mx =: sub.maxItems
+  uq =: sub.uniqueItems.if('!' '')
+  cond:
+    mn:nil? && mx:nil?:
+      "[${uq}]"
+    mn == mx: "[${uq}$mn]"
+    mn:nil? && mx.?: "[${uq}0-$mx]"
+    mn.? && mx:nil?:
+      if mn == 1:
+        then: "[${uq}+]"
+        else: "[${uq}${mn}+]"
+    else: "[${uq}${mn}-$mx]"
+
+defn json-type(schema):
+  t =: schema.type
+  if vector?(t): first(t) t
+
+defn type-sym(t):
+  cond:
+    t:nil?: '+Any'
+    t == 'string': '+Str'
+    t == 'integer': '+Int'
+    t == 'number': '+Float'
+    t == 'boolean': '+Bool'
+    t == 'null': '+Null'
+    t == 'object': '+Map'
+    t == 'array': '+Any'
+    else: '+Any'
+
+defn ref-sym(ref):
+  last-seg =: ref.split('/'):last
+  =>: "+$last-seg"
+
+defn range-scalar(schema):
+  lo =: schema.minimum
+  hi =: schema.maximum
+  lo-s =: lo:nil?.if('*' lo)
+  hi-s =: hi:nil?.if('*' hi)
+  =>: "${lo-s}-${hi-s}"
+
+# Return a 2-vector for the value of a `-size` directive. Unbounded
+# sides become the literal string "*"; yaml/dump quotes it as needed.
+defn size-pair(lo hi):
+  lo-v =: lo:nil?.if('*' lo)
+  hi-v =: hi:nil?.if('*' hi)
+  =>: +[lo-v hi-v]
+
+defn regex-literal(pattern):
+  esc =: pattern.replace('/' '\\/')
+  =>: "/$esc/"
+
+defn safe-pipe-token?(v):
+  v =~ /^[A-Za-z0-9_][A-Za-z0-9_-]*$/
+
+defn enum-pipe(values):
+  when values.every?(safe-pipe-token?):
+    values.join('|')
+
+defn enum-block-list(values):
+  values:vec
+
+defn literal-value(v): v
+
+# --------------------------------------------------------------------
+# Post-processing the dumped YAML.
+# --------------------------------------------------------------------
+
+defn post-process(text):
+  lines =: text:lines
+  lines =: lines.map(replace-todo)
+  lines =: insert-blank-after-defs(lines)
+  join "\n": lines
+
+defn replace-todo(line):
+  pat =: /^(\s*)__TODO_(\S+):\ ''$/
+  rep =: '$1# TODO: $2'
+  replace line: pat rep
+
+# Insert one blank line between the trailing `+...` $defs entries and
+# the first body entry, if any $defs were emitted.
+defn insert-blank-after-defs(lines):
+  result =: atom([])
+  saw-plus =: atom(false)
+  inserted =: atom(false)
+  each line lines:
+    when line =~ /^\+/:
+      reset!: saw-plus true
+    not-inserted =: inserted.@.!!
+    is-body =: line =~ /^[A-Za-z]/
+    when saw-plus.@ && not-inserted && is-body:
+      swap!: result \(_ + '')
+      reset!: inserted true
+    swap!: result \(_ + line)
+  deref: result
