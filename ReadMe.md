@@ -60,20 +60,41 @@ Typical flow:
 contact.ysc.yaml -> contact.ysc -> contact.schema.json
 ```
 
+## Installation
+
+For local development, source the repo `.rc` file to put `bin/` on your `PATH`:
+
+```sh
+. ./.rc
+```
+
+After that, the converter can be run as `ysc`:
+
+```sh
+ysc -t ysc.yaml contact.schema.json
+```
+
 ## Converter Usage
 
-The current converter script is `bin/ysc`.
+The current converter script is `ysc`.
 It requires one input path and either `-t` / `--to` or `-o` / `--output`.
 Use `-` to read JSON Schema from stdin:
 
 ```sh
-bin/ysc -t ysc.yaml - < contact.schema.json
+ysc -t ysc.yaml - < contact.schema.json
 ```
 
 or from a file path:
 
 ```sh
-bin/ysc -t ysc.yaml contact.schema.json
+ysc -t ysc.yaml contact.schema.json
+```
+
+CLI information:
+
+```sh
+ysc --help
+ysc --version
 ```
 
 Example input:

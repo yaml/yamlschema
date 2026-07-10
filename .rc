@@ -1,0 +1,8 @@
+yamlschema_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+
+case ":$PATH:" in
+  *":$yamlschema_root/bin:"*) ;;
+  *) PATH="$yamlschema_root/bin:$PATH" ;;
+esac
+
+export PATH

@@ -12,7 +12,23 @@
 # allOf, not, if/then/else, patternProperties, etc.) are emitted as a
 # `# TODO: <keyword>` comment so the user can spot them.
 
+VERSION =: '0.0.0'
+HELP =: |
+  Usage: ysc (-t FORMAT | -o FILE) INPUT
+
+  Convert between JSON Schema and yamlschema formats.
+
+  Arguments:
+    INPUT                 Input schema path. Use "-" for stdin.
+
+  Options:
+    -t, --to FORMAT       Output format. Currently supports "ysc.yaml".
+    -o, --output FILE     Write output to FILE. Use "-" for stdout.
+        --help            Show this help text.
+        --version         Show version.
+
 defn main(*args):
+  handle-info-options: args
   opts =: parse-args(args)
   target =: output-format(opts)
   when target != 'ysc.yaml':
@@ -96,8 +112,21 @@ defn emit-output(text output):
 
 defn usage(msg):
   err: "ysc: $msg\n"
-  err: "Usage: ysc (-t FORMAT | -o FILE) INPUT\n"
+  err: HELP
   exit: 2
+
+defn handle-info-options(args):
+  when args.# == 0:
+    print: HELP
+    exit: 0
+  when args.# == 1:
+    arg =: args.0
+    when arg == '--help':
+      print: HELP
+      exit: 0
+    when arg == '--version':
+      say: "ysc $VERSION"
+      exit: 0
 
 defn convert(schema):
   doc =: build-doc(schema)
