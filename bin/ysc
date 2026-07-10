@@ -12,7 +12,8 @@
 # allOf, not, if/then/else, patternProperties, etc.) are emitted as a
 # `# TODO: <keyword>` comment so the user can spot them.
 
-VERSION =: '0.0.0'
+VERSION =: '0.1.0'
+JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) INPUT
 
@@ -24,6 +25,7 @@ HELP =: |
   Options:
     -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
+    -P, --pretty          Pretty-print JSON output with 2-space indentation.
         --help            Show this help text.
         --version         Show version.
 
@@ -33,17 +35,19 @@ defn main(*args):
   target =: output-format(opts)
   path =: opts.get('input')
   text =: (path == '-').if(IN path):read
-  output =: convert-to(target text)
+  output =: convert-to(target text opts)
   emit-output: output opts.get('output')
 
-defn convert-to(target text):
+defn convert-to(target text opts):
   cond:
     target == 'ysc.yaml':
-      convert: text:json/load
+      schema =: text:json/load
+      validate-json-schema-dialect: schema
+      convert: schema
     target == 'schema.json':
       data =: text:yaml/load
       schema =: ysc-to-schema(data)
-      json/dump: schema
+      json-output: schema opts
     else:
       usage: "unsupported output format: $target"
 
@@ -56,7 +60,7 @@ defn parse-args(args):
     when pending:
       set-pending!: opts expect pending arg
     when pending.!!:
-      handle-arg!: expect inputs arg
+      handle-arg!: opts expect inputs arg
   when expect.@:
     usage: "missing value for $(expect.@)"
   inputs-val =: deref(inputs)
@@ -73,13 +77,16 @@ defn set-pending!(opts expect key value):
   assoc!: opts key value
   reset!: expect nil
 
-defn handle-arg!(expect inputs arg):
+defn handle-arg!(opts expect inputs arg):
   handled =: atom(false)
   when in?(arg ['-t', '--to']):
     reset!: expect 'to'
     reset!: handled true
   when in?(arg ['-o', '--output']):
     reset!: expect 'output'
+    reset!: handled true
+  when in?(arg ['-P', '--pretty']):
+    assoc!: opts 'pretty' true
     reset!: handled true
   when not(deref(handled)):
     handle-input!: inputs arg
@@ -136,6 +143,50 @@ defn handle-info-options(args):
       say: "ysc $VERSION"
       exit: 0
 
+defn json-output(value opts):
+  if opts.get('pretty'):
+    pretty-json(value)
+    json/dump(value)
+
+defn pretty-json(value):
+  pretty-value(value 0)
+
+defn pretty-value(value level):
+  cond:
+    map?(value): pretty-map(value level)
+    value:vector?: pretty-array(value level)
+    else: pretty-scalar(value)
+
+defn pretty-scalar(value):
+  replace(json/dump(value) /\\\// '/')
+
+defn pretty-map(value level):
+  if empty?(value):
+    then: '{}'
+    else:
+      entries =: atom([])
+      child =: level + 2
+      each [key val] value:
+        line =: "$(indent(child))$(json/dump(key)): $(pretty-value(val child))"
+        swap!: entries \(_ + line)
+      body =: join(",\n" deref(entries))
+      =>: "{\n$body\n$(indent(level))}"
+
+defn pretty-array(value level):
+  if empty?(value):
+    then: '[]'
+    else:
+      entries =: atom([])
+      child =: level + 2
+      each val value:
+        line =: "$(indent(child))$(pretty-value(val child))"
+        swap!: entries \(_ + line)
+      body =: join(",\n" deref(entries))
+      =>: "[\n$body\n$(indent(level))]"
+
+defn indent(width):
+  join '': repeat(width ' ')
+
 # --------------------------------------------------------------------
 # Convert yamlschema DSL data back to JSON Schema.
 # --------------------------------------------------------------------
@@ -145,23 +196,31 @@ defn ysc-to-schema(doc):
   defs =: atom({})
   props =: atom({})
   required =: atom([])
+  add-json-section!: result doc
+  assoc!: result '$schema' JSON-SCHEMA-DIALECT
   each [key value] doc:
     k =: key:S
-    if k =~ /^\+/:
-      then:
+    cond:
+      k =~ /^\+/:
         name =: replace(k /^\+/ '')
         assoc!: defs name ysc-value-to-schema(value)
+      k =~ /^-/:
+        add-schema-meta!: result k value
       else:
         add-property-schema!: props required k value
   defs-val =: deref(defs)
-  when defs-val.# > 0:
-    assoc!: result '$defs' defs-val
   assoc!: result 'type' 'object'
   assoc!: result 'properties' deref(props)
   required-val =: deref(required)
   when required-val.# > 0:
     assoc!: result 'required' required-val
+  when defs-val.# > 0:
+    assoc!: result '$defs' defs-val
   deref: result
+
+defn add-json-section!(result doc):
+  when+ doc.'-json':
+    add-json-meta!: result _
 
 defn add-property-schema!(props required key value):
   info =: parse-property-key(key)
@@ -171,6 +230,22 @@ defn add-property-schema!(props required key value):
   assoc!: props info.name deref(schema)
   when info.required:
     swap!: required \(_ + info.name)
+
+defn add-schema-meta!(result key value):
+  cond:
+    key == '-json':
+      add-json-meta!: result value
+    key == '-Name':
+      assoc!: result 'title' value
+    key == '-desc':
+      assoc!: result 'description' value
+    else:
+      nil
+
+defn add-json-meta!(result value):
+  when map?(value):
+    when+ value.'$id':
+      assoc!: result '$id' _
 
 defn parse-property-key(key):
   required =: atom(true)
@@ -214,10 +289,10 @@ defn ysc-object-to-schema(value):
     add-property-schema!: props required key:S sub
   result =: atom({})
   assoc!: result 'type' 'object'
-  assoc!: result 'properties' deref(props)
   required-val =: deref(required)
   when required-val.# > 0:
     assoc!: result 'required' required-val
+  assoc!: result 'properties' deref(props)
   deref: result
 
 defn ysc-block-to-schema(value):
@@ -241,6 +316,10 @@ defn ysc-block-to-schema(value):
         assoc!: result 'type' 'array'
       k == '-uniq':
         assoc!: result 'uniqueItems' val
+      k == '-Name':
+        assoc!: result 'title' val
+      k == '-desc':
+        assoc!: result 'description' val
       k == '-item':
         reset!: item-schema ysc-value-to-schema(val)
       k == '-size':
@@ -294,7 +373,7 @@ defn ysc-scalar-to-schema(value):
     s =~ /^\/.*\/$/:
       +{'type' 'string', 'pattern' regex-pattern(s)}
     s =~ /^[^|]+\|[^|]+/:
-      +{'enum' s.split('|')}
+      +{'enum' split(s /\|/)}
     s =~ /^([0-9.]+|\*)-([0-9.]+|\*)$/:
       range-to-schema(s)
     else:
@@ -362,15 +441,35 @@ defn convert(schema):
   text =: yaml/dump(doc)
   post-process: text
 
+defn validate-json-schema-dialect(schema):
+  when+ schema.'$schema':
+    dialect =: _
+    when dialect != JSON-SCHEMA-DIALECT:
+      usage: "unsupported JSON Schema dialect: $dialect"
+
 # Build the top-level data structure for the whole document.
 defn build-doc(schema):
   defs =: schema.'$defs' ||
           schema.definitions ||
           {}
   result =: atom({})
+  add-root-annotations!: result schema
   add-defs!: result defs
   add-body!: result schema
+  add-json-schema-meta!: result schema
   deref: result
+
+defn add-root-annotations!(result schema):
+  when+ schema.title:
+    assoc!: result '-Name' _
+  when+ schema.description:
+    assoc!: result '-desc' _
+
+defn add-json-schema-meta!(result schema):
+  when+ schema.'$id':
+    meta =: atom({})
+    assoc!: meta '$id' _
+    assoc!: result '-json' deref(meta)
 
 defn add-defs!(result defs):
   each [name sub] defs:
@@ -399,7 +498,7 @@ defn add-properties!(result schema):
 defn build-value(schema):
   scalar =: succinct-scalar(schema)
   cond:
-    scalar: scalar
+    scalar && not(schema-annotations?(schema)): scalar
     object-with-props?(schema): build-properties-map(schema)
     else: build-block-map(schema)
 
@@ -439,6 +538,10 @@ defn add-block!(result schema):
     assoc!: result '-uniq' true
   when+ schema.default:
     assoc!: result '-init' literal-value(_)
+  when+ schema.title:
+    assoc!: result '-Name' _
+  when+ schema.description:
+    assoc!: result '-desc' _
   when schema.minimum.? || schema.maximum.?:
     assoc!: result '-size' size-pair(schema.minimum schema.maximum)
   when schema.minLength.? || schema.maxLength.?:
@@ -532,6 +635,10 @@ defn numeric-range-only?(schema):
 
 defn object-with-props?(schema):
   map?(schema).and(schema.has?('properties'))
+
+defn schema-annotations?(schema):
+  schema.has?('description') ||
+  schema.has?('title')
 
 # True when an array schema's only keys are {type, items, minItems,
 # maxItems, uniqueItems} — i.e. the whole thing can be expressed as

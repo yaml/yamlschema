@@ -423,6 +423,23 @@ host:
 Roundtrip rule: `-init` maps to JSON Schema `default`.
 
 
+## Annotations
+
+JSON Schema Draft 2020-12 is the only supported JSON Schema dialect for now.
+The `$schema` keyword is implied by `.schema.json` output and is not encoded in
+yamlschema.
+
+Other JSON Schema metadata roundtrips through explicit yamlschema directives.
+These fields do not affect validation, but keeping them preserves useful schema
+metadata.
+
+| JSON Schema | yamlschema |
+| --- | --- |
+| `$id` | `-json.$id` |
+| `title` | `-Name` |
+| `description` | `-desc` |
+
+
 ## Definitions and References
 
 JSON Schema definitions become top-level symbols:

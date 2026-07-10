@@ -17,6 +17,7 @@ test::
     Options:
       -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
+      -P, --pretty          Pretty-print JSON output with 2-space indentation.
           --help            Show this help text.
           --version         Show version.
 
@@ -33,6 +34,7 @@ test::
     Options:
       -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
+      -P, --pretty          Pretty-print JSON output with 2-space indentation.
           --help            Show this help text.
           --version         Show version.
 

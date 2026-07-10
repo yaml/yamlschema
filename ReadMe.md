@@ -73,6 +73,7 @@ After that, the converter can be run as `ysc`:
 ```sh
 ysc -t ysc.yaml contact.schema.json
 ysc -t schema.json contact.ysc.yaml
+ysc -t schema.json -P contact.ysc.yaml
 ```
 
 ## Converter Usage

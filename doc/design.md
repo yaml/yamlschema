@@ -174,6 +174,9 @@ Meta directives are top-level schema metadata:
 | `-from` | Import schemas or namespaces |
 | `-name` | Name of a document schema |
 | `-root` | Primary exported root type |
+| `-json` | JSON Schema interop metadata |
+| `-Name` | Human-facing display title |
+| `-desc` | JSON Schema `description` annotation |
 
 
 ## Succinct Values
@@ -616,6 +619,9 @@ Input JSON Schema files should conventionally use `.schema.json`.
 Generated human-facing yamlschema output should use `.ysc.yaml`.
 The converter can also generate `.schema.json` from `.ysc.yaml` for the
 same direct mapping subset.
+The `.schema.json` target currently uses JSON Schema Draft 2020-12 only.
+The `$schema` keyword is implied by the target and is not encoded in
+yamlschema.
 
 | JSON Schema | yamlschema |
 | --- | --- |
@@ -637,6 +643,9 @@ same direct mapping subset.
 | `items` | List value type or `-item` |
 | `const` | Literal value constraint |
 | `default` | `-init` |
+| `description` | `-desc` |
+| `title` | `-Name` |
+| `$id` | `-json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | `$ref` | `+name` symbol reference |
 
@@ -679,13 +688,15 @@ tags[!+]: +Str
 1. Read JSON Schema from the required input path, or from stdin when the input
    is `-`.
 2. Require either `-t` / `--to` or `-o` / `--output`.
-3. Use `-t ysc.yaml` to parse input as JSON Schema and emit yamlschema.
-4. Use `-t schema.json` to parse input as yamlschema and emit JSON Schema.
+3. Use `-t ysc.yaml` to parse Draft 2020-12 JSON Schema and emit yamlschema.
+4. Use `-t schema.json` to parse yamlschema and emit Draft 2020-12 JSON
+   Schema.
 5. Build a YAMLScript data structure for the output document.
 6. Prefer succinct scalar forms where possible.
 7. Use explicit directive maps when a schema cannot be represented as one
    scalar.
 8. Dump `ysc.yaml` results as YAML and `schema.json` results as JSON.
+   Use `-P` / `--pretty` for two-space-indented JSON output.
 9. Post-process generated TODO sentinel keys into `# TODO: <keyword>` comments.
 10. Insert a blank line between top-level definitions and the document body.
 
