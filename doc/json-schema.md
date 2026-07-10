@@ -4,7 +4,10 @@ JSON Schema Roundtrip
 `yamlschema` is designed to interoperate with JSON Schema in both directions:
 
 ```text
-contact.schema.json -> contact.ysc.yaml -> contact.ysc -> contact.schema.json
+contact.schema.json
+  -> contact.ysc.yaml
+  -> contact.ysc.json
+  -> contact.schema.json
 ```
 
 The roundtrip goal is semantic equivalence, not byte-for-byte equality.
@@ -21,7 +24,7 @@ There are three useful representations:
 ```text
 contact.schema.json
   -> contact.ysc.yaml
-  -> contact.ysc
+  -> contact.ysc.json
   -> contact.schema.json
 ```
 
@@ -33,19 +36,19 @@ email?: /^\S+@\S+$/
 tags[!+]: +Str
 ```
 
-The `.ysc` explicit form is the canonical internal shape:
+The `.ysc.json` explicit form is the canonical internal shape:
 
-```yaml
-name:
-  -need: +Str
-email:
-  -type: +Str
-  -like: /^\S+@\S+$/
-tags:
-  -need: +Str
-  -list: true
-  -uniq: true
-  -size: [1, "*"]
+```json
+{
+  "name": {"-need": "+Str"},
+  "email": {"-type": "+Str", "-like": "/^\\S+@\\S+$/"},
+  "tags": {
+    "-need": "+Str",
+    "-list": true,
+    "-uniq": true,
+    "-size": [1, "*"]
+  }
+}
 ```
 
 The `.schema.json` JSON Schema output is generated from the explicit form:
@@ -68,7 +71,7 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 ```
 
 Use `.schema.json` for JSON Schema files, `.ysc.yaml` for human-maintained
-yamlschema DSL files, and `.ysc` for compiled yamlschema files.
+yamlschema DSL files, and `.ysc.json` for compiled yamlschema files.
 
 
 ## Current Direction
@@ -82,7 +85,7 @@ contact.schema.json -> contact.ysc.yaml
 The reverse direction is part of the design:
 
 ```text
-contact.ysc.yaml -> contact.ysc -> contact.schema.json
+contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
 ```
 
 That reverse compiler should target the explicit form, because succinct syntax

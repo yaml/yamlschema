@@ -19,16 +19,16 @@ yamlschema uses separate extensions for human-authored source, compiled
 yamlschema, and JSON Schema interchange.
 
 ```text
-contact.ysc.yaml -> contact.ysc -> contact.schema.json
+contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
 ```
 
 - `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysc` is the compiled, expanded yamlschema form.
+- `.ysc.json` is the compiled, expanded yamlschema form.
 - `.schema.json` is the JSON Schema export or import form.
 
 The `.ysc.yaml` form is ordinary YAML and should be pleasant to edit by hand.
-The `.ysc` form is still YAML-compatible data, but it is the long form intended
-for validators, caches, publication, and generated artifacts.
+The `.ysc.json` form is JSON data and is the long form intended for validators,
+caches, publication, and generated artifacts.
 The `.schema.json` form is the JSON Schema representation used for interop with
 the JSON Schema ecosystem.
 

@@ -97,8 +97,8 @@ defn infer-output-format(output):
         reset!: fmt 'schema.json'
       when output =~ /\.ysc\.yaml$/:
         reset!: fmt 'ysc.yaml'
-      when output =~ /\.ysc$/:
-        reset!: fmt 'ysc'
+      when output =~ /\.ysc\.json$/:
+        reset!: fmt 'ysc.json'
   deref: fmt
 
 defn emit-output(text output):

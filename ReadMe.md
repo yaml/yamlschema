@@ -51,13 +51,13 @@ This schema describes a mapping where:
 yamlschema uses these file extensions:
 
 - `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysc` is the compiled, expanded yamlschema form.
+- `.ysc.json` is the compiled, expanded yamlschema form.
 - `.schema.json` is the JSON Schema export or import form.
 
 Typical flow:
 
 ```text
-contact.ysc.yaml -> contact.ysc -> contact.schema.json
+contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
 ```
 
 ## Installation
