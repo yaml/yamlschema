@@ -578,5 +578,7 @@ For full bidirectional roundtrip support:
 5. Normalize both JSON Schema documents.
 6. Compare validation behavior, not raw source text.
 
-The existing `bin/ysc` covers step 1 for the direct mappings listed above
-and does some of step 2 by emitting succinct forms where possible.
+The existing `bin/ysc` covers step 1 for the direct mappings listed above.
+It does some of step 2 by emitting succinct forms where possible.
+It also covers step 4 for the same direct mapping subset with
+`ysc -t schema.json`.

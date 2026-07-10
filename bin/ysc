@@ -22,7 +22,7 @@ HELP =: |
     INPUT                 Input schema path. Use "-" for stdin.
 
   Options:
-    -t, --to FORMAT       Output format. Currently supports "ysc.yaml".
+    -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
         --help            Show this help text.
         --version         Show version.
@@ -31,13 +31,21 @@ defn main(*args):
   handle-info-options: args
   opts =: parse-args(args)
   target =: output-format(opts)
-  when target != 'ysc.yaml':
-    usage: "unsupported output format: $target"
   path =: opts.get('input')
   text =: (path == '-').if(IN path):read
-  data =: text:json/load
-  output =: convert(data)
+  output =: convert-to(target text)
   emit-output: output opts.get('output')
+
+defn convert-to(target text):
+  cond:
+    target == 'ysc.yaml':
+      convert: text:json/load
+    target == 'schema.json':
+      data =: text:yaml/load
+      schema =: ysc-to-schema(data)
+      json/dump: schema
+    else:
+      usage: "unsupported output format: $target"
 
 defn parse-args(args):
   opts =: atom({})
@@ -127,6 +135,227 @@ defn handle-info-options(args):
     when arg == '--version':
       say: "ysc $VERSION"
       exit: 0
+
+# --------------------------------------------------------------------
+# Convert yamlschema DSL data back to JSON Schema.
+# --------------------------------------------------------------------
+
+defn ysc-to-schema(doc):
+  result =: atom({})
+  defs =: atom({})
+  props =: atom({})
+  required =: atom([])
+  each [key value] doc:
+    k =: key:S
+    if k =~ /^\+/:
+      then:
+        name =: replace(k /^\+/ '')
+        assoc!: defs name ysc-value-to-schema(value)
+      else:
+        add-property-schema!: props required k value
+  defs-val =: deref(defs)
+  when defs-val.# > 0:
+    assoc!: result '$defs' defs-val
+  assoc!: result 'type' 'object'
+  assoc!: result 'properties' deref(props)
+  required-val =: deref(required)
+  when required-val.# > 0:
+    assoc!: result 'required' required-val
+  deref: result
+
+defn add-property-schema!(props required key value):
+  info =: parse-property-key(key)
+  schema =: atom(ysc-value-to-schema(value))
+  when info.array:
+    reset!: schema wrap-array-schema(deref(schema) info.suffix)
+  assoc!: props info.name deref(schema)
+  when info.required:
+    swap!: required \(_ + info.name)
+
+defn parse-property-key(key):
+  required =: atom(true)
+  k =: atom(key)
+  when deref(k) =~ /\?\[/:
+    reset!: required false
+    reset!: k replace(deref(k) /\?\[/ '[')
+  when deref(k) =~ /\?$/:
+    reset!: required false
+    reset!: k replace(deref(k) /\?$/ '')
+  suffix =: atom(nil)
+  when deref(k) =~ /\[[^\]]*\]$/:
+    reset!: suffix replace(deref(k) /^.*(\[[^\]]*\])$/ '$1')
+    reset!: k replace(deref(k) /\[[^\]]*\]$/ '')
+  result =: atom({})
+  assoc!: result 'name' deref(k)
+  assoc!: result 'required' deref(required)
+  suffix-val =: deref(suffix)
+  assoc!: result 'array' suffix-val.?
+  assoc!: result 'suffix' deref(suffix)
+  deref: result
+
+defn ysc-value-to-schema(value):
+  cond:
+    map?(value): ysc-map-to-schema(value)
+    else: ysc-scalar-to-schema(value)
+
+defn ysc-map-to-schema(value):
+  explicit =: atom(false)
+  each [key _] value:
+    when key:S =~ /^-/:
+      reset!: explicit true
+  if deref(explicit):
+    ysc-block-to-schema(value)
+    ysc-object-to-schema(value)
+
+defn ysc-object-to-schema(value):
+  props =: atom({})
+  required =: atom([])
+  each [key sub] value:
+    add-property-schema!: props required key:S sub
+  result =: atom({})
+  assoc!: result 'type' 'object'
+  assoc!: result 'properties' deref(props)
+  required-val =: deref(required)
+  when required-val.# > 0:
+    assoc!: result 'required' required-val
+  deref: result
+
+defn ysc-block-to-schema(value):
+  result =: atom({})
+  item-schema =: atom(nil)
+  each [key val] value:
+    k =: key:S
+    cond:
+      k == '-type':
+        schema =: ysc-scalar-to-schema(val)
+        merge-schema!: result schema
+      k == '-like':
+        do:
+          assoc!: result 'type' 'string'
+          assoc!: result 'pattern' regex-pattern(val)
+      k == '-enum':
+        assoc!: result 'enum' val
+      k == '-init':
+        assoc!: result 'default' val
+      k == '-list':
+        assoc!: result 'type' 'array'
+      k == '-uniq':
+        assoc!: result 'uniqueItems' val
+      k == '-item':
+        reset!: item-schema ysc-value-to-schema(val)
+      k == '-size':
+        add-size!: result val
+      else:
+        nil
+  result-val =: deref(result)
+  when result-val.type == 'array':
+    item-val =: deref(item-schema)
+    when item-val.?:
+      assoc!: result 'items' item-val
+  deref: result
+
+defn merge-schema!(result schema):
+  each [key val] schema:
+    assoc!: result key val
+
+defn add-size!(result val):
+  lo =: val.0
+  hi =: val.1
+  result-val =: deref(result)
+  t =: result-val.type
+  cond:
+    t == 'string':
+      add-bounds!: result lo hi 'minLength' 'maxLength'
+    t == 'array':
+      add-bounds!: result lo hi 'minItems' 'maxItems'
+    t == 'object':
+      add-bounds!: result lo hi 'minProperties' 'maxProperties'
+    else:
+      add-bounds!: result lo hi 'minimum' 'maximum'
+
+defn add-bounds!(result lo hi min-key max-key):
+  when lo != '*':
+    assoc!: result min-key lo
+  when hi != '*':
+    assoc!: result max-key hi
+
+defn ysc-scalar-to-schema(value):
+  s =: value:S
+  cond:
+    s == '+Str': +{'type' 'string'}
+    s == '+Int': +{'type' 'integer'}
+    s == '+Float': +{'type' 'number'}
+    s == '+Bool': +{'type' 'boolean'}
+    s == '+Null': +{'type' 'null'}
+    s == '+Map': +{'type' 'object'}
+    s == '+Any': +{}
+    s =~ /^\+[A-Za-z_][A-Za-z0-9_-]*$/:
+      ref-schema(s)
+    s =~ /^\/.*\/$/:
+      +{'type' 'string', 'pattern' regex-pattern(s)}
+    s =~ /^[^|]+\|[^|]+/:
+      +{'enum' s.split('|')}
+    s =~ /^([0-9.]+|\*)-([0-9.]+|\*)$/:
+      range-to-schema(s)
+    else:
+      +{'const' value}
+
+defn regex-pattern(value):
+  s =: value:S
+  s =: replace(s /^\// '')
+  s =: replace(s /\/$/ '')
+  replace s: /\\\// '/'
+
+defn ref-schema(s):
+  name =: replace(s /^\+/ '')
+  =>: +{'$ref' (str '#/$defs/' name)}
+
+defn range-to-schema(s):
+  parts =: s.split('-')
+  lo =: parts.0
+  hi =: parts.1
+  result =: atom({})
+  t =: range-type(lo hi)
+  assoc!: result 'type' t
+  when lo != '*':
+    assoc!: result 'minimum' scalar-number(lo)
+  when hi != '*':
+    assoc!: result 'maximum' scalar-number(hi)
+  deref: result
+
+defn range-type(lo hi):
+  has-dot =: (lo =~ /\./).or(hi =~ /\./)
+  if has-dot:
+    then: 'number'
+    else: 'integer'
+
+defn scalar-number(s):
+  json/load: s
+
+defn wrap-array-schema(item suffix):
+  result =: atom({})
+  assoc!: result 'type' 'array'
+  assoc!: result 'items' item
+  body =: replace(suffix /^\[/ '')
+  body =: replace(body /\]$/ '')
+  uniq =: body =~ /!/
+  body =: replace(body /!/ '')
+  when uniq:
+    assoc!: result 'uniqueItems' true
+  when body == '+':
+    assoc!: result 'minItems' 1
+  when body =~ /^[0-9]+$/:
+    n =: scalar-number(body)
+    assoc!: result 'minItems' n
+    assoc!: result 'maxItems' n
+  when body =~ /^[0-9]+-$/:
+    n =: scalar-number(replace(body '-' ''))
+    assoc!: result 'minItems' n
+  when body =~ /^[0-9]+-[0-9]+$/:
+    parts =: body.split('-')
+    assoc!: result 'minItems' scalar-number(parts.0)
+    assoc!: result 'maxItems' scalar-number(parts.1)
+  deref: result
 
 defn convert(schema):
   doc =: build-doc(schema)

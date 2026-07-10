@@ -72,22 +72,25 @@ After that, the converter can be run as `ysc`:
 
 ```sh
 ysc -t ysc.yaml contact.schema.json
+ysc -t schema.json contact.ysc.yaml
 ```
 
 ## Converter Usage
 
 The current converter script is `ysc`.
 It requires one input path and either `-t` / `--to` or `-o` / `--output`.
-Use `-` to read JSON Schema from stdin:
+Use `-` to read JSON Schema or yamlschema from stdin:
 
 ```sh
 ysc -t ysc.yaml - < contact.schema.json
+ysc -t schema.json - < contact.ysc.yaml
 ```
 
 or from a file path:
 
 ```sh
 ysc -t ysc.yaml contact.schema.json
+ysc -t schema.json contact.ysc.yaml
 ```
 
 CLI information:

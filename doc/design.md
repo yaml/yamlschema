@@ -614,6 +614,8 @@ yamlschema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
 Generated human-facing yamlschema output should use `.ysc.yaml`.
+The converter can also generate `.schema.json` from `.ysc.yaml` for the
+same direct mapping subset.
 
 | JSON Schema | yamlschema |
 | --- | --- |
@@ -677,14 +679,15 @@ tags[!+]: +Str
 1. Read JSON Schema from the required input path, or from stdin when the input
    is `-`.
 2. Require either `-t` / `--to` or `-o` / `--output`.
-3. Parse it as JSON.
-4. Build a YAMLScript data structure for the yamlschema document.
-5. Prefer succinct scalar forms where possible.
-6. Use explicit directive maps when a schema cannot be represented as one
+3. Use `-t ysc.yaml` to parse input as JSON Schema and emit yamlschema.
+4. Use `-t schema.json` to parse input as yamlschema and emit JSON Schema.
+5. Build a YAMLScript data structure for the output document.
+6. Prefer succinct scalar forms where possible.
+7. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-7. Dump the result as YAML.
-8. Post-process generated TODO sentinel keys into `# TODO: <keyword>` comments.
-9. Insert a blank line between top-level definitions and the document body.
+8. Dump `ysc.yaml` results as YAML and `schema.json` results as JSON.
+9. Post-process generated TODO sentinel keys into `# TODO: <keyword>` comments.
+10. Insert a blank line between top-level definitions and the document body.
 
 The converter emits TODO comments for JSON Schema features that still need
 language design or implementation:
