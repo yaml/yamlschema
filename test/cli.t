@@ -41,6 +41,6 @@ test::
 - name: version
   cmnd: bin/ysc --version
   want: |
-    ysc 0.0.0
+    ysc 0.1.0
 
 done:

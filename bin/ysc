@@ -78,18 +78,15 @@ defn set-pending!(opts expect key value):
   reset!: expect nil
 
 defn handle-arg!(opts expect inputs arg):
-  handled =: atom(false)
-  when in?(arg ['-t', '--to']):
-    reset!: expect 'to'
-    reset!: handled true
-  when in?(arg ['-o', '--output']):
-    reset!: expect 'output'
-    reset!: handled true
-  when in?(arg ['-P', '--pretty']):
-    assoc!: opts 'pretty' true
-    reset!: handled true
-  when not(deref(handled)):
-    handle-input!: inputs arg
+  cond:
+    in?(arg ['-t', '--to']):
+      reset!: expect 'to'
+    in?(arg ['-o', '--output']):
+      reset!: expect 'output'
+    in?(arg ['-P', '--pretty']):
+      assoc!: opts 'pretty' true
+    else:
+      handle-input!: inputs arg
 
 defn handle-input!(inputs arg):
   when arg =~ /^-/:
@@ -105,16 +102,12 @@ defn output-format(opts):
   fmt ||: 'ysc.yaml'
 
 defn infer-output-format(output):
-  fmt =: atom(nil)
-  when output.?:
-    when output != '-':
-      when output =~ /\.schema\.json$/:
-        reset!: fmt 'schema.json'
-      when output =~ /\.ysc\.yaml$/:
-        reset!: fmt 'ysc.yaml'
-      when output =~ /\.ysc\.json$/:
-        reset!: fmt 'ysc.json'
-  deref: fmt
+  cond:
+    output:nil?: nil
+    output == '-': nil
+    output =~ /\.schema\.json$/: 'schema.json'
+    output =~ /\.ysc\.yaml$/: 'ysc.yaml'
+    output =~ /\.ysc\.json$/: 'ysc.json'
 
 defn emit-output(text output):
   when output.?:
@@ -164,24 +157,25 @@ defn pretty-map(value level):
   if empty?(value):
     then: '{}'
     else:
-      entries =: atom([])
       child =: level + 2
-      each [key val] value:
-        line =: "$(indent(child))$(json/dump(key)): $(pretty-value(val child))"
-        swap!: entries \(_ + line)
-      body =: join(",\n" deref(entries))
+      entries =:
+        map(\(pretty-map-entry(_ child)) value)
+      body =: join(",\n" entries)
       =>: "{\n$body\n$(indent(level))}"
+
+defn pretty-map-entry(entry level):
+  key =: entry.0
+  val =: entry.1
+  =>: "$(indent(level))$(json/dump(key)): $(pretty-value(val level))"
 
 defn pretty-array(value level):
   if empty?(value):
     then: '[]'
     else:
-      entries =: atom([])
       child =: level + 2
-      each val value:
-        line =: "$(indent(child))$(pretty-value(val child))"
-        swap!: entries \(_ + line)
-      body =: join(",\n" deref(entries))
+      entries =:
+        map(\("$(indent(child))$(pretty-value(_ child))") value)
+      body =: join(",\n" entries)
       =>: "[\n$body\n$(indent(level))]"
 
 defn indent(width):
@@ -224,10 +218,9 @@ defn add-json-section!(result doc):
 
 defn add-property-schema!(props required key value):
   info =: parse-property-key(key)
-  schema =: atom(ysc-value-to-schema(value))
-  when info.array:
-    reset!: schema wrap-array-schema(deref(schema) info.suffix)
-  assoc!: props info.name deref(schema)
+  schema =: ysc-value-to-schema(value)
+  schema =: info.array.if(wrap-array-schema(schema info.suffix) schema)
+  assoc!: props info.name schema
   when info.required:
     swap!: required \(_ + info.name)
 
@@ -248,25 +241,15 @@ defn add-json-meta!(result value):
       assoc!: result '$id' _
 
 defn parse-property-key(key):
-  required =: atom(true)
-  k =: atom(key)
-  when deref(k) =~ /\?\[/:
-    reset!: required false
-    reset!: k replace(deref(k) /\?\[/ '[')
-  when deref(k) =~ /\?$/:
-    reset!: required false
-    reset!: k replace(deref(k) /\?$/ '')
-  suffix =: atom(nil)
-  when deref(k) =~ /\[[^\]]*\]$/:
-    reset!: suffix replace(deref(k) /^.*(\[[^\]]*\])$/ '$1')
-    reset!: k replace(deref(k) /\[[^\]]*\]$/ '')
-  result =: atom({})
-  assoc!: result 'name' deref(k)
-  assoc!: result 'required' deref(required)
-  suffix-val =: deref(suffix)
-  assoc!: result 'array' suffix-val.?
-  assoc!: result 'suffix' deref(suffix)
-  deref: result
+  optional-before-list =: key =~ /\?\[/
+  k =: replace(key /\?\[/ '[')
+  optional-after-name =: k =~ /\?$/
+  k =: replace(k /\?$/ '')
+  has-suffix =: k =~ /\[[^\]]*\]$/
+  suffix =: has-suffix.if(replace(k /^.*(\[[^\]]*\])$/ '$1') nil)
+  k =: has-suffix.if(replace(k /\[[^\]]*\]$/ '') k)
+  required =: not(optional-before-list || optional-after-name)
+  =>: +{'name' k, 'required' required, 'array' suffix.?, 'suffix' suffix}
 
 defn ysc-value-to-schema(value):
   cond:
@@ -274,11 +257,8 @@ defn ysc-value-to-schema(value):
     else: ysc-scalar-to-schema(value)
 
 defn ysc-map-to-schema(value):
-  explicit =: atom(false)
-  each [key _] value:
-    when key:S =~ /^-/:
-      reset!: explicit true
-  if deref(explicit):
+  explicit =: some(\(_:S =~ /^-/) value:keys)
+  if explicit:
     ysc-block-to-schema(value)
     ysc-object-to-schema(value)
 
@@ -393,14 +373,10 @@ defn range-to-schema(s):
   parts =: s.split('-')
   lo =: parts.0
   hi =: parts.1
-  result =: atom({})
-  t =: range-type(lo hi)
-  assoc!: result 'type' t
-  when lo != '*':
-    assoc!: result 'minimum' scalar-number(lo)
-  when hi != '*':
-    assoc!: result 'maximum' scalar-number(hi)
-  deref: result
+  result =: +{'type' range-type(lo hi)}
+  result =: (lo != '*').if(result.assoc('minimum' scalar-number(lo)) result)
+  result =: (hi != '*').if(result.assoc('maximum' scalar-number(hi)) result)
+  =>: result
 
 defn range-type(lo hi):
   has-dot =: (lo =~ /\./).or(hi =~ /\./)
@@ -412,29 +388,27 @@ defn scalar-number(s):
   json/load: s
 
 defn wrap-array-schema(item suffix):
-  result =: atom({})
-  assoc!: result 'type' 'array'
-  assoc!: result 'items' item
+  base =: +{'type' 'array', 'items' item}
   body =: replace(suffix /^\[/ '')
   body =: replace(body /\]$/ '')
   uniq =: body =~ /!/
   body =: replace(body /!/ '')
-  when uniq:
-    assoc!: result 'uniqueItems' true
-  when body == '+':
-    assoc!: result 'minItems' 1
-  when body =~ /^[0-9]+$/:
-    n =: scalar-number(body)
-    assoc!: result 'minItems' n
-    assoc!: result 'maxItems' n
-  when body =~ /^[0-9]+-$/:
-    n =: scalar-number(replace(body '-' ''))
-    assoc!: result 'minItems' n
-  when body =~ /^[0-9]+-[0-9]+$/:
-    parts =: body.split('-')
-    assoc!: result 'minItems' scalar-number(parts.0)
-    assoc!: result 'maxItems' scalar-number(parts.1)
-  deref: result
+  base =: uniq.if(base.assoc('uniqueItems' true) base)
+  cond:
+    body == '+':
+      base: .assoc('minItems' 1)
+    body =~ /^[0-9]+$/:
+      n =: scalar-number(body)
+      base: .assoc('minItems' n).assoc('maxItems' n)
+    body =~ /^[0-9]+-$/:
+      n =: scalar-number(replace(body '-' ''))
+      base: .assoc('minItems' n)
+    body =~ /^[0-9]+-[0-9]+$/:
+      parts =: body.split('-')
+      base: .assoc('minItems' scalar-number(parts.0))
+          .assoc('maxItems' scalar-number(parts.1))
+    else:
+      base
 
 defn convert(schema):
   doc =: build-doc(schema)
@@ -467,9 +441,10 @@ defn add-root-annotations!(result schema):
 
 defn add-json-schema-meta!(result schema):
   when+ schema.'$id':
-    meta =: atom({})
-    assoc!: meta '$id' _
-    assoc!: result '-json' deref(meta)
+    assoc!: result '-json' json-id-meta(_)
+
+defn json-id-meta(id):
+  assoc({} '$id' id)
 
 defn add-defs!(result defs):
   each [name sub] defs:
@@ -738,16 +713,22 @@ defn replace-todo(line):
 # Insert one blank line between the trailing `+...` $defs entries and
 # the first body entry, if any $defs were emitted.
 defn insert-blank-after-defs(lines):
-  result =: atom([])
-  saw-plus =: atom(false)
-  inserted =: atom(false)
-  each line lines:
-    when line =~ /^\+/:
-      reset!: saw-plus true
-    not-inserted =: inserted.@.!!
-    is-body =: line =~ /^[A-Za-z]/
-    when saw-plus.@ && not-inserted && is-body:
-      swap!: result \(_ + '')
-      reset!: inserted true
-    swap!: result \(_ + line)
-  deref: result
+  state =: reduce(insert-blank-step initial-insert-state() lines)
+  =>: state.0
+
+defn initial-insert-state():
+  =>: +[[] false false]
+
+defn insert-blank-step(state line):
+  result =: state.0
+  saw-plus =: state.1 || (line =~ /^\+/)
+  inserted =: state.2
+  is-body =: line =~ /^[A-Za-z]/
+  should-insert =: saw-plus && not(inserted) && is-body
+  result =:
+    if should-insert:
+      add+(result '')
+      result
+  result =: add+(result line)
+  inserted =: inserted || should-insert
+  =>: +[result saw-plus inserted]
