@@ -52,50 +52,44 @@ defn convert-to(target text opts):
       usage: "unsupported output format: $target"
 
 defn parse-args(args):
-  opts =: atom({})
-  expect =: atom(nil)
-  inputs =: atom([])
-  each arg args:
-    pending =: expect.@
-    when pending:
-      set-pending!: opts expect pending arg
-    when pending.!!:
-      handle-arg!: opts expect inputs arg
-  when expect.@:
-    usage: "missing value for $(expect.@)"
-  inputs-val =: deref(inputs)
+  state =: reduce(parse-arg-step initial-args-state() args)
+  when state.expect:
+    usage: "missing value for $(state.expect)"
+  inputs-val =: state.inputs
   when inputs-val.# != 1:
     usage: 'expected exactly one input'
-  opts-val =: deref(opts)
+  opts-val =: state.opts
   when nil?(opts-val.get('to')):
     when nil?(opts-val.get('output')):
       usage: 'expected -t/--to or -o/--output'
-  assoc!: opts 'input' inputs-val.0
-  deref: opts
+  opts-val: .assoc('input' inputs-val.0)
 
-defn set-pending!(opts expect key value):
-  assoc!: opts key value
-  reset!: expect nil
+defn initial-args-state():
+  =>: +{'opts' {}, 'expect' nil, 'inputs' []}
 
-defn handle-arg!(opts expect inputs arg):
+defn parse-arg-step(state arg):
+  pending =: state.expect
+  if pending:
+    state: .assoc('opts' state.opts.assoc(pending arg)).assoc('expect' nil)
+    handle-arg: state arg
+
+defn handle-arg(state arg):
   cond:
     in?(arg ['-t', '--to']):
-      reset!: expect 'to'
+      state: .assoc('expect' 'to')
     in?(arg ['-o', '--output']):
-      reset!: expect 'output'
+      state: .assoc('expect' 'output')
     in?(arg ['-P', '--pretty']):
-      assoc!: opts 'pretty' true
+      state: .assoc('opts' state.opts.assoc('pretty' true))
     else:
-      handle-input!: inputs arg
+      handle-input: state arg
 
-defn handle-input!(inputs arg):
-  when arg =~ /^-/:
-    when arg != '-':
+defn handle-input(state arg):
+  if arg =~ /^-/:
+    if arg == '-':
+      state: .assoc('inputs' add+(state.inputs arg))
       usage: "unknown option $arg"
-  when arg == '-':
-    swap!: inputs \(_ + arg)
-  when not(arg =~ /^-/):
-    swap!: inputs \(_ + arg)
+    state: .assoc('inputs' add+(state.inputs arg))
 
 defn output-format(opts):
   fmt =: opts.get('to') || infer-output-format(opts.get('output'))
@@ -186,59 +180,65 @@ defn indent(width):
 # --------------------------------------------------------------------
 
 defn ysc-to-schema(doc):
-  result =: atom({})
-  defs =: atom({})
-  props =: atom({})
-  required =: atom([])
-  add-json-section!: result doc
-  assoc!: result '$schema' JSON-SCHEMA-DIALECT
-  each [key value] doc:
-    k =: key:S
-    cond:
-      k =~ /^\+/:
-        name =: replace(k /^\+/ '')
-        assoc!: defs name ysc-value-to-schema(value)
-      k =~ /^-/:
-        add-schema-meta!: result k value
-      else:
-        add-property-schema!: props required k value
-  defs-val =: deref(defs)
-  assoc!: result 'type' 'object'
-  assoc!: result 'properties' deref(props)
-  required-val =: deref(required)
-  when required-val.# > 0:
-    assoc!: result 'required' required-val
-  when defs-val.# > 0:
-    assoc!: result '$defs' defs-val
-  deref: result
+  state =: reduce(ysc-doc-step initial-ysc-doc-state(doc) doc)
+  result =: state.result
+  defs-val =: state.defs
+  reqs =: state.required
+  result =: result.assoc('type' 'object')
+  result =: result.assoc('properties' state.props)
+  result =: reqs:empty?.if(result result.assoc('required' reqs))
+  result =: defs-val:empty?.if(result result.assoc('$defs' defs-val))
+  =>: result
 
-defn add-json-section!(result doc):
-  when+ doc.'-json':
-    add-json-meta!: result _
+defn initial-ysc-doc-state(doc):
+  result =: add-json-meta(array-map() doc.'-json')
+  result =: result.assoc('$schema' JSON-SCHEMA-DIALECT)
+  =>: +{'result' result, 'defs' {}, 'props' {}, 'required' []}
 
-defn add-property-schema!(props required key value):
+defn ysc-doc-step(state entry):
+  key =: entry.0:S
+  value =: entry.1
+  cond:
+    key =~ /^\+/:
+      name =: replace(key /^\+/ '')
+      update-state: state 'defs' name ysc-value-to-schema(value)
+    key =~ /^-/:
+      result =: add-schema-meta(state.result key value)
+      state: .assoc('result' result)
+    else:
+      add-property-schema: state key value
+
+defn update-state(state slot key value):
+  state: .assoc(slot state.get(slot).assoc(key value))
+
+defn add-property-schema(state key value):
   info =: parse-property-key(key)
   schema =: ysc-value-to-schema(value)
   schema =: info.array.if(wrap-array-schema(schema info.suffix) schema)
-  assoc!: props info.name schema
-  when info.required:
-    swap!: required \(_ + info.name)
+  state =: update-state(state 'props' info.name schema)
+  if info.required:
+    then:
+      state: .assoc('required' add+(state.required info.name))
+    else:
+      =>: state
 
-defn add-schema-meta!(result key value):
+defn add-schema-meta(result key value):
   cond:
     key == '-json':
-      add-json-meta!: result value
+      add-json-meta(result value)
     key == '-Name':
-      assoc!: result 'title' value
+      result: .assoc('title' value)
     key == '-desc':
-      assoc!: result 'description' value
+      result: .assoc('description' value)
     else:
-      nil
+      result
 
-defn add-json-meta!(result value):
-  when map?(value):
-    when+ value.'$id':
-      assoc!: result '$id' _
+defn add-json-meta(result value):
+  if map?(value) && value.'$id':
+    then:
+      result: .assoc('$id' value.'$id')
+    else:
+      =>: result
 
 defn parse-property-key(key):
   optional-before-list =: key =~ /\?\[/
@@ -263,80 +263,78 @@ defn ysc-map-to-schema(value):
     ysc-object-to-schema(value)
 
 defn ysc-object-to-schema(value):
-  props =: atom({})
-  required =: atom([])
-  each [key sub] value:
-    add-property-schema!: props required key:S sub
-  result =: atom({})
-  assoc!: result 'type' 'object'
-  required-val =: deref(required)
-  when required-val.# > 0:
-    assoc!: result 'required' required-val
-  assoc!: result 'properties' deref(props)
-  deref: result
+  state =: reduce(ysc-object-step initial-object-state() value)
+  reqs =: state.required
+  result =: +{'type' 'object'}
+  result =: reqs:empty?.if(result result.assoc('required' reqs))
+  result: .assoc('properties' state.props)
+
+defn initial-object-state():
+  =>: +{'props' {}, 'required' []}
+
+defn ysc-object-step(state entry):
+  add-property-schema: state entry.0:S entry.1
 
 defn ysc-block-to-schema(value):
-  result =: atom({})
-  item-schema =: atom(nil)
-  each [key val] value:
-    k =: key:S
-    cond:
-      k == '-type':
-        schema =: ysc-scalar-to-schema(val)
-        merge-schema!: result schema
-      k == '-like':
-        do:
-          assoc!: result 'type' 'string'
-          assoc!: result 'pattern' regex-pattern(val)
-      k == '-enum':
-        assoc!: result 'enum' val
-      k == '-init':
-        assoc!: result 'default' val
-      k == '-list':
-        assoc!: result 'type' 'array'
-      k == '-uniq':
-        assoc!: result 'uniqueItems' val
-      k == '-Name':
-        assoc!: result 'title' val
-      k == '-desc':
-        assoc!: result 'description' val
-      k == '-item':
-        reset!: item-schema ysc-value-to-schema(val)
-      k == '-size':
-        add-size!: result val
-      else:
-        nil
-  result-val =: deref(result)
-  when result-val.type == 'array':
-    item-val =: deref(item-schema)
-    when item-val.?:
-      assoc!: result 'items' item-val
-  deref: result
+  state =: reduce(ysc-block-step initial-block-state() value)
+  result =: state.result
+  has-items =: (result.type == 'array').and(state.item.?)
+  if has-items:
+    result.assoc('items' state.item)
+    result
 
-defn merge-schema!(result schema):
-  each [key val] schema:
-    assoc!: result key val
+defn initial-block-state():
+  result =: array-map()
+  result =: result.assoc('result' array-map())
+  result: .assoc('item' nil)
 
-defn add-size!(result val):
+defn ysc-block-step(state entry):
+  result =: state.result
+  key =: entry.0:S
+  val =: entry.1
+  cond:
+    key == '-type':
+      state: .assoc('result' merge(result ysc-scalar-to-schema(val)))
+    key == '-like':
+      result =: result.assoc('type' 'string')
+      state: .assoc('result' result.assoc('pattern' regex-pattern(val)))
+    key == '-enum':
+      state: .assoc('result' result.assoc('enum' val))
+    key == '-init':
+      state: .assoc('result' result.assoc('default' val))
+    key == '-list':
+      state: .assoc('result' result.assoc('type' 'array'))
+    key == '-uniq':
+      state: .assoc('result' result.assoc('uniqueItems' val))
+    key == '-Name':
+      state: .assoc('result' result.assoc('title' val))
+    key == '-desc':
+      state: .assoc('result' result.assoc('description' val))
+    key == '-item':
+      state: .assoc('item' ysc-value-to-schema(val))
+    key == '-size':
+      state: .assoc('result' add-size(result val))
+    else:
+      state
+
+defn add-size(result val):
   lo =: val.0
   hi =: val.1
-  result-val =: deref(result)
-  t =: result-val.type
+  t =: result.type
   cond:
     t == 'string':
-      add-bounds!: result lo hi 'minLength' 'maxLength'
+      add-bounds: result lo hi 'minLength' 'maxLength'
     t == 'array':
-      add-bounds!: result lo hi 'minItems' 'maxItems'
+      add-bounds: result lo hi 'minItems' 'maxItems'
     t == 'object':
-      add-bounds!: result lo hi 'minProperties' 'maxProperties'
+      add-bounds: result lo hi 'minProperties' 'maxProperties'
     else:
-      add-bounds!: result lo hi 'minimum' 'maximum'
+      add-bounds: result lo hi 'minimum' 'maximum'
 
-defn add-bounds!(result lo hi min-key max-key):
-  when lo != '*':
-    assoc!: result min-key lo
-  when hi != '*':
-    assoc!: result max-key hi
+defn add-bounds(result lo hi min-key max-key):
+  result =: (lo != '*').if(result.assoc(min-key lo) result)
+  result =: (hi != '*').if(result.assoc(max-key hi) result)
+  =>: result
 
 defn ysc-scalar-to-schema(value):
   s =: value:S
@@ -367,13 +365,14 @@ defn regex-pattern(value):
 
 defn ref-schema(s):
   name =: replace(s /^\+/ '')
-  =>: +{'$ref' (str '#/$defs/' name)}
+  assoc: array-map() '$ref' str('#/$defs/' name)
 
 defn range-to-schema(s):
   parts =: s.split('-')
   lo =: parts.0
   hi =: parts.1
-  result =: +{'type' range-type(lo hi)}
+  t =: range-type(lo hi)
+  result =: +{'type' t}
   result =: (lo != '*').if(result.assoc('minimum' scalar-number(lo)) result)
   result =: (hi != '*').if(result.assoc('maximum' scalar-number(hi)) result)
   =>: result
@@ -426,46 +425,52 @@ defn build-doc(schema):
   defs =: schema.'$defs' ||
           schema.definitions ||
           {}
-  result =: atom({})
-  add-root-annotations!: result schema
-  add-defs!: result defs
-  add-body!: result schema
-  add-json-schema-meta!: result schema
-  deref: result
+  result =: array-map()
+  result =: add-root-annotations(result schema)
+  result =: add-defs(result defs)
+  result =: add-body(result schema)
+  add-json-schema-meta: result schema
 
-defn add-root-annotations!(result schema):
-  when+ schema.title:
-    assoc!: result '-Name' _
-  when+ schema.description:
-    assoc!: result '-desc' _
+defn add-root-annotations(result schema):
+  result =: schema.title.?.if(result.assoc('-Name' schema.title) result)
+  result =: schema.description.?.if(
+    result.assoc('-desc' schema.description) result)
+  =>: result
 
-defn add-json-schema-meta!(result schema):
-  when+ schema.'$id':
-    assoc!: result '-json' json-id-meta(_)
+defn add-json-schema-meta(result schema):
+  if schema.'$id':
+    result.assoc('-json' json-id-meta(schema.'$id'))
+    result
 
 defn json-id-meta(id):
-  assoc({} '$id' id)
+  assoc(array-map() '$id' id)
 
-defn add-defs!(result defs):
-  each [name sub] defs:
-    val =: build-value(sub)
-    assoc!: result "+$name" val
+defn add-defs(result defs):
+  reduce add-def-step: result defs
 
-defn add-body!(result schema):
+defn add-def-step(result entry):
+  name =: entry.0
+  sub =: entry.1
+  result: .assoc("+$name" build-value(sub))
+
+defn add-body(result schema):
   if object-with-props?(schema):
-    add-properties!: result schema
-    add-block!: result schema
+    add-properties(result schema)
+    add-block(result schema)
 
-defn add-properties!(result schema):
+defn add-properties(result schema):
   props =: schema.properties
   required =: set(schema.required)
-  each [name sub] props:
-    is-req =: required.has?(name)
-    array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
-    value-sub =: array?.if(array-item-schema(sub) sub)
-    key =: key-for(name sub is-req array?)
-    val =: build-value(value-sub)
-    assoc!: result key val
+  reduce \(add-property(_1 _2 required)): result props
+
+defn add-property(result entry required):
+  name =: entry.0
+  sub =: entry.1
+  is-req =: required.has?(name)
+  array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
+  value-sub =: array?.if(array-item-schema(sub) sub)
+  key =: key-for(name sub is-req array?)
+  result: .assoc(key build-value(value-sub))
 
 # Return the value side of a property (or def) — either a scalar in
 # succinct form, or a nested map (object with properties / expanded
@@ -478,76 +483,76 @@ defn build-value(schema):
     else: build-block-map(schema)
 
 defn build-properties-map(schema):
-  result =: atom({})
-  add-properties!: result schema
-  deref: result
+  add-properties(array-map() schema)
 
 defn build-block-map(schema):
-  result =: atom({})
-  add-block!: result schema
-  deref: result
+  add-block(array-map() schema)
 
 # Add the directive entries for an expanded schema-block (-type, -size,
 # -enum, -init, etc.) into the result map. Also walks nested items /
 # properties when present.
-defn add-block!(result schema):
-  add-todos!: result schema
+defn add-block(result schema):
+  result =: add-todos(result schema)
   t =: json-type(schema)
   ts =: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
+  result =: schema.'$ref'.?.if(
+    result.assoc('-type' ref-sym(schema.'$ref')) result)
+  result =: has-type.if(result.assoc('-type' ts) result)
+  result =: is-array.if(result.assoc('-list' true) result)
+  result =: schema.pattern.?.if(
+    result.assoc('-like' regex-literal(schema.pattern)) result)
+  result =: schema.enum.?.if(
+    result.assoc('-enum' enum-block-list(schema.enum)) result)
+  result =: schema.const.?.if(
+    result.assoc('-type' literal-value(schema.const)) result)
+  result =: schema.uniqueItems.if(result.assoc('-uniq' true) result)
+  result =: schema.default.?.if(
+    result.assoc('-init' literal-value(schema.default)) result)
+  result =: schema.title.?.if(result.assoc('-Name' schema.title) result)
+  result =: schema.description.?.if(
+    result.assoc('-desc' schema.description) result)
+  result =: add-size-directive(result schema.minimum schema.maximum)
+  result =: add-size-directive(result schema.minLength schema.maxLength)
+  result =: add-size-directive(result schema.minItems schema.maxItems)
+  result =: add-size-directive(
+    result schema.minProperties schema.maxProperties)
+  result =: add-array-items(result is-array schema)
+  result =: ((t == 'object') && object-with-props?(schema)).if(
+    add-properties(result schema) result)
+  =>: result
 
-  when+ schema.'$ref':
-    assoc!: result '-type' ref-sym(_)
-  when has-type:
-    assoc!: result '-type' ts
-  when is-array:
-    assoc!: result '-list' true
-  when+ schema.pattern:
-    assoc!: result '-like' regex-literal(_)
-  when+ schema.enum:
-    assoc!: result '-enum' enum-block-list(_)
-  when+ schema.const:
-    assoc!: result '-type' literal-value(_)
-  when schema.uniqueItems:
-    assoc!: result '-uniq' true
-  when+ schema.default:
-    assoc!: result '-init' literal-value(_)
-  when+ schema.title:
-    assoc!: result '-Name' _
-  when+ schema.description:
-    assoc!: result '-desc' _
-  when schema.minimum.? || schema.maximum.?:
-    assoc!: result '-size' size-pair(schema.minimum schema.maximum)
-  when schema.minLength.? || schema.maxLength.?:
-    assoc!: result '-size' size-pair(schema.minLength schema.maxLength)
-  when schema.minItems.? || schema.maxItems.?:
-    assoc!: result '-size' size-pair(schema.minItems schema.maxItems)
-  when schema.minProperties.? || schema.maxProperties.?:
-    assoc!: result '-size' size-pair(schema.minProperties schema.maxProperties)
-  when is-array && schema.items.?:
-    items =: schema.items
-    item-scalar =: succinct-scalar(items)
-    if item-scalar:
-      assoc!: result '-type' item-scalar
-      assoc!: result '-item' build-block-map(items)
-  when (t == 'object') && object-with-props?(schema):
-    add-properties!: result schema
+defn add-size-directive(result lo hi):
+  if lo.? || hi.?:
+    result: .assoc('-size' size-pair(lo hi))
+    =>: result
+
+defn add-array-items(result is-array schema):
+  if is-array && schema.items.?:
+    then:
+      items =: schema.items
+      item-scalar =: succinct-scalar(items)
+      if item-scalar:
+        result: .assoc('-type' item-scalar)
+        result: .assoc('-item' build-block-map(items))
+    else:
+      =>: result
 
 # Insert sentinel keys for unsupported keywords. Post-processing turns
 # them into `# TODO: <keyword>` comments.
-defn add-todos!(result schema):
+defn add-todos(result schema):
   todos =: qw(allOf anyOf oneOf not if then else dependentRequired
               dependentSchemas patternProperties propertyNames
               prefixItems contains additionalProperties
               unevaluatedItems unevaluatedProperties
               exclusiveMinimum exclusiveMaximum format)
-  each k todos:
-    when schema.has?(k):
-      assoc!: result "__TODO_$k" ''
+  reduce \(add-todo(_1 _2 schema)): result todos
 
-defn assoc!(result k v):
-  swap!: result \(_.assoc(k v))
+defn add-todo(result k schema):
+  if schema.has?(k):
+    result.assoc("__TODO_$k" '')
+    result
 
 # --------------------------------------------------------------------
 # Succinct-form helpers (unchanged from the original by-hand emitter).
