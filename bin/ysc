@@ -189,7 +189,7 @@ defn ysc-to-schema(doc):
   defs-val =: state.defs
   reqs =: state.required
   result +=:: {type: object}
-  result +=: +{'properties' state.props}
+  result :if state.props:empty?.! +=: +{'properties' state.props}
   result :if reqs:empty?.! +=: +{'required' reqs}
   result :if defs-val:empty?.! +=: +{'$defs' defs-val}
   =>: result
@@ -421,8 +421,20 @@ defn convert(schema):
 defn validate-json-schema-dialect(schema):
   when+ schema.'$schema':
     dialect =: _
-    when dialect != JSON-SCHEMA-DIALECT:
+    when supported-json-schema-dialect?(dialect).!:
       usage: "unsupported JSON Schema dialect: $dialect"
+
+defn supported-json-schema-dialect?(dialect):
+  case dialect:
+    'https://json-schema.org/draft/2020-12/schema': true
+    'https://json-schema.org/draft/2019-09/schema': true
+    'http://json-schema.org/draft-07/schema#': true
+    'https://json-schema.org/draft-07/schema': true
+    'http://json-schema.org/draft-06/schema#': true
+    'https://json-schema.org/draft-06/schema': true
+    'http://json-schema.org/draft-04/schema#': true
+    'https://json-schema.org/draft-04/schema': true
+    else: false
 
 # Build the top-level data structure for the whole document.
 defn build-doc(schema):

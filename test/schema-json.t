@@ -24,6 +24,13 @@ test::
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"host":{"type":"string"},"admin":{"$ref":"#\/$defs\/email"}},"required":["host"],"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
 
+- name: defs-only-to-schema-json
+  cmnd: bin/ysc -t schema.json -
+  stdi: |
+    +airflow: front-to-rear|rear-to-front
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","$defs":{"airflow":{"enum":["front-to-rear","rear-to-front"]}}}
+
 - name: list-suffix-to-schema-json
   cmnd: bin/ysc -t schema.json -
   stdi: |
