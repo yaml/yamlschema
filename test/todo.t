@@ -22,4 +22,14 @@ test::
     auth:
       # TODO: oneOf
 
+- name: additional-properties
+  cmnd: bin/ysc -t ysc.yaml -
+  stdi: |
+    {
+      "type": "object",
+      "additionalProperties": false
+    }
+  want: |
+    -additionalProperties: false
+
 done:

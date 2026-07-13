@@ -33,10 +33,8 @@ test::
 
 - name: unsupported-json-schema-dialect
   cmnd: |
-    sh -c 'printf "%s%s" \
-      "eyIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy" \
-      "9kcmFmdC0wNy9zY2hlbWEjIn0=" |
-      base64 -d |
+    sh -c 'printf "%s\n" \
+      "{\"\$schema\":\"https://example.com/unsupported-draft\"}" |
       bin/ysc -t ysc.yaml - >/dev/null 2>&1; test $? -eq 2 && echo ok'
   want: |
     ok

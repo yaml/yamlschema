@@ -12,7 +12,7 @@ test::
     n: +Float
     b: +Bool
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"s":{"type":"string"},"i":{"type":"integer"},"n":{"type":"number"},"b":{"type":"boolean"}},"required":["s","i","n","b"]}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"b":{"type":"boolean"},"i":{"type":"integer"},"n":{"type":"number"},"s":{"type":"string"}},"required":["s","i","n","b"]}
 
 - name: refs-and-regex-to-schema-json
   cmnd: bin/ysc -t schema.json -
@@ -22,7 +22,7 @@ test::
     host: +Str
     admin?: +email
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"host":{"type":"string"},"admin":{"$ref":"#\/$defs\/email"}},"required":["host"],"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"admin":{"$ref":"#\/$defs\/email"},"host":{"type":"string"}},"required":["host"],"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
 
 - name: defs-only-to-schema-json
   cmnd: bin/ysc -t schema.json -
@@ -46,7 +46,7 @@ test::
       -size: [1, 65535]
       -init: 8080
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"port":{"type":"integer","minimum":1,"maximum":65535,"default":8080}},"required":["port"]}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"port":{"type":"integer","default":8080,"minimum":1,"maximum":65535}},"required":["port"]}
 
 - name: annotations-to-schema-json
   cmnd: bin/ysc -t schema.json -
@@ -60,7 +60,14 @@ test::
     -json:
       $id: https://example.com/arrays.schema.json
   want: |
-    {"$id":"https:\/\/example.com\/arrays.schema.json","$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","title":"Arrays","description":"Arrays of strings and objects","type":"object","properties":{"name":{"type":"string","title":"Full name","description":"Display name."}},"required":["name"]}
+    {"$id":"https:\/\/example.com\/arrays.schema.json","$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","title":"Arrays","description":"Arrays of strings and objects","type":"object","properties":{"name":{"title":"Full name","description":"Display name.","type":"string"}},"required":["name"]}
+
+- name: additional-properties-to-schema-json
+  cmnd: bin/ysc -t schema.json -
+  stdi: |
+    -additionalProperties: false
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false}
 
 - name: pretty-schema-json
   cmnd: bin/ysc -t schema.json -P -

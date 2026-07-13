@@ -8,6 +8,7 @@ test::
   cmnd: bin/ysc
   want: |
     Usage: ysc (-t FORMAT | -o FILE) INPUT
+           ysc --fmt INPUT
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -18,6 +19,7 @@ test::
       -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -P, --pretty          Pretty-print JSON output with 2-space indentation.
+          --fmt             Format a JSON Schema file to stdout.
           --help            Show this help text.
           --version         Show version.
 
@@ -25,6 +27,7 @@ test::
   cmnd: bin/ysc --help
   want: |
     Usage: ysc (-t FORMAT | -o FILE) INPUT
+           ysc --fmt INPUT
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -35,6 +38,7 @@ test::
       -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -P, --pretty          Pretty-print JSON output with 2-space indentation.
+          --fmt             Format a JSON Schema file to stdout.
           --help            Show this help text.
           --version         Show version.
 
@@ -42,5 +46,21 @@ test::
   cmnd: bin/ysc --version
   want: |
     ysc 0.1.0
+
+- name: fmt
+  cmnd: bin/ysc --fmt -
+  stdi: |
+    {"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","$id":"x","$defs":{"b":{"type":"string"}}}
+  want: |
+    {
+      "$id": "x",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "$defs": {
+        "b": {
+          "type": "string"
+        }
+      }
+    }
 
 done:

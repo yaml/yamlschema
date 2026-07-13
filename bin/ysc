@@ -16,6 +16,7 @@ VERSION =: '0.1.0'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) INPUT
+         ysc --fmt INPUT
 
   Convert between JSON Schema and yamlschema formats.
 
@@ -26,15 +27,19 @@ HELP =: |
     -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -P, --pretty          Pretty-print JSON output with 2-space indentation.
+        --fmt             Format a JSON Schema file to stdout.
         --help            Show this help text.
         --version         Show version.
 
 defn main(*args):
   handle-info-options: args
   opts =: parse-args(args)
-  target =: output-format(opts)
   path =: opts.input
   text =: (path == '-').if(IN path):read
+  when opts.fmt:
+    format-json-schema: text
+    exit: 0
+  target =: output-format(opts)
   output =: convert-to(target text opts)
   emit-output: output opts.output
 
@@ -61,7 +66,8 @@ defn parse-args(args):
   opts-val =: state.opts
   when opts-val.to.!:
     when opts-val.output.!:
-      usage: 'expected -t/--to or -o/--output'
+      when opts-val.fmt.!:
+        usage: 'expected -t/--to, -o/--output, or --fmt'
   opts-val +: +{'input' inputs-val.0}
 
 defn initial-args-state()::
@@ -85,6 +91,8 @@ defn handle-arg(state arg):
       state +:: {expect: output}
     in?(arg ['-P', '--pretty']):
       state +: +{'opts' (state.opts + {'pretty' true})}
+    arg == '--fmt':
+      state +: +{'opts' (state.opts + {'fmt' true, 'pretty' true})}
     else:
       handle-input: state arg
 
@@ -135,9 +143,47 @@ defn handle-info-options(args):
       exit: 0
 
 defn json-output(value opts):
+  value =: canonical-json-schema(value)
   if opts.pretty:
     pretty-json(value)
     json/dump(value)
+
+defn format-json-schema(text):
+  schema =: text:json/load
+  validate-json-schema-dialect: schema
+  say: pretty-json(canonical-json-schema(schema))
+
+defn canonical-json-schema(value):
+  cond:
+    map?(value):
+      canonical-json-map: value
+    value:vector?:
+      vec: map(canonical-json-schema value)
+    else:
+      value
+
+defn canonical-json-map(value):
+  result =: array-map()
+  result =: reduce(\(add-canonical-key(_1 _2 value))
+                   result preferred-json-schema-keys())
+  extra-keys =: sort(remove(\(preferred-json-schema-key?(_)) value:keys))
+  reduce \(add-canonical-key(_1 _2 value)): result extra-keys
+
+defn add-canonical-key(result key value):
+  if contains?(value key):
+    result +: +{key canonical-json-schema(value.get(key))}
+    else: result
+
+defn preferred-json-schema-key?(key):
+  preferred-json-schema-keys().has?(key)
+
+defn preferred-json-schema-keys():
+  keys =: '$id $schema title description type enum const default $ref'
+  keys +=: ' properties required additionalProperties'
+  keys +=: ' items uniqueItems minItems maxItems'
+  keys +=: ' minimum maximum minLength maxLength'
+  keys +=: ' minProperties maxProperties $defs'
+  keys: .split(' ')
 
 defn pretty-json(value):
   pretty-value(value 0)
@@ -232,6 +278,8 @@ defn add-schema-meta(result key value):
     '-json': result.add-json-meta(value)
     '-Name': result + {'title' value}
     '-desc': result + {'description' value}
+    '-additionalProperties':
+      result + {'additionalProperties' additional-properties-schema(value)}
     else: result
 
 defn add-json-meta(result value):
@@ -318,6 +366,10 @@ defn ysc-block-step(state entry):
       state +: +{'item' ysc-value-to-schema(val)}
     '-size':
       state +: +{'result' add-size(result val)}
+    '-additionalProperties':
+      state +:
+        +{'result' (result + {'additionalProperties'
+                              additional-properties-schema(val)})}
     else:
       state
 
@@ -530,6 +582,8 @@ defn add-block(result schema):
     +{'-Name' schema.title}
   result :if schema.description.? +=:
     +{'-desc' schema.description}
+  result :if contains?(schema 'additionalProperties') +=:
+    +{'-additionalProperties' additional-properties-value(schema)}
   result .=: add-size-directive(schema.minimum schema.maximum)
   result .=: add-size-directive(schema.minLength schema.maxLength)
   result .=: add-size-directive(schema.minItems schema.maxItems)
@@ -556,13 +610,23 @@ defn add-array-items(result is-array schema):
           {'-item' build-block-map(items)}
     else: result
 
+defn additional-properties-value(schema):
+  value =: schema.get('additionalProperties')
+  if boolean?(value):
+    value
+    build-value(value)
+
+defn additional-properties-schema(value):
+  if boolean?(value):
+    value
+    ysc-value-to-schema(value)
+
 # Insert sentinel keys for unsupported keywords. Post-processing turns
 # them into `# TODO: <keyword>` comments.
 defn add-todos(result schema):
   todos =: qw(allOf anyOf oneOf not if then else dependentRequired
               dependentSchemas patternProperties propertyNames
-              prefixItems contains additionalProperties
-              unevaluatedItems unevaluatedProperties
+              prefixItems contains unevaluatedItems unevaluatedProperties
               exclusiveMinimum exclusiveMaximum format)
   reduce \(add-todo(_1 _2 schema)): result todos
 
