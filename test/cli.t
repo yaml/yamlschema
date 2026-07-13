@@ -9,6 +9,7 @@ test::
   want: |
     Usage: ysc (-t FORMAT | -o FILE) INPUT
            ysc --fmt INPUT
+           ysc --norm INPUT
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -20,6 +21,7 @@ test::
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -P, --pretty          Pretty-print JSON output with 2-space indentation.
           --fmt             Format a JSON Schema file to stdout.
+          --norm            Normalize JSON Schema to draft 2020-12 on stdout.
           --help            Show this help text.
           --version         Show version.
 
@@ -28,6 +30,7 @@ test::
   want: |
     Usage: ysc (-t FORMAT | -o FILE) INPUT
            ysc --fmt INPUT
+           ysc --norm INPUT
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -39,6 +42,7 @@ test::
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -P, --pretty          Pretty-print JSON output with 2-space indentation.
           --fmt             Format a JSON Schema file to stdout.
+          --norm            Normalize JSON Schema to draft 2020-12 on stdout.
           --help            Show this help text.
           --version         Show version.
 
@@ -50,7 +54,12 @@ test::
 - name: fmt
   cmnd: bin/ysc --fmt -
   stdi: |
-    {"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","$id":"x","$defs":{"b":{"type":"string"}}}
+    {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "x",
+      "$defs": {"b": {"type": "string"}}
+    }
   want: |
     {
       "$id": "x",
@@ -58,6 +67,29 @@ test::
       "type": "object",
       "$defs": {
         "b": {
+          "type": "string"
+        }
+      }
+    }
+
+- name: norm
+  cmnd: bin/ysc --norm -
+  stdi: |
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {"thing": {"type": "string"}},
+      "properties": {"name": {"$ref": "#/definitions/thing"}}
+    }
+  want: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/thing"
+        }
+      },
+      "$defs": {
+        "thing": {
           "type": "string"
         }
       }

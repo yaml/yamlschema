@@ -17,6 +17,7 @@ JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) INPUT
          ysc --fmt INPUT
+         ysc --norm INPUT
 
   Convert between JSON Schema and yamlschema formats.
 
@@ -28,6 +29,7 @@ HELP =: |
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -P, --pretty          Pretty-print JSON output with 2-space indentation.
         --fmt             Format a JSON Schema file to stdout.
+        --norm            Normalize JSON Schema to draft 2020-12 on stdout.
         --help            Show this help text.
         --version         Show version.
 
@@ -38,6 +40,9 @@ defn main(*args):
   text =: (path == '-').if(IN path):read
   when opts.fmt:
     format-json-schema: text
+    exit: 0
+  when opts.norm:
+    normalize-json-schema-output: text
     exit: 0
   target =: output-format(opts)
   output =: convert-to(target text opts)
@@ -67,7 +72,8 @@ defn parse-args(args):
   when opts-val.to.!:
     when opts-val.output.!:
       when opts-val.fmt.!:
-        usage: 'expected -t/--to, -o/--output, or --fmt'
+        when opts-val.norm.!:
+          usage: 'expected -t/--to, -o/--output, --fmt, or --norm'
   opts-val +: +{'input' inputs-val.0}
 
 defn initial-args-state()::
@@ -93,6 +99,8 @@ defn handle-arg(state arg):
       state +: +{'opts' (state.opts + {'pretty' true})}
     arg == '--fmt':
       state +: +{'opts' (state.opts + {'fmt' true, 'pretty' true})}
+    arg == '--norm':
+      state +: +{'opts' (state.opts + {'norm' true, 'pretty' true})}
     else:
       handle-input: state arg
 
@@ -152,6 +160,57 @@ defn format-json-schema(text):
   schema =: text:json/load
   validate-json-schema-dialect: schema
   say: pretty-json(canonical-json-schema(schema))
+
+defn normalize-json-schema-output(text):
+  schema =: text:json/load
+  validate-json-schema-dialect: schema
+  schema =: normalize-json-schema(schema true)
+  say: pretty-json(canonical-json-schema(schema))
+
+defn normalize-json-schema(value root?):
+  cond:
+    map?(value):
+      normalize-json-map: value root?
+    value:vector?:
+      vec: map(\(normalize-json-schema(_ false)) value)
+    else:
+      value
+
+defn normalize-json-map(value root?):
+  result =: array-map()
+  result =: reduce(\(normalize-json-entry(_1 _2)) result value)
+  result =: normalize-definitions(result)
+  result =: normalize-ref(result)
+  if root?:
+    then:
+      result +: +{'$schema' JSON-SCHEMA-DIALECT}
+    else: result
+
+defn normalize-json-entry(result entry):
+  key =: entry.0
+  value =: entry.1
+  result +: +{key normalize-json-schema(value false)}
+
+defn normalize-definitions(result):
+  if contains?(result 'definitions'):
+    then:
+      defs =: (result.get('$defs') || {}) + result.get('definitions')
+      result =: dissoc(result 'definitions')
+      result +: +{'$defs' defs}
+    else: result
+
+defn normalize-ref(result):
+  if contains?(result '$ref'):
+    then:
+      ref =: result.get('$ref')
+      ref =: normalize-ref-value(ref)
+      result +: +{'$ref' ref}
+    else: result
+
+defn normalize-ref-value(ref):
+  if string?(ref):
+    then: ref.replace(/^#\/definitions\// '#/\$defs/')
+    else: ref
 
 defn canonical-json-schema(value):
   cond:
