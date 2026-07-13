@@ -598,4 +598,4 @@ For full bidirectional roundtrip support:
 The existing `bin/ysc` covers step 1 for the direct mappings listed above.
 It does some of step 2 by emitting succinct forms where possible.
 It also covers step 4 for the same direct mapping subset with
-`ysc -t schema.json`.
+`ysc -t jsc`.

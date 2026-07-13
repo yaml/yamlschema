@@ -688,15 +688,16 @@ tags[!+]: +Str
 1. Read JSON Schema from the required input path, or from stdin when the input
    is `-`.
 2. Require either `-t` / `--to` or `-o` / `--output`.
-3. Use `-t ysc.yaml` to parse Draft 2020-12 JSON Schema and emit yamlschema.
-4. Use `-t schema.json` to parse yamlschema and emit Draft 2020-12 JSON
+3. Use `-t ysc` to parse Draft 2020-12 JSON Schema and emit yamlschema.
+4. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON
    Schema.
 5. Build a YAMLScript data structure for the output document.
 6. Prefer succinct scalar forms where possible.
 7. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-8. Dump `ysc.yaml` results as YAML and `schema.json` results as JSON.
-   Use `-P` / `--pretty` for two-space-indented JSON output.
+8. Dump `ysc.yaml` results as YAML and `schema.json` results as canonical,
+   two-space-indented JSON.
+   Use `-C` / `--compact` for compact JSON output.
 9. Post-process generated TODO sentinel keys into `# TODO: <keyword>` comments.
 10. Insert a blank line between top-level definitions and the document body.
 

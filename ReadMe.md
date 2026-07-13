@@ -71,27 +71,32 @@ For local development, source the repo `.rc` file to put `bin/` on your `PATH`:
 After that, the converter can be run as `ysc`:
 
 ```sh
-ysc -t ysc.yaml contact.schema.json
-ysc -t schema.json contact.ysc.yaml
-ysc -t schema.json -P contact.ysc.yaml
+ysc -t ysc contact.schema.json
+ysc -t jsc contact.ysc.yaml
+ysc -t jsc -C contact.ysc.yaml
+ysc -F contact.schema.json
+ysc -N legacy.schema.json
 ```
 
 ## Converter Usage
 
 The current converter script is `ysc`.
-It requires one input path and either `-t` / `--to` or `-o` / `--output`.
-Use `-` to read JSON Schema or yamlschema from stdin:
+It requires either `-t` / `--to`, `-o` / `--output`, `-F` / `--fmt`, or
+`-N` / `--norm`.
+Input defaults to stdin.
+Use `-` explicitly to read JSON Schema or yamlschema from stdin:
 
 ```sh
-ysc -t ysc.yaml - < contact.schema.json
-ysc -t schema.json - < contact.ysc.yaml
+ysc -t ysc - < contact.schema.json
+ysc -t jsc - < contact.ysc.yaml
+ysc -FC - < contact.schema.json
 ```
 
 or from a file path:
 
 ```sh
-ysc -t ysc.yaml contact.schema.json
-ysc -t schema.json contact.ysc.yaml
+ysc -t ysc contact.schema.json
+ysc -t jsc contact.ysc.yaml
 ```
 
 CLI information:

@@ -15,34 +15,34 @@
 VERSION =: '0.1.0'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 HELP =: |
-  Usage: ysc (-t FORMAT | -o FILE) INPUT
-         ysc --fmt INPUT
-         ysc --norm INPUT
+  Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+         ysc -F, --fmt [INPUT]
+         ysc -N, --norm [INPUT]
 
   Convert between JSON Schema and yamlschema formats.
 
   Arguments:
-    INPUT                 Input schema path. Use "-" for stdin.
+    INPUT                 Input schema path. Defaults to stdin.
 
   Options:
-    -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
+    -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
-    -P, --pretty          Pretty-print JSON output with 2-space indentation.
-        --fmt             Format a JSON Schema file to stdout.
-        --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+    -F, --fmt             Format JSON Schema to stdout.
+    -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+    -C, --compact         Emit compact JSON for schema.json output.
         --help            Show this help text.
         --version         Show version.
 
 defn main(*args):
   handle-info-options: args
   opts =: parse-args(args)
-  path =: opts.input
+  path =: opts.input || '-'
   text =: (path == '-').if(IN path):read
   when opts.fmt:
-    format-json-schema: text
+    format-json-schema: text opts
     exit: 0
   when opts.norm:
-    normalize-json-schema-output: text
+    normalize-json-schema-output: text opts
     exit: 0
   target =: output-format(opts)
   output =: convert-to(target text opts)
@@ -66,15 +66,17 @@ defn parse-args(args):
   when state.expect:
     usage: "missing value for $(state.expect)"
   inputs-val =: state.inputs
-  when inputs-val.# != 1:
-    usage: 'expected exactly one input'
+  when inputs-val.# > 1:
+    usage: 'expected at most one input'
   opts-val =: state.opts
   when opts-val.to.!:
     when opts-val.output.!:
       when opts-val.fmt.!:
         when opts-val.norm.!:
-          usage: 'expected -t/--to, -o/--output, --fmt, or --norm'
-  opts-val +: +{'input' inputs-val.0}
+          usage: 'expected -t/--to, -o/--output, -F/--fmt, or -N/--norm'
+  if inputs-val.# == 1:
+    opts-val +: +{'input' inputs-val.0}
+    else: opts-val
 
 defn initial-args-state()::
   opts: {}
@@ -95,14 +97,23 @@ defn handle-arg(state arg):
       state +:: {expect: to}
     in?(arg ['-o', '--output']):
       state +:: {expect: output}
-    in?(arg ['-P', '--pretty']):
-      state +: +{'opts' (state.opts + {'pretty' true})}
-    arg == '--fmt':
+    in?(arg ['-F', '--fmt']):
       state +: +{'opts' (state.opts + {'fmt' true, 'pretty' true})}
-    arg == '--norm':
+    in?(arg ['-N', '--norm']):
       state +: +{'opts' (state.opts + {'norm' true, 'pretty' true})}
+    in?(arg ['-C', '--compact']):
+      state +: +{'opts' (state.opts + {'compact' true})}
+    arg =~ /^-[FCN][FCN]+$/:
+      state +: +{'opts' (state.opts + short-option-bundle(arg))}
     else:
       handle-input: state arg
+
+defn short-option-bundle(arg):
+  result =: array-map()
+  result :if (arg =~ /F/) +=: +{'fmt' true, 'pretty' true}
+  result :if (arg =~ /N/) +=: +{'norm' true, 'pretty' true}
+  result :if (arg =~ /C/) +=: +{'compact' true}
+  =>: result
 
 defn handle-input(state arg):
   if arg =~ /^-/:
@@ -112,8 +123,15 @@ defn handle-input(state arg):
     state +: +{'inputs' (state.inputs + arg)}
 
 defn output-format(opts):
-  fmt =: opts.to || infer-output-format(opts.output)
+  fmt =: normalize-output-format(opts.to) || infer-output-format(opts.output)
   fmt ||: 'ysc.yaml'
+
+defn normalize-output-format(fmt):
+  case fmt:
+    'ysc': 'ysc.yaml'
+    'jsc': 'schema.json'
+    'yscj': 'ysc.json'
+    else: fmt
 
 defn infer-output-format(output):
   cond:
@@ -152,20 +170,20 @@ defn handle-info-options(args):
 
 defn json-output(value opts):
   value =: canonical-json-schema(value)
-  if opts.pretty:
-    pretty-json(value)
+  if opts.compact:
     json/dump(value)
+    pretty-json(value)
 
-defn format-json-schema(text):
+defn format-json-schema(text opts):
   schema =: text:json/load
   validate-json-schema-dialect: schema
-  say: pretty-json(canonical-json-schema(schema))
+  say: json-output(schema opts)
 
-defn normalize-json-schema-output(text):
+defn normalize-json-schema-output(text opts):
   schema =: text:json/load
   validate-json-schema-dialect: schema
   schema =: normalize-json-schema(schema true)
-  say: pretty-json(canonical-json-schema(schema))
+  say: json-output(schema opts)
 
 defn normalize-json-schema(value root?):
   cond:

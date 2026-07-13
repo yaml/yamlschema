@@ -7,42 +7,42 @@ test::
 - name: no-args
   cmnd: bin/ysc
   want: |
-    Usage: ysc (-t FORMAT | -o FILE) INPUT
-           ysc --fmt INPUT
-           ysc --norm INPUT
+    Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+           ysc -F, --fmt [INPUT]
+           ysc -N, --norm [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
     Arguments:
-      INPUT                 Input schema path. Use "-" for stdin.
+      INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
+      -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
-      -P, --pretty          Pretty-print JSON output with 2-space indentation.
-          --fmt             Format a JSON Schema file to stdout.
-          --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -F, --fmt             Format JSON Schema to stdout.
+      -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -C, --compact         Emit compact JSON for schema.json output.
           --help            Show this help text.
           --version         Show version.
 
 - name: help
   cmnd: bin/ysc --help
   want: |
-    Usage: ysc (-t FORMAT | -o FILE) INPUT
-           ysc --fmt INPUT
-           ysc --norm INPUT
+    Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+           ysc -F, --fmt [INPUT]
+           ysc -N, --norm [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
     Arguments:
-      INPUT                 Input schema path. Use "-" for stdin.
+      INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format. Supports "ysc.yaml", "schema.json".
+      -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
-      -P, --pretty          Pretty-print JSON output with 2-space indentation.
-          --fmt             Format a JSON Schema file to stdout.
-          --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -F, --fmt             Format JSON Schema to stdout.
+      -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -C, --compact         Emit compact JSON for schema.json output.
           --help            Show this help text.
           --version         Show version.
 
@@ -52,7 +52,7 @@ test::
     ysc 0.1.0
 
 - name: fmt
-  cmnd: bin/ysc --fmt -
+  cmnd: bin/ysc -F
   stdi: |
     {
       "type": "object",
@@ -72,8 +72,18 @@ test::
       }
     }
 
+- name: fmt-compact
+  cmnd: bin/ysc -FC
+  stdi: |
+    {
+      "type": "object",
+      "$id": "x"
+    }
+  want: |
+    {"$id":"x","type":"object"}
+
 - name: norm
-  cmnd: bin/ysc --norm -
+  cmnd: bin/ysc -N
   stdi: |
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -94,5 +104,25 @@ test::
         }
       }
     }
+
+- name: stdin-default-with-to
+  cmnd: bin/ysc -t ysc
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"}
+      },
+      "required": ["name"]
+    }
+  want: |
+    name: +Str
+
+- name: compact-schema-json
+  cmnd: sh -c 'bin/ysc -t jsc -C | wc -l'
+  stdi: |
+    s: +Str
+  want: |
+    1
 
 done:
