@@ -93,18 +93,18 @@ defn parse-arg-step(state arg):
 
 defn handle-arg(state arg):
   cond:
-    in?(arg ['-t', '--to']):
-      state +:: {expect: to}
-    in?(arg ['-o', '--output']):
-      state +:: {expect: output}
-    in?(arg ['-F', '--fmt']):
-      state +: +{'opts' (state.opts + {'fmt' true, 'pretty' true})}
-    in?(arg ['-N', '--norm']):
-      state +: +{'opts' (state.opts + {'norm' true, 'pretty' true})}
-    in?(arg ['-C', '--compact']):
-      state +: +{'opts' (state.opts + {'compact' true})}
+    arg.in?(['-t', '--to']):
+      state + {'expect' 'to'}
+    arg.in?(['-o', '--output']):
+      state + {'expect' 'output'}
+    arg.in?(['-F', '--fmt']):
+      state + {'opts' (state.opts + {'fmt' true, 'pretty' true})}
+    arg.in?(['-N', '--norm']):
+      state + {'opts' (state.opts + {'norm' true, 'pretty' true})}
+    arg.in?(['-C', '--compact']):
+      state + {'opts' (state.opts + {'compact' true})}
     arg =~ /^-[FCN][FCN]+$/:
-      state +: +{'opts' (state.opts + short-option-bundle(arg))}
+      state + {'opts' (state.opts + short-option-bundle(arg))}
     else:
       handle-input: state arg
 
@@ -425,30 +425,30 @@ defn ysc-block-step(state entry):
   val =: entry.1
   case key:
     '-type':
-      state +: +{'result' merge(result ysc-scalar-to-schema(val))}
+      state + {'result' merge(result ysc-scalar-to-schema(val))}
     '-like':
       result +=: +{'type' 'string'}
       result +=: +{'pattern' regex-pattern(val)}
       state +: +{'result' result}
     '-enum':
-      state +: +{'result' (result + {'enum' val})}
+      state + {'result' (result + {'enum' val})}
     '-init':
-      state +: +{'result' (result + {'default' val})}
+      state + {'result' (result + {'default' val})}
     '-list':
-      state +: +{'result' (result + {'type' 'array'})}
+      state + {'result' (result + {'type' 'array'})}
     '-uniq':
-      state +: +{'result' (result + {'uniqueItems' val})}
+      state + {'result' (result + {'uniqueItems' val})}
     '-Name':
-      state +: +{'result' (result + {'title' val})}
+      state + {'result' (result + {'title' val})}
     '-desc':
-      state +: +{'result' (result + {'description' val})}
+      state + {'result' (result + {'description' val})}
     '-item':
-      state +: +{'item' ysc-value-to-schema(val)}
+      state + {'item' ysc-value-to-schema(val)}
     '-size':
-      state +: +{'result' add-size(result val)}
+      state + {'result' add-size(result val)}
     '-additionalProperties':
-      state +:
-        +{'result' (result + {'additionalProperties'
+      state +
+        {'result' (result + {'additionalProperties'
                               additional-properties-schema(val)})}
     else:
       state
@@ -676,8 +676,8 @@ defn add-block(result schema):
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
-    result +: +{'-size' size-pair(lo hi)}
-    =>: result
+    (result + {'-size' size-pair(lo hi)})
+    result
 
 defn add-array-items(result is-array schema):
   if is-array && schema.items.?:
