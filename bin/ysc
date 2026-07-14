@@ -51,7 +51,7 @@ defn main(*args):
 defn convert-to(target text opts):
   case target:
     'ysc.yaml':
-      schema =: text:json/load
+      schema =: text:yaml/load
       validate-json-schema-dialect: schema
       convert: schema
     'schema.json':
@@ -109,11 +109,14 @@ defn handle-arg(state arg):
       handle-input: state arg
 
 defn short-option-bundle(arg):
-  result =: array-map()
-  result :if (arg =~ /F/) +=: +{'fmt' true, 'pretty' true}
-  result :if (arg =~ /N/) +=: +{'norm' true, 'pretty' true}
-  result :if (arg =~ /C/) +=: +{'compact' true}
-  =>: result
+  reduce add-short-option: array-map() rest(arg)
+
+defn add-short-option(opts ch):
+  case ch:S:
+    'F': opts + {'fmt' true, 'pretty' true}
+    'N': opts + {'norm' true, 'pretty' true}
+    'C': opts + {'compact' true}
+    else: opts
 
 defn handle-input(state arg):
   if arg =~ /^-/:
@@ -570,7 +573,7 @@ defn build-doc(schema):
   defs =: schema.'$defs' ||
           schema.definitions ||
           {}
-  result =: array-map()
+  result =: omap()
     .add-root-annotations(schema)
     .add-defs(defs)
     .add-body(schema)
@@ -625,10 +628,10 @@ defn build-value(schema):
     else: build-block-map(schema)
 
 defn build-properties-map(schema):
-  add-properties(array-map() schema)
+  add-properties(omap() schema)
 
 defn build-block-map(schema):
-  add-block(array-map() schema)
+  add-block(omap() schema)
 
 # Add the directive entries for an expanded schema-block (-type, -size,
 # -enum, -init, etc.) into the result map. Also walks nested items /

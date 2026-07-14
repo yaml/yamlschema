@@ -118,6 +118,35 @@ test::
   want: |
     name: +Str
 
+- name: json-schema-def-order-to-ysc
+  cmnd: bin/ysc -t ysc
+  stdi: |
+    {
+      "definitions": {
+        "alpha": {"type": "string"},
+        "bravo": {"type": "string"},
+        "charlie": {"type": "string"},
+        "delta": {"type": "string"},
+        "echo": {"type": "string"},
+        "foxtrot": {"type": "string"},
+        "golf": {"type": "string"},
+        "hotel": {"type": "string"},
+        "india": {"type": "string"},
+        "juliet": {"type": "string"}
+      }
+    }
+  want: |
+    +alpha: +Str
+    +bravo: +Str
+    +charlie: +Str
+    +delta: +Str
+    +echo: +Str
+    +foxtrot: +Str
+    +golf: +Str
+    +hotel: +Str
+    +india: +Str
+    +juliet: +Str
+
 - name: compact-schema-json
   cmnd: sh -c 'bin/ysc -t jsc -C | wc -l'
   stdi: |
