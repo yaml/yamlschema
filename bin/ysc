@@ -664,6 +664,8 @@ defn add-block(result schema):
     +{'-desc' schema.description}
   result :if contains?(schema 'additionalProperties') +=:
     +{'-additionalProperties' additional-properties-value(schema)}
+  result :if schema.oneOf.? +=:
+    +{'-pick' one-of-values(schema.oneOf)}
   result .=: add-size-directive(schema.minimum schema.maximum)
   result .=: add-size-directive(schema.minLength schema.maxLength)
   result .=: add-size-directive(schema.minItems schema.maxItems)
@@ -701,10 +703,13 @@ defn additional-properties-schema(value):
     value
     ysc-value-to-schema(value)
 
+defn one-of-values(values):
+  vec: values.map(build-value)
+
 # Insert sentinel keys for unsupported keywords. Post-processing turns
 # them into `# TODO: <keyword>` comments.
 defn add-todos(result schema):
-  todos =: qw(allOf anyOf oneOf not if then else dependentRequired
+  todos =: qw(allOf anyOf not if then else dependentRequired
               dependentSchemas patternProperties propertyNames
               prefixItems contains unevaluatedItems unevaluatedProperties
               exclusiveMinimum exclusiveMaximum format)

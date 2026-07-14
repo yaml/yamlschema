@@ -10,7 +10,7 @@ test::
     {
       "properties": {
         "auth": {
-          "oneOf": [
+          "anyOf": [
             {"type": "object", "properties": {"token": {"type": "string"}}},
             {"type": "object", "properties": {"api_key": {"type": "string"}}}
           ]
@@ -20,7 +20,7 @@ test::
     }
   want: |
     auth:
-      # TODO: oneOf
+      # TODO: anyOf
 
 - name: additional-properties
   cmnd: bin/ysc -t ysc.yaml -
