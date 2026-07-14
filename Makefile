@@ -11,3 +11,9 @@ include $M/shell.mk
 
 test: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
+
+json-schema-suite:
+	util/ysc-suite-roundtrip --fetch-only
+
+suite-roundtrip:
+	util/ysc-suite-roundtrip draft4

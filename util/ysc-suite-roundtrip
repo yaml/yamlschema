@@ -1,0 +1,179 @@
+#!/bin/sh
+
+set -eu
+
+repo=https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
+suite=${JSON_SCHEMA_TEST_SUITE:-.cache/JSON-Schema-Test-Suite}
+
+usage() {
+  echo "usage: util/ysc-suite-roundtrip [--fetch-only] [DRAFT] [TEST.json ...]" >&2
+  exit 2
+}
+
+fetch_suite() {
+  if [ -d "$suite/.git" ]; then
+    if [ "${1:-}" = update ]; then
+      git -C "$suite" pull --ff-only -q
+    fi
+  elif [ -e "$suite" ]; then
+    echo "error: $suite exists but is not a git checkout" >&2
+    exit 2
+  else
+    mkdir -p "$(dirname "$suite")"
+    git clone -q --depth 1 "$repo" "$suite"
+  fi
+}
+
+canon='
+  def normalize:
+    if type == "object" then
+      (
+        with_entries(.value |= normalize)
+        | if has("definitions") then
+            . + {"$defs": ((."$defs" // {}) + .definitions)}
+            | del(.definitions)
+          else
+            .
+          end
+        | if has("$ref") and (."$ref" | type == "string") then
+            . + {"$ref": (."$ref" | sub("^#/definitions/"; "#/$defs/"))}
+          else
+            .
+          end
+      )
+    elif type == "array" then
+      map(normalize)
+    else
+      .
+    end;
+  def ordered:
+    if type == "object" then
+      (
+        (if has("$id") then {"$id": (."$id" | ordered)} else {} end) +
+        (if has("$schema") then {"$schema": (."$schema" | ordered)} else {} end) +
+        (to_entries
+          | map(select(.key != "$id" and .key != "$schema"))
+          | sort_by(.key)
+          | map({key: .key, value: (.value | ordered)})
+          | from_entries)
+      )
+    elif type == "array" then
+      map(ordered)
+    else
+      .
+    end;
+  normalize | ordered
+'
+
+keywords='
+  [
+    .. | objects | keys[]
+    | select(
+        . == "$schema" or . == "$id" or . == "id" or . == "$defs" or
+        . == "definitions" or . == "$ref" or . == "type" or
+        . == "properties" or . == "required" or
+        . == "additionalProperties" or . == "oneOf" or . == "allOf" or
+        . == "anyOf" or . == "not" or . == "dependencies" or
+        . == "dependentRequired" or . == "dependentSchemas" or
+        . == "patternProperties" or . == "propertyNames" or
+        . == "prefixItems" or . == "contains" or . == "minContains" or
+        . == "maxContains" or . == "unevaluatedItems" or
+        . == "unevaluatedProperties" or . == "exclusiveMinimum" or
+        . == "exclusiveMaximum" or . == "format" or . == "enum" or
+        . == "const" or . == "items" or . == "minimum" or
+        . == "maximum" or . == "minLength" or . == "maxLength" or
+        . == "minItems" or . == "maxItems" or . == "uniqueItems" or
+        . == "default" or . == "description" or . == "title"
+      )
+  ] | unique | join(",")
+'
+
+if [ "${1:-}" = --fetch-only ]; then
+  shift
+  [ "$#" -eq 0 ] || usage
+  fetch_suite update
+  echo "$suite"
+  exit 0
+fi
+
+fetch_suite
+
+draft=${1:-draft4}
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+
+if [ "$#" -eq 0 ]; then
+  test_dir=$suite/tests/$draft
+  if [ ! -d "$test_dir" ]; then
+    echo "error: no such draft test directory: $test_dir" >&2
+    exit 2
+  fi
+  set -- "$test_dir"/*.json
+fi
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+total=0
+pass=0
+fail=0
+error=0
+
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' draft file case status keywords description
+
+for file do
+  if [ ! -f "$file" ]; then
+    echo "error: no such test file: $file" >&2
+    exit 2
+  fi
+
+  rel=${file#"$suite/tests/$draft/"}
+  jq -c 'to_entries[]' "$file" > "$tmpdir/cases.jsonl"
+
+  while IFS= read -r row; do
+    index=$(printf '%s\n' "$row" | jq -r '.key')
+    desc=$(printf '%s\n' "$row" | jq -r '.value.description // ""')
+    schema=$tmpdir/schema.json
+    ysc_yaml=$tmpdir/out.ysc.yaml
+    schema_json=$tmpdir/out.schema.json
+    before=$tmpdir/before.json
+    after=$tmpdir/after.json
+    err=$tmpdir/error.txt
+
+    printf '%s\n' "$row" | jq '.value.schema' > "$schema"
+    keys=$(jq -r "$keywords" "$schema")
+    jq "$canon" "$schema" > "$before"
+
+    total=$((total + 1))
+
+    if ! bin/ysc "$schema" -t ysc.yaml > "$ysc_yaml" 2> "$err"; then
+      status=ERROR
+      error=$((error + 1))
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$draft" "$rel" "$index" "$status" "$keys" "$desc"
+      continue
+    fi
+    if ! bin/ysc "$ysc_yaml" -t schema.json > "$schema_json" 2> "$err"; then
+      status=ERROR
+      error=$((error + 1))
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$draft" "$rel" "$index" "$status" "$keys" "$desc"
+      continue
+    fi
+
+    jq "$canon" "$schema_json" > "$after"
+    if cmp -s "$before" "$after"; then
+      status=PASS
+      pass=$((pass + 1))
+    else
+      status=FAIL
+      fail=$((fail + 1))
+    fi
+
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+      "$draft" "$rel" "$index" "$status" "$keys" "$desc"
+  done < "$tmpdir/cases.jsonl"
+done
+
+printf '# total=%s pass=%s fail=%s error=%s\n' "$total" "$pass" "$fail" "$error"
