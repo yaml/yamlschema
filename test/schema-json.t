@@ -29,7 +29,14 @@ test::
   stdi: |
     +airflow: front-to-rear|rear-to-front
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","$defs":{"airflow":{"enum":["front-to-rear","rear-to-front"]}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","$defs":{"airflow":{"type":"string","enum":["front-to-rear","rear-to-front"]}}}
+
+- name: pipe-enum-to-schema-json
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    role: admin|user|guest
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"role":{"type":"string","enum":["admin","user","guest"]}},"required":["role"]}
 
 - name: list-suffix-to-schema-json
   cmnd: bin/ysc -t schema.json -C -

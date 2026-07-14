@@ -73,7 +73,7 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "role": {"enum": ["admin", "user", "guest"]},
+        "role": {"type": "string", "enum": ["admin", "user", "guest"]},
         "version": {"const": "v1"},
         "host": {"type": "string", "default": "localhost"},
         "port": {"type": "integer", "minimum": 1, "maximum": 65535},

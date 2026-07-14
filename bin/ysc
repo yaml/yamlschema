@@ -487,7 +487,7 @@ defn ysc-scalar-to-schema(value):
     s =~ /^\/.*\/$/:
       +{'type' 'string', 'pattern' regex-pattern(s)}
     s =~ /^[^|]+\|[^|]+/:
-      +{'enum' split(s /\|/)}
+      +{'type' 'string', 'enum' split(s /\|/)}
     s =~ /^([0-9.]+|\*)-([0-9.]+|\*)$/:
       range-to-schema(s)
     else:
@@ -745,7 +745,13 @@ defn only-const?(schema):
   key-set(schema) ==: \{'const'}
 
 defn only-enum?(schema):
-  key-set(schema) ==: \{'enum'}
+  ks =: key-set(schema)
+  just-enum =:
+    ks == \{'enum'}
+  enum-and-str =:
+    (ks == \{'enum' 'type'}) &&
+    (schema.type == 'string')
+  just-enum ||: enum-and-str
 
 defn pattern-only?(schema):
   ks =: key-set(schema)
@@ -845,7 +851,7 @@ defn regex-literal(pattern):
   =>: "/$esc/"
 
 defn safe-pipe-token?(v):
-  v =~ /^[A-Za-z0-9_][A-Za-z0-9_-]*$/
+  v =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/
 
 defn enum-pipe(values):
   when values.every?(safe-pipe-token?):
