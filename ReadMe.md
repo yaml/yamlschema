@@ -13,7 +13,7 @@ For the full language design, see [doc/design.md](doc/design.md).
 
 ```yaml
 +email: /^\S+@\S+$/
-+port: 1-65535
++port: 1..65535
 
 name: +Str
 email?: +email

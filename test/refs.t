@@ -20,7 +20,7 @@ test::
       "required": ["host", "port"]
     }
   want: |
-    +port: 1-65535
+    +port: 1..65535
     +email: /^\S+@\S+$/
 
     host: +Str
@@ -44,7 +44,7 @@ test::
       "required": ["host", "port"]
     }
   want: |
-    +port: 1-65535
+    +port: 1..65535
     +email: /^\S+@\S+$/
 
     host: +Str

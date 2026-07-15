@@ -25,7 +25,7 @@ test::
     -Name: Arrays
     -desc: Arrays of strings and objects
     name:
-      -type: +Str
+      -base: +Str
       -Name: Full name
       -desc: Display name.
     -json:

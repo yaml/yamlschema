@@ -49,11 +49,21 @@ test::
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
     port:
-      -type: +Int
-      -size: [1, 65535]
+      -base: +Int
+      -mini: 1
+      -maxi: 65535
       -init: 8080
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"port":{"type":"integer","default":8080,"minimum":1,"maximum":65535}},"required":["port"]}
+
+- name: numeric-range-shorthand-to-schema-json
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    port: 1..65535
+    age: 0..
+    debt: ..-1
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"age":{"type":"integer","minimum":0},"debt":{"type":"integer","maximum":-1},"port":{"type":"integer","minimum":1,"maximum":65535}},"required":["port","age","debt"]}
 
 - name: annotations-to-schema-json
   cmnd: bin/ysc -t schema.json -C -
@@ -61,7 +71,7 @@ test::
     -Name: Arrays
     -desc: Arrays of strings and objects
     name:
-      -type: +Str
+      -base: +Str
       -Name: Full name
       -desc: Display name.
     -json:

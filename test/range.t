@@ -11,13 +11,15 @@ test::
       "properties": {
         "port":  {"type": "integer", "minimum": 1, "maximum": 65535},
         "age":   {"type": "integer", "minimum": 0},
-        "ratio": {"type": "number",  "minimum": 0, "maximum": 1}
+        "ratio": {"type": "number",  "minimum": 0, "maximum": 1},
+        "debt":  {"type": "integer", "maximum": -1}
       },
-      "required": ["port", "age", "ratio"]
+      "required": ["port", "age", "ratio", "debt"]
     }
   want: |
-    port: 1-65535
-    age: 0-*
-    ratio: 0-1
+    port: 1..65535
+    age: 0..
+    ratio: 0..1
+    debt: ..-1
 
 done:

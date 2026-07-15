@@ -41,7 +41,7 @@ The `.ysc.json` explicit form is the canonical internal shape:
 ```json
 {
   "name": {"-need": "+Str"},
-  "email": {"-type": "+Str", "-like": "/^\\S+@\\S+$/"},
+  "email": {"-base": "+Str", "-like": "/^\\S+@\\S+$/"},
   "tags": {
     "-need": "+Str",
     "-list": true,
@@ -292,9 +292,9 @@ Numeric ranges:
 ```
 
 ```yaml
-port: 1-65535
-age: 0-*
-ratio: 0-1
+port: 1..65535
+age: 0..
+ratio: 0..1
 ```
 
 String lengths use `-size`:
@@ -311,12 +311,12 @@ String lengths use `-size`:
 
 ```yaml
 bio:
-  -type: +Str
+  -base: +Str
   -size:
   - 1
   - 500
 code:
-  -type: +Str
+  -base: +Str
   -size:
   - 3
   - '*'
@@ -324,7 +324,8 @@ code:
 
 Roundtrip rule:
 
-- `-size` on `+Int` or `+Float` maps to `minimum` and `maximum`.
+- `-mini` and `-maxi` on `+Int` or `+Float` map to `minimum` and
+  `maximum`.
 - `-size` on `+Str` maps to `minLength` and `maxLength`.
 - `-size` on lists maps to `minItems` and `maxItems`.
 - `-size` on maps maps to `minProperties` and `maxProperties`.
@@ -413,10 +414,10 @@ yamlschema:
 
 ```yaml
 port:
-  -type: +Int
+  -base: +Int
   -init: 8080
 host:
-  -type: +Str
+  -base: +Str
   -init: localhost
 ```
 
@@ -460,7 +461,7 @@ JSON Schema definitions become top-level symbols:
 ```
 
 ```yaml
-+port: 1-65535
++port: 1..65535
 +email: /^\S+@\S+$/
 
 host: +Str

@@ -82,12 +82,12 @@ already implies it:
 ```yaml
 email: /^\S+@\S+$/      # string matching regex
 role: admin|user|guest  # enum
-port: 1-65535           # numeric range
+port: 1..65535           # numeric range
 tags[+]: +Str           # list of one or more strings
 ```
 
 The corresponding explicit form uses directives such as `-like`, `-enum`,
-`-size`, `-list`, and `-type`.
+`-size`, `-list`, and `-base`.
 
 
 ## Symbols and Definitions
@@ -96,7 +96,7 @@ Symbols begin with `+`.
 
 ```yaml
 +email: /^\S+@\S+$/
-+port: 1-65535
++port: 1..65535
 
 admin_email: +email
 listen_port: +port
@@ -153,7 +153,7 @@ The design keeps directive names short and regular.
 | Directive | Meaning |
 | --- | --- |
 | `-need` | Required field marker; may carry a type or symbol |
-| `-type` | Base type or inherited symbol |
+| `-base` | Base constraint or inherited symbol |
 | `-like` | Regex pattern; implies string |
 | `-enum` | Enumeration of allowed values |
 | `-size` | Number, string, list, or map size |
@@ -243,27 +243,26 @@ label:
 ### Numeric Ranges
 
 ```yaml
-port: 1-65535
-age: 0-*
-ratio: 0-1
+port: 1..65535
+age: 0..
+ratio: 0..1
 ```
 
 Equivalent explicit form:
 
 ```yaml
 port:
-  -type: +Int
-  -size: [1, 65535]
+  -base: +Int
+  -mini: 1
+  -maxi: 65535
 age:
-  -type: +Int
-  -size: [0, "*"]
+  -base: +Int
+  -mini: 0
 ratio:
-  -type: +Float
-  -size: [0, 1]
+  -base: +Float
+  -mini: 0
+  -maxi: 1
 ```
-
-`*` means unbounded.
-In YAML output it may need quoting because bare `*` is YAML alias syntax.
 
 
 ### Literal Constants
@@ -279,9 +278,9 @@ Equivalent explicit form:
 
 ```yaml
 version:
-  -type: v1
+  -base: v1
 kind:
-  -type: User
+  -base: User
 ```
 
 The current converter maps JSON Schema `const` values this way.
@@ -342,21 +341,22 @@ The explicit form represents all constraints with directives:
 ```yaml
 port:
   -need: true
-  -type: +Int
-  -size: [1, 65535]
+  -base: +Int
+  -mini: 1
+  -maxi: 65535
 
 email:
   -like: /^\S+@\S+$/
 
 tags:
   -need: true
-  -type: +Str
+  -base: +Str
   -list: true
   -size: [1, "*"]
   -uniq: true
 ```
 
-For fields with a type reference, `-need` can carry the referenced type:
+For fields with a base reference, `-need` can carry the referenced base:
 
 ```yaml
 port:
@@ -367,7 +367,7 @@ This is equivalent to:
 
 ```yaml
 port:
-  -type: +port
+  -base: +port
   -need: true
 ```
 
@@ -375,22 +375,24 @@ Optional fields omit `-need`:
 
 ```yaml
 port:
-  -type: +port
+  -base: +port
 ```
 
 
-## Type Inheritance
+## Base Inheritance
 
 Custom definitions can inherit from other definitions:
 
 ```yaml
 +port:
-  -type: +Int
-  -size: [1, 65535]
+  -base: +Int
+  -mini: 1
+  -maxi: 65535
 
 +secure-port:
-  -type: +port
-  -size: [443, 443]
+  -base: +port
+  -mini: 443
+  -maxi: 443
 ```
 
 Implicit typing applies where possible:
@@ -398,10 +400,10 @@ Implicit typing applies where possible:
 - `-like` implies `+Str`.
 - `-enum` implies the common value type.
 - A mapping shape implies `+Map`.
-- Numeric `-size` constraints imply numeric types when no explicit type exists.
+- Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
 
-Use `-type` when a base type cannot be inferred or when inheriting from a
-custom definition.
+Use `-base` when a base constraint cannot be inferred or when inheriting from
+a custom definition.
 
 
 ## Pick Groups
@@ -492,7 +494,7 @@ Public symbols use `+name`; private symbols use `:+name`.
 :+max: 65535
 
 +port:
-  -type: +Int
+  -base: +Int
   -size: [1, +max]
 
 +email: /^\S+@\S+$/
@@ -564,7 +566,7 @@ Inline schema is also possible:
 --- !!yaml
 schema:
   name: +Str
-  age?: 0-*
+  age?: 0..
   email?: /^\S+@\S+$/
 ---
 name: Alice
@@ -595,8 +597,9 @@ Example compiled shape:
 ```json
 {
   "+port": {
-    "-type": "+Int",
-    "-size": [1, 65535]
+    "-base": "+Int",
+    "-mini": 1,
+    "-maxi": 65535
   },
   "+auth": {
     "-pick": [
@@ -635,7 +638,7 @@ yamlschema.
 | `required` | Default required keys; omitted names get `?` |
 | `enum` | Pipe enum or `-enum` list |
 | `pattern` | Regex literal or `-like` |
-| `minimum` / `maximum` | Range scalar or `-size` |
+| `minimum` / `maximum` | Range scalar or `-mini` / `-maxi` |
 | `minLength` / `maxLength` | `-size` on strings |
 | `minItems` / `maxItems` | List suffix or `-size` |
 | `minProperties` / `maxProperties` | `-size` on maps |

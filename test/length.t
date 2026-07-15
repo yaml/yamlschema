@@ -16,12 +16,12 @@ test::
     }
   want: |
     bio:
-      -type: +Str
+      -base: +Str
       -size:
       - 1
       - 500
     code:
-      -type: +Str
+      -base: +Str
       -size:
       - 3
       - '*'

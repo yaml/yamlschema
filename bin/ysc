@@ -52,6 +52,7 @@ defn convert-to(target text opts):
   case target:
     'ysc.yaml':
       schema =: text:yaml/load
+      validate-json-schema-document: schema
       validate-json-schema-dialect: schema
       convert: schema
     'schema.json':
@@ -428,8 +429,8 @@ defn ysc-block-step(state entry):
   key =: entry.0:S
   val =: entry.1
   case key:
-    '-type':
-      state + {'result' merge(result ysc-scalar-to-schema(val))}
+    '-base':
+      state.add-base-schema(val)
     '-like':
       result +=: +{'type' 'string'}
       result +=: +{'pattern' regex-pattern(val)}
@@ -450,12 +451,23 @@ defn ysc-block-step(state entry):
       state + {'item' ysc-value-to-schema(val)}
     '-size':
       state + {'result' add-size(result val)}
+    '-mini':
+      state + {'result' (result + {'minimum' val})}
+    '-maxi':
+      state + {'result' (result + {'maximum' val})}
     '-additionalProperties':
       state +
         {'result' (result + {'additionalProperties'
                               additional-properties-schema(val)})}
     else:
       state
+
+defn add-base-schema(state val):
+  result =: state.result
+  schema =: ysc-scalar-to-schema(val)
+  if result.type == 'array':
+    then: state + {'item' schema}
+    else: state + {'result' merge(result schema)}
 
 defn add-size(result val):
   lo =: val.0
@@ -494,10 +506,14 @@ defn ysc-scalar-to-schema(value):
       +{'type' 'string', 'pattern' regex-pattern(s)}
     s =~ /^[^|]+\|[^|]+/:
       +{'type' 'string', 'enum' split(s /\|/)}
-    s =~ /^([0-9.]+|\*)-([0-9.]+|\*)$/:
+    range-literal?(s):
       range-to-schema(s)
     else:
       +{'const' value}
+
+defn range-literal?(s):
+  (s =~ /^-?[0-9.]*\.\.-?[0-9.]*$/) &&
+  (s != '..')
 
 defn regex-pattern(value):
   value:S
@@ -510,14 +526,23 @@ defn ref-schema(s):
   +{} +: +{'$ref' str('#/$defs/' name)}
 
 defn range-to-schema(s):
-  lo hi =: s.split('-')
+  parts =: s.split(/\.\./)
+  lo =: parts.0 || ''
+  hi =:
+    if parts.# > 1:
+      then: parts.1
+      else: ''
   t =: range-type(lo hi)
   result =:: {type:: t}
-  has-lo =: lo != '*'
-  has-hi =: hi != '*'
-  result:
-    .map-put-if(has-lo 'minimum' scalar-number(lo))
-    .map-put-if(has-hi 'maximum' scalar-number(hi))
+  has-lo =: lo != ''
+  has-hi =: hi != ''
+  result =:
+    if has-lo:
+      then: result + {'minimum' scalar-number(lo)}
+      else: result
+  if has-hi:
+    then: result + {'maximum' scalar-number(hi)}
+    else: result
 
 defn range-type(lo hi):
   has-dot =: (lo =~ /\./).or(hi =~ /\./)
@@ -563,6 +588,10 @@ defn validate-json-schema-dialect(schema):
     dialect =: _
     when supported-json-schema-dialect?(dialect).!:
       usage: "unsupported JSON Schema dialect: $dialect"
+
+defn validate-json-schema-document(schema):
+  when-not map?(schema):
+    usage: "expected JSON Schema object, got $(T(schema))"
 
 defn supported-json-schema-dialect?(dialect):
   case dialect:
@@ -641,7 +670,7 @@ defn build-properties-map(schema):
 defn build-block-map(schema):
   add-block(omap() schema)
 
-# Add the directive entries for an expanded schema-block (-type, -size,
+# Add the directive entries for an expanded schema-block (-base, -size,
 # -enum, -init, etc.) into the result map. Also walks nested items /
 # properties when present.
 defn add-block(result schema):
@@ -652,9 +681,9 @@ defn add-block(result schema):
   is-array =: t.eq('array')
   result =:
     if schema.'$ref'.?:
-      then: result + {'-type' ref-sym(schema.'$ref')}
+      then: result + {'-base' ref-sym(schema.'$ref')}
       else: result
-  result =: map-put-if(result has-type '-type' ts)
+  result =: map-put-if(result has-type '-base' ts)
   result =: map-put-if(result is-array '-list' true)
   result =:
     if schema.pattern.?:
@@ -666,7 +695,7 @@ defn add-block(result schema):
       else: result
   result =:
     if schema.const.?:
-      then: result + {'-type' literal-value(schema.const)}
+      then: result + {'-base' literal-value(schema.const)}
       else: result
   result =: map-put-if(result schema.uniqueItems '-uniq' true)
   result =:
@@ -685,7 +714,7 @@ defn add-block(result schema):
       then: result + {'-pick' one-of-values(schema.oneOf)}
       else: result
   result =: result
-    .add-size-directive(schema.minimum schema.maximum)
+    .add-numeric-bound-directives(schema.minimum schema.maximum)
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
@@ -701,6 +730,11 @@ defn add-size-directive(result lo hi):
     (result + {'-size' size-pair(lo hi)})
     result
 
+defn add-numeric-bound-directives(result lo hi):
+  result:
+    .map-put-if(lo.? '-mini' lo)
+    .map-put-if(hi.? '-maxi' hi)
+
 defn add-array-items(result is-array schema):
   if is-array && schema.items.?:
     then:
@@ -708,7 +742,7 @@ defn add-array-items(result is-array schema):
       item-scalar =: succinct-scalar(items)
       result +:
         if item-scalar: +
-          {'-type' item-scalar}
+          {'-base' item-scalar}
           {'-item' build-block-map(items)}
     else: result
 
@@ -860,9 +894,9 @@ defn ref-sym(ref):
 defn range-scalar(schema):
   lo =: schema.minimum
   hi =: schema.maximum
-  lo-s =: lo:nil?.if('*' lo)
-  hi-s =: hi:nil?.if('*' hi)
-  =>: "${lo-s}-${hi-s}"
+  lo-s =: lo:nil?.if('' lo)
+  hi-s =: hi:nil?.if('' hi)
+  =>: "${lo-s}..${hi-s}"
 
 # Return a 2-vector for the value of a `-size` directive. Unbounded
 # sides become the literal string "*"; yaml/dump quotes it as needed.
