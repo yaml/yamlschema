@@ -14,6 +14,7 @@
 
 VERSION =: '0.1.0'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
+WILDCARD-KEY =: '+Str*'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) [INPUT]
          ysc -F, --fmt [INPUT]
@@ -321,10 +322,12 @@ defn ysc-to-schema(doc):
   defs-val =: state.defs
   reqs =: state.required
   result +=:: {type: object}
-  result:
+  result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
     .map-put-if(empty?(reqs).! 'required' reqs)
     .map-put-if(empty?(defs-val).! '$defs' defs-val)
+  result +:
+    +{'additionalProperties' state.wildcard.if(state.additional false)}
 
 defn initial-ysc-doc-state(doc):
   result =: add-json-meta(array-map() doc.'-json')
@@ -333,11 +336,17 @@ defn initial-ysc-doc-state(doc):
     defs: {}
     props: {}
     required: []
+    wildcard: false
+    additional:
 
 defn ysc-doc-step(state entry):
   key =: entry.0:S
   value =: entry.1
   cond:
+    key == WILDCARD-KEY:
+      state +::
+        wildcard:: true
+        additional:: ysc-value-to-schema(value)
     key =~ /^\+/:
       name =: key.replace(/^\+/)
       update-state: state 'defs' name ysc-value-to-schema(value)
@@ -365,7 +374,7 @@ defn add-schema-meta(result key value):
     '-Name': result + {'title' value}
     '-desc': result + {'description' value}
     '-additionalProperties':
-      result + {'additionalProperties' additional-properties-schema(value)}
+      usage: 'unsupported yamlschema directive: -additionalProperties; use +Str*'
     else: result
 
 defn add-json-meta(result value):
@@ -405,24 +414,48 @@ defn ysc-object-to-schema(value):
   reqs =: state.required
   result =: +{'type' 'object'}
   result =: map-put-if(result empty?(reqs).! 'required' reqs)
-  result +: +{'properties' state.props}
+  result =: map-put-if(result empty?(state.props).! 'properties' state.props)
+  result +:
+    +{'additionalProperties' state.wildcard.if(state.additional false)}
 
 defn initial-object-state()::
   props: {}
   required: []
+  wildcard: false
+  additional:
 
 defn ysc-object-step(state entry):
-  add-property-schema: state entry.0:S entry.1
+  key =: entry.0:S
+  cond:
+    key == WILDCARD-KEY:
+      state +::
+        wildcard:: true
+        additional:: ysc-value-to-schema(entry.1)
+    else:
+      add-property-schema: state key entry.1
 
 defn ysc-block-to-schema(value):
   state =: value.reduce(ysc-block-step initial-block-state())
   result =: state.result
   has-items =: (result.type == 'array') && state.item.?
-  result: .map-put-if(has-items 'items' state.item)
+  result =: result.map-put-if(has-items 'items' state.item)
+  shaped =: empty?(state.props).! || state.wildcard
+  if shaped:
+    then:
+      result +=:: {type: object}
+      result =: map-put-if(result empty?(state.props).! 'properties' state.props)
+      result =: map-put-if(result empty?(state.required).! 'required' state.required)
+      result +:
+        +{'additionalProperties' state.wildcard.if(state.additional false)}
+    else: result
 
 defn initial-block-state()::
   result: {}
   item:
+  props: {}
+  required: []
+  wildcard: false
+  additional:
 
 defn ysc-block-step(state entry):
   result =: state.result
@@ -456,11 +489,17 @@ defn ysc-block-step(state entry):
     '-maxi':
       state + {'result' (result + {'maximum' val})}
     '-additionalProperties':
-      state +
-        {'result' (result + {'additionalProperties'
-                              additional-properties-schema(val)})}
+      usage: 'unsupported yamlschema directive: -additionalProperties; use +Str*'
     else:
-      state
+      cond:
+        key == WILDCARD-KEY:
+          state +::
+            wildcard:: true
+            additional:: ysc-value-to-schema(val)
+        key =~ /^-/:
+          state
+        else:
+          add-property-schema(state key val)
 
 defn add-base-schema(state val):
   result =: state.result
@@ -638,8 +677,10 @@ defn add-def-step(result entry):
 
 defn add-body(result schema):
   if object-with-props?(schema):
-    add-properties: result schema
-    add-block: result schema
+    then:
+      result =: add-properties(result schema)
+      add-wildcard-entry: result schema
+    else: add-block(result schema)
 
 defn add-properties(result schema):
   props =: schema.properties
@@ -665,7 +706,9 @@ defn build-value(schema):
     else: build-block-map(schema)
 
 defn build-properties-map(schema):
-  add-properties(omap() schema)
+  result =: omap()
+    .add-properties(schema)
+  add-wildcard-entry: result schema
 
 defn build-block-map(schema):
   add-block(omap() schema)
@@ -705,11 +748,6 @@ defn add-block(result schema):
   result =: map-put-if(result schema.title.? '-Name' schema.title)
   result =: map-put-if(result schema.description.? '-desc' schema.description)
   result =:
-    if contains?(schema 'additionalProperties'):
-      then:
-        result + {'-additionalProperties' additional-properties-value(schema)}
-      else: result
-  result =:
     if schema.oneOf.?:
       then: result + {'-pick' one-of-values(schema.oneOf)}
       else: result
@@ -720,9 +758,12 @@ defn add-block(result schema):
     .add-size-directive(schema.minProperties schema.maxProperties)
     .add-array-items(is-array schema)
   if t == 'object':
-    if object-with-props?(schema):
-      result.add-properties(schema)
-      result
+    then:
+      if object-with-props?(schema):
+        then:
+          result =: result.add-properties(schema)
+          add-wildcard-entry: result schema
+        else: add-wildcard-entry(result schema)
     else: result
 
 defn add-size-directive(result lo hi):
@@ -748,14 +789,16 @@ defn add-array-items(result is-array schema):
 
 defn additional-properties-value(schema):
   value =: schema.get('additionalProperties')
-  if boolean?(value):
-    value
-    build-value(value)
+  if value == true:
+    then: '+Any'
+    else: build-value(value)
 
-defn additional-properties-schema(value):
-  if boolean?(value):
-    value
-    ysc-value-to-schema(value)
+defn add-wildcard-entry(result schema):
+  has-additional =: schema.has?('additionalProperties')
+  open =: has-additional && (schema.get('additionalProperties') != false)
+  if open:
+    then: result + {WILDCARD-KEY additional-properties-value(schema)}
+    else: result
 
 defn one-of-values(values):
   vec: values.map(build-value)

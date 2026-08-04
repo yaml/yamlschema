@@ -22,7 +22,7 @@ test::
     auth:
       # TODO: anyOf
 
-- name: additional-properties
+- name: closed-object
   cmnd: bin/ysc -t ysc.yaml -
   stdi: |
     {
@@ -30,6 +30,37 @@ test::
       "additionalProperties": false
     }
   want: |
-    -additionalProperties: false
+    {}
+
+- name: open-object
+  cmnd: bin/ysc -t ysc.yaml -
+  stdi: |
+    {
+      "type": "object",
+      "additionalProperties": true
+    }
+  want: |
+    +Str*: +Any
+
+- name: typed-wildcard
+  cmnd: bin/ysc -t ysc.yaml -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "fixed": {"type": "integer"}
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  want: |
+    fixed?: +Int
+    +Str*:
+      -base: +Str
+      -size:
+      - 1
+      - '*'
 
 done:

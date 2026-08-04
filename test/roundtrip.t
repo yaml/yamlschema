@@ -50,9 +50,11 @@ test::
               "type": "boolean",
               "description": "Do I like this vegetable?"
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     }
   want: |
     true
@@ -85,7 +87,8 @@ test::
           "maxItems": 3
         }
       },
-      "required": ["role", "version", "host", "port", "tags"]
+      "required": ["role", "version", "host", "port", "tags"],
+      "additionalProperties": false
     }
   want: |
     true

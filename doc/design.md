@@ -334,6 +334,25 @@ quantity = n | n "-" m | n "-*" | n "+" | "+" | empty
 ```
 
 
+## Wildcard Keys
+
+Mappings with declared keys are closed by default.
+Use the reserved `+Str*` key to allow otherwise-unmatched string keys and
+constrain their values:
+
+```yaml
+labels:
+  +Str*: +Str
+config:
+  known?: +Bool
+  +Str*: +Any
+```
+
+The first mapping accepts any string key with a string value.
+The second accepts `known` plus any other string key with any value.
+A bare `+Map` remains an open arbitrary mapping.
+
+
 ## Explicit Form
 
 The explicit form represents all constraints with directives:
@@ -636,6 +655,9 @@ yamlschema.
 | `type: "object"` | `+Map` or a nested mapping shape |
 | `properties` | Bare mapping keys |
 | `required` | Default required keys; omitted names get `?` |
+| `additionalProperties: true` | `+Str*: +Any` |
+| schema-valued `additionalProperties` | `+Str*: schema` |
+| `additionalProperties: false` | Closed mapping; no wildcard |
 | `enum` | Pipe enum or `-enum` list |
 | `pattern` | Regex literal or `-like` |
 | `minimum` / `maximum` | Range scalar or `-mini` / `-maxi` |
@@ -716,7 +738,7 @@ Current TODO keywords include:
 
 ```text
 allOf anyOf oneOf not if then else dependentRequired dependentSchemas
-patternProperties propertyNames prefixItems contains additionalProperties
+patternProperties propertyNames prefixItems contains
 unevaluatedItems unevaluatedProperties exclusiveMinimum exclusiveMaximum format
 ```
 
@@ -728,6 +750,7 @@ Implemented or directly represented by the design:
 - Scalar built-ins.
 - Required and optional object properties.
 - Nested object properties.
+- Closed shaped mappings and typed wildcard keys.
 - Regex patterns.
 - Pipe enums and explicit enums.
 - Numeric ranges.

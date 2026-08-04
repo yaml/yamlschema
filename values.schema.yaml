@@ -1,0 +1,619 @@
+-Name: Harbor Next Helm Chart Values
+-desc: Schema for Harbor Next Helm chart values.yaml validation
++imageSpec:
+  registry?:
+    -base: +Str
+    -desc: Registry host override; empty uses image.source
+  repository?:
+    -base: +Str
+    -desc: Repository path without registry host; empty uses image.source
+  tag?: +Str
+  digest?:
+    -base: +Str
+    -desc: Pin by digest (sha256:...); used instead of tag when set
++resources:
+  requests?:
+    cpu?: +Any
+    memory?: +Str
+  limits?:
+    cpu?: +Any
+    memory?: +Str
++securityContext:
+  runAsNonRoot?: +Bool
+  runAsUser?: +Int
+  runAsGroup?: +Int
+  readOnlyRootFilesystem?: +Bool
+  allowPrivilegeEscalation?: +Bool
+  capabilities?:
+    drop?[]: +Str
+    add?[]: +Str
+  seccompProfile?:
+    type?: RuntimeDefault|Localhost|Unconfined
++podSecurityContext:
+  fsGroup?: +Int
+  fsGroupChangePolicy?: OnRootMismatch|Always
+  runAsNonRoot?: +Bool
+  runAsUser?: +Int
+  runAsGroup?: +Int
+  seccompProfile?:
+    type?: RuntimeDefault|Localhost|Unconfined
++serviceAccount:
+  create?:
+    -base: +Bool
+    -init: true
+  name?: +Str
+  annotations?:
+    +Str*: +Str
+  automountServiceAccountToken?: +Bool
++persistence:
+  enabled?:
+    -base: +Bool
+    -init: true
+  resourcePolicy?:
+    -base: +Str
+    -desc: Set to keep to prevent PVC deletion on helm uninstall (empty string opts into deletion).
+  storageClass?: +Str
+  accessModes?[]: ReadWriteOnce|ReadOnlyMany|ReadWriteMany
+  size?: /^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei)?$/
+  existingClaim?: +Str
+  annotations?:
+    +Str*: +Str
++pdb:
+  enabled?:
+    -base: +Bool
+  minAvailable?:
+    -pick:
+    - 0..
+    - /^[0-9]+%$/
+  maxUnavailable?:
+    -pick:
+    - 0..
+    - /^[0-9]+%$/
++harborComponent:
+  config?:
+    -desc: Primary component config. For env-driven components (core, exporter, trivy) it is flattened to env vars via toEnvVars. For file-driven components (registry, jobservice) it is the config file body passed through verbatim.
+    +Str*: +Any
+  secret?:
+    -desc: Sensitive config (converted to env vars in a Secret)
+    +Str*: +Any
+  env?:
+    -desc: Supplementary env vars flattened via toEnvVars. Used by file-driven components (jobservice) where config holds the YAML config file rather than env vars.
+    +Str*: +Any
+  probes?:
+    startup?: +Any
+    liveness?: +Any
+    readiness?: +Any
+  existingConfigMap?:
+    -base: +Str
+    -desc: Externally-managed ConfigMap holding the component's config file, used instead of the chart-generated one. Applies to file-driven components (registry, jobservice, portal).
+  extraEnv?[]:
+    name: +Str
+    value?: +Str
+    valueFrom?: +Map
+  initContainers?[]: {}
+  topologySpreadConstraints?[]: {}
+  deploymentStrategy?: +Map
+  priorityClassName?: +Str
+  revisionHistoryLimit?: 0..
+  image?: +imageSpec
+  replicas?:
+    -base: +Int
+    -init: 1
+  resources?: +resources
+  nodeSelector?:
+    +Str*: +Str
+  tolerations?[]: {}
+  hostAliases?[]:
+    ip: +Str
+    hostnames[]: +Str
+  lifecycle?:
+    postStart?: +Map
+    preStop?: +Map
+  autoscaling?:
+    enabled?:
+      -base: +Bool
+    minReplicas?: 1..
+    maxReplicas?: 1..
+    targetCPUUtilizationPercentage?: 1..100
+    targetMemoryUtilizationPercentage?: 1..100
+    metrics?[]: {}
+    behavior?: +Map
+  affinity?: +Map
+  annotations?:
+    -desc: Annotations for the component workload object (Deployment/StatefulSet)
+    +Str*: +Str
+  podAnnotations?:
+    +Str*: +Str
+  podLabels?:
+    +Str*: +Str
+  serviceAccount?: +serviceAccount
+  securityContext?: +securityContext
+  podSecurityContext?: +podSecurityContext
+  pdb?: +pdb
+
+image?:
+  source?:
+    -base: +Str
+    -enum:
+    - 8gcr
+    - upstream
+    -init: 8gcr
+    -desc: 'Image source preset: 8gcr (Harbor Next builds) or upstream (docker.io/goharbor/*). Selects the registry + per-component repository.'
+  pullPolicy?:
+    -base: +Str
+    -enum:
+    - Always
+    - IfNotPresent
+    - Never
+    -init: IfNotPresent
+    -desc: Image pull policy for all Harbor components
+imagePullSecrets?:
+  -list: true
+  -desc: List of image pull secrets
+  -item:
+    -pick:
+    - -base: +Str
+      -size:
+      - 1
+      - '*'
+    - name:
+        -base: +Str
+        -size:
+        - 1
+        - '*'
+nameOverride?:
+  -base: +Str
+  -desc: Override the chart name
+fullnameOverride?:
+  -base: +Str
+  -desc: Override the full name
+externalURL:
+  -base: +Str
+  -like: /^https?:\\/\\/.*$/
+  -desc: External URL for Harbor (REQUIRED). Must be a valid URL starting with http:// or https://
+  -size:
+  - 1
+  - '*'
+logLevel?:
+  -base: +Str
+  -enum:
+  - debug
+  - info
+  - warning
+  - error
+  - fatal
+  -init: info
+  -desc: Log level for all components
+harborAdminPassword?:
+  -base: +Str
+  -desc: Harbor admin password (initial setup)
+existingSecretAdminPassword?:
+  -base: +Str
+  -desc: Existing secret containing the admin password
+existingSecretAdminPasswordKey?:
+  -base: +Str
+  -desc: Key in existing admin password secret
+autoGenSecrets?:
+  -base: +Bool
+  -init: true
+  -desc: Allow auto-generation of secret material. Set false to fail at render time when a secret would be generated instead of pinned (GitOps/Argo CD)
+ipFamily?:
+  ipv4?:
+    enabled?: +Bool
+  ipv6?:
+    enabled?: +Bool
+trace?:
+  enabled?: +Bool
+  provider?: jaeger|otel
+  sample_rate?: +Float
+  jaeger?: +Map
+  otel?: +Map
+  +Str*: +Any
+existingSecretSecretKey?:
+  -base: +Str
+  -desc: Existing secret containing the encryption key
+existingSecretSecretKeyKey?:
+  -base: +Str
+  -desc: Key in existingSecretSecretKey that holds the encryption key (defaults to secretKey). Used for both SECRET_KEY env and the secret-key volume mount.
+secretKey?:
+  -base: +Str
+  -desc: Secret key for encryption (16 characters)
+  -size:
+  - 0
+  - 16
+global?:
+  revisionHistoryLimit?: 0..
+  priorityClassName?: +Str
+  imageRegistry?:
+    -base: +Str
+    -desc: Override the registry host for all component images at once (air-gap/mirror). Wins over image.source and per-component image.registry.
+commonAnnotations?:
+  -desc: Annotations to add to all resources this chart deploys
+  +Str*: +Str
+commonLabels?:
+  -desc: Labels to add to all resources this chart deploys (never applied to selectors)
+  +Str*: +Str
+imageCredentials?:
+  registry?: +Str
+  username?: +Str
+  password?: +Str
+  email?: +Str
+cache?:
+  enabled?: +Bool
+  expireHours?: 1..
+proxy?:
+  httpProxy?: +Any
+  httpsProxy?: +Any
+  noProxy?: +Str
+  components?[]: core|jobservice|registry|trivy
+expose?:
+  clusterIP?:
+    enabled?: +Bool
+    name?: +Str
+    staticClusterIP?: +Str
+    ports?:
+      http?: 1..65535
+      https?: 1..65535
+    annotations?:
+      +Str*: +Str
+    labels?:
+      +Str*: +Str
+  nodePort?:
+    enabled?: +Bool
+    name?: +Str
+    ports?:
+      http?:
+        port?: 1..65535
+        nodePort?: 1..65535
+      https?:
+        port?: 1..65535
+        nodePort?: 1..65535
+    annotations?:
+      +Str*: +Str
+    labels?:
+      +Str*: +Str
+  loadBalancer?:
+    enabled?: +Bool
+    name?: +Str
+    IP?: +Str
+    ports?:
+      http?: 1..65535
+      https?: 1..65535
+    sourceRanges?[]: +Str
+    annotations?:
+      +Str*: +Str
+    labels?:
+      +Str*: +Str
+  route?:
+    enabled?: +Bool
+    host?: +Str
+    annotations?:
+      +Str*: +Str
+    labels?:
+      +Str*: +Str
+    tls?:
+      termination?: edge|passthrough|reencrypt
+      insecureEdgeTerminationPolicy?: Allow|Disable|Redirect
+ingress?:
+  enabled?:
+    -base: +Bool
+    -init: true
+  autoGenCert?:
+    -base: +Bool
+    -init: true
+  className?: +Str
+  annotations?:
+    +Str*: +Str
+  labels?:
+    +Str*: +Str
+  core?:
+    -base: +Str
+    -desc: Legacy hostname override for generated ingress certificate
+  hosts?[]:
+    host?: +Str
+  tls?[]:
+    secretName?: +Str
+    hosts?[]: +Str
+gateway?:
+  enabled?:
+    -base: +Bool
+  parentRefs?[]: {}
+  hostnames?[]: +Str
+  timeouts?:
+    -desc: Timeouts applied to every generated HTTPRoute rule (Gateway API durations).
+  filters?:
+    -list: true
+    -desc: HTTPRoute filters applied to every generated rule.
+  routeOverrides?:
+    -desc: Per-group (core/default) timeouts and filters overrides.
+  extraRules?:
+    -list: true
+    -desc: Extra HTTPRoute rules appended verbatim after the chart-managed rules.
+core?:
+  existingSecret?:
+    -base: +Str
+    -desc: Existing Secret holding the core inter-component secret (auto-generated when empty).
+  existingSecretKey?:
+    -base: +Str
+    -desc: Key in core.existingSecret that holds the core secret (defaults to secret).
+  tokenSecretName?:
+    -base: +Str
+    -desc: Existing Secret for the token service key/cert. Must contain keys tls.key and tls.crt.
+  tokenKey?:
+    -base: +Str
+    -desc: Token service private key (PEM). Auto-generated if tokenKey, tokenCert, and tokenSecretName are all empty.
+  tokenCert?:
+    -base: +Str
+    -desc: Token service certificate (PEM, signed by tokenKey).
+  xsrfKey?:
+    -base: +Str
+    -desc: XSRF key (32 chars, auto-generated if empty).
+  existingXsrfSecret?:
+    -base: +Str
+    -desc: Existing Secret holding the XSRF key.
+  existingXsrfSecretKey?:
+    -base: +Str
+    -desc: Key in core.existingXsrfSecret that holds the XSRF key (defaults to CSRF_KEY).
+  configureUserSettings?:
+    -base: +Str
+    -desc: Initial user settings JSON applied on first boot (CONFIG_OVERWRITE_JSON).
+  quotaUpdateProvider?:
+    -base: +Str
+    -enum:
+    - db
+    - redis
+    -desc: Quota update provider.
+  artifactPullAsyncFlushDuration?:
+    -base: +Any
+    -desc: Async flush duration (seconds) for artifact pull time / pull count updates.
+  gdpr?:
+    deleteUser?:
+      -base: +Bool
+      -desc: Anonymize user data on deletion.
+    auditLogsCompliant?:
+      -base: +Bool
+      -desc: GDPR-compliant audit logs.
+  serviceAnnotations?:
+    -desc: Annotations for the core Service.
+    +Str*: +Str
+registry?:
+  existingSecret?:
+    -base: +Str
+    -desc: Existing Secret supplying REGISTRY_HTTP_SECRET. When set, the generated registry Secret omits this key and both the registry container and registryctl sidecar source it from here via env.
+  existingSecretKey?:
+    -base: +Str
+    -desc: Key in registry.existingSecret that holds REGISTRY_HTTP_SECRET (defaults to REGISTRY_HTTP_SECRET).
+  config?:
+    -desc: Full distribution/distribution config.yml passed through verbatim. Chart-managed redis/log/http blocks are merged on top at render time. Used only when existingConfigMap is empty.
+    +Str*: +Any
+  existingConfigMap?:
+    -base: +Str
+    -desc: Externally-managed ConfigMap with config.yml + ctl-config.yml. When set, the chart skips generating the registry ConfigMap and mounts this one instead.
+  storageCredentials?:
+    s3?:
+      existingSecret?: +Str
+      existingSecretAccessKeyKey?: +Str
+      existingSecretSecretKeyKey?: +Str
+    azure?:
+      existingSecret?: +Str
+      existingSecretKey?: +Str
+    oss?:
+      existingSecret?: +Str
+      existingSecretKey?: +Str
+    gcs?:
+      existingSecret?: +Str
+      existingSecretKey?: +Str
+  controller?:
+    image?: +imageSpec
+    probes?:
+      -desc: Probes for the registryctl sidecar (full Kubernetes probe specs, rendered verbatim).
+      +Str*: +Any
+    resources?:
+      -base: +resources
+      -desc: registryctl sidecar resources; falls back to registry.resources when unset.
+  credentials?:
+    username?: +Str
+    password?: +Str
+    existingSecret?:
+      -base: +Str
+      -desc: Existing Secret with keys REGISTRY_PASSWD and REGISTRY_HTPASSWD.
+    htpasswdString?:
+      -base: +Str
+      -desc: Pre-computed htpasswd line (stable across renders, GitOps-friendly).
+  persistence?: +persistence
+portal?:
+  enabled?:
+    -base: +Bool
+    -init: true
+    -desc: Deploy the portal (Harbor UI). False for API-only installs.
+  url?:
+    -base: +Str
+    -desc: URL core uses to reach the portal (PORTAL_URL); empty auto-derives the in-cluster service.
+  serviceAnnotations?:
+    -desc: Annotations for the portal Service.
+    +Str*: +Str
+jobservice?:
+  existingSecret?:
+    -base: +Str
+    -desc: Existing Secret holding the jobservice inter-component secret (auto-generated when empty).
+  existingSecretKey?:
+    -base: +Str
+    -desc: Key in jobservice.existingSecret that holds the secret (defaults to JOBSERVICE_SECRET).
+  persistence?: +persistence
+exporter?:
+  enabled?:
+    -base: +Bool
+    -init: true
+database?:
+  host:
+    -base: +Str
+    -desc: Database host
+    -size:
+    - 1
+    - '*'
+  port?:
+    -base: +Int
+    -init: 5432
+    -mini: 1
+    -maxi: 65535
+  username?:
+    -base: +Str
+    -init: postgres
+  password?: +Str
+  database?:
+    -base: +Str
+    -init: registry
+  sslmode?:
+    -base: +Str
+    -enum:
+    - disable
+    - require
+    - verify-ca
+    - verify-full
+    -init: disable
+  maxOpenConns?:
+    -base: +Int
+    -init: 100
+    -mini: 1
+  minConns?:
+    -base: +Int
+    -init: 2
+  existingSecret?: +Str
+  existingSecretKey?: +Str
+  existingTlsSecret?:
+    -base: +Str
+    -desc: Secret with ca.crt (+ tls.crt + tls.key for mTLS) for PostgreSQL TLS
+  clientCertEnabled?:
+    -base: +Bool
+    -desc: Include sslcert/sslkey in the auto-built POSTGRESQL_URL
+  connMaxIdleTime?: +Str
+  connMaxLifetime?: +Str
+valkey?:
+  enabled?:
+    -base: +Bool
+    -init: true
+  architecture?:
+    -base: +Str
+    -enum:
+    - standalone
+    - replication
+    -init: standalone
+  auth?:
+    enabled?:
+      -base: +Bool
+      -init: true
+    password?: +Str
+  master?: +Map
+externalRedis?:
+  host?: +Str
+  port?:
+    -base: +Int
+    -init: 6379
+    -mini: 1
+    -maxi: 65535
+  password?: +Str
+  sentinelMasterSet?: +Str
+  existingSecret?:
+    -base: +Str
+    -desc: Existing Secret containing the Redis password
+  existingSecretKey?:
+    -base: +Str
+    -desc: Key in externalRedis.existingSecret that holds the Redis password (defaults to REDIS_PASSWORD)
+  username?: +Str
+  tlsOptions?:
+    enable?:
+      -base: +Bool
+    existingCaSecret?:
+      -base: +Str
+      -desc: Secret holding a CA bundle that all Harbor components should trust (Redis, S3, OIDC, etc.). Mounted at /etc/harbor/extra-ca.
+    existingCaSecretKey?:
+      -base: +Str
+      -init: ca.crt
+      -desc: Key inside existingCaSecret that holds the PEM-encoded CA bundle
+trivy?:
+  enabled?:
+    -base: +Bool
+  persistence?: +persistence
+  debugMode?:
+    -base: +Bool
+    -desc: Verbose scanning log.
+  vulnType?:
+    -base: +Str
+    -desc: Comma-separated vulnerability types (os,library).
+  severity?:
+    -base: +Str
+    -desc: Comma-separated severities to check.
+  ignoreUnfixed?:
+    -base: +Bool
+    -desc: Display only fixed vulnerabilities.
+  insecure?:
+    -base: +Bool
+    -desc: Skip verifying the registry certificate.
+  gitHubToken?:
+    -base: +Str
+    -desc: GitHub token for Trivy DB downloads (raises the anonymous rate limit).
+  skipUpdate?:
+    -base: +Bool
+    -desc: Disable Trivy DB downloads.
+  skipJavaDBUpdate?:
+    -base: +Bool
+    -desc: Disable Trivy Java DB downloads.
+  offlineScan?:
+    -base: +Bool
+    -desc: Do not resolve dependencies over the network during scans.
+  securityCheck?:
+    -base: +Str
+    -desc: Comma-separated security issue kinds to detect (defaults to vuln).
+  timeout?:
+    -base: +Str
+    -desc: Scan timeout (Go duration, e.g. 5m0s).
+  dbRepository?:
+    -list: true
+    -desc: OCI repositories for the Trivy vulnerability DB, in priority order.
+    -base: +Str
+  javaDBRepository?:
+    -list: true
+    -desc: OCI repositories for the Trivy Java DB, in priority order.
+    -base: +Str
+tls?:
+  enabled?:
+    -base: +Bool
+    -desc: Pod-level TLS for core/registry (set false when terminating TLS at the ingress / load balancer).
+  certSource?:
+    -base: +Str
+    -enum:
+    - auto
+    - secret
+    - none
+    -desc: TLS certificate source.
+  certManager?:
+    enabled?:
+      -base: +Bool
+    issuerRef?:
+      name?: +Str
+      kind?: +Str
+    duration?: +Str
+    renewBefore?: +Str
+  customSecrets?:
+    core?: +Str
+    registry?: +Str
+metrics?:
+  enabled?:
+    -base: +Bool
+  serviceMonitor?:
+    enabled?:
+      -base: +Bool
+    namespace?: +Str
+    labels?:
+      +Str*: +Str
+    interval?: /^[0-9]+(ms|s|m|h)$/
+    scrapeTimeout?: /^[0-9]+(ms|s|m|h)$/
+    honorLabels?: +Bool
+extraManifests?:
+  -list: true
+  -desc: Extra static manifests to deploy
+extraTemplateManifests?:
+  -list: true
+  -desc: Extra templated manifests to deploy
+-json:
+  $id: https://github.com/container-registry/harbor-next/deploy/chart/values.schema.json

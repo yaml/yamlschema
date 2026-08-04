@@ -528,6 +528,35 @@ Roundtrip back to JSON Schema restores each object level with its own
 `properties` and `required` array.
 
 
+## Additional Properties
+
+The reserved `+Str*` key describes otherwise-unmatched string keys.
+Its value is any yamlschema value schema:
+
+```yaml
+labels:
+  +Str*: +Str
+config:
+  enabled?: +Bool
+  +Str*: +Any
+```
+
+Explicit JSON Schema values import as follows:
+
+| JSON Schema | yamlschema |
+| --- | --- |
+| `additionalProperties: true` | `+Str*: +Any` |
+| schema-valued `additionalProperties` | `+Str*: schema` |
+| `additionalProperties: false` | No wildcard |
+
+An omitted `additionalProperties` also imports without a wildcard.
+This intentionally adopts yamlschema's stricter closed default for shaped
+mappings instead of JSON Schema's open default.
+On export, shaped mappings without `+Str*` receive
+`additionalProperties: false`.
+Bare `+Map` values remain open.
+
+
 ## Unsupported or Open JSON Schema Features
 
 Some JSON Schema features need more yamlschema design before they can roundtrip
