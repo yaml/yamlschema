@@ -40,13 +40,13 @@ The `.ysc.json` explicit form is the canonical internal shape:
 
 ```json
 {
-  "name": {"-need": "+Str"},
-  "email": {"-base": "+Str", "-like": "/^\\S+@\\S+$/"},
+  "name": {".need": "+Str"},
+  "email": {".base": "+Str", ".like": "/^\\S+@\\S+$/"},
   "tags": {
-    "-need": "+Str",
-    "-list": true,
-    "-uniq": true,
-    "-size": [1, "*"]
+    ".need": "+Str",
+    ".list": true,
+    ".uniq": true,
+    ".size": [1, "*"]
   }
 }
 ```
@@ -142,7 +142,7 @@ If no keys are required, the `required` array can be omitted.
 | `{"type": "boolean"}` | `+Bool` |
 | `{"type": "null"}` | `+Null` |
 | `{"type": "object"}` | `+Map` or a mapping shape |
-| `{"type": "array"}` | `-list: true` or a list key suffix |
+| `{"type": "array"}` | `.list: true` or a list key suffix |
 
 Example:
 
@@ -214,7 +214,7 @@ Simple token enums roundtrip through pipe syntax:
 role: admin|user|guest
 ```
 
-Values that are not safe pipe tokens use explicit `-enum`:
+Values that are not safe pipe tokens use explicit `.enum`:
 
 ```json
 {
@@ -227,7 +227,7 @@ Values that are not safe pipe tokens use explicit `-enum`:
 
 ```yaml
 label:
-  -enum:
+  .enum:
   - has space
   - ok
 ```
@@ -297,7 +297,7 @@ age: 0..
 ratio: 0..1
 ```
 
-String lengths use `-size`:
+String lengths use `.size`:
 
 ```json
 {
@@ -311,24 +311,24 @@ String lengths use `-size`:
 
 ```yaml
 bio:
-  -base: +Str
-  -size:
+  .base: +Str
+  .size:
   - 1
   - 500
 code:
-  -base: +Str
-  -size:
+  .base: +Str
+  .size:
   - 3
   - '*'
 ```
 
 Roundtrip rule:
 
-- `-mini` and `-maxi` on `+Int` or `+Float` map to `minimum` and
+- `.mini` and `.maxi` on `+Int` or `+Float` map to `minimum` and
   `maximum`.
-- `-size` on `+Str` maps to `minLength` and `maxLength`.
-- `-size` on lists maps to `minItems` and `maxItems`.
-- `-size` on maps maps to `minProperties` and `maxProperties`.
+- `.size` on `+Str` maps to `minLength` and `maxLength`.
+- `.size` on lists maps to `minItems` and `maxItems`.
+- `.size` on maps maps to `minProperties` and `maxProperties`.
 - `*` means the upper bound is absent.
 
 
@@ -414,14 +414,14 @@ yamlschema:
 
 ```yaml
 port:
-  -base: +Int
-  -init: 8080
+  .base: +Int
+  .init: 8080
 host:
-  -base: +Str
-  -init: localhost
+  .base: +Str
+  .init: localhost
 ```
 
-Roundtrip rule: `-init` maps to JSON Schema `default`.
+Roundtrip rule: `.init` maps to JSON Schema `default`.
 
 
 ## Annotations
@@ -436,9 +436,9 @@ metadata.
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `$id` | `-json.$id` |
-| `title` | `-Name` |
-| `description` | `-desc` |
+| `$id` | `.json.$id` |
+| `title` | `.Name` |
+| `description` | `.desc` |
 
 
 ## Definitions and References
@@ -575,11 +575,11 @@ Open mappings include:
 | --- | --- |
 | `allOf` | Type inheritance or composition |
 | `anyOf` | Union constraint |
-| `oneOf` | `-pick` |
+| `oneOf` | `.pick` |
 | `not` | Negative constraint, still undecided |
-| `if` / `then` / `else` | `-when` |
-| `dependentRequired` | `-with` |
-| `dependentSchemas` | Extended `-with` or conditional schema |
+| `if` / `then` / `else` | `.when` |
+| `dependentRequired` | `.with` |
+| `dependentSchemas` | Extended `.with` or conditional schema |
 | `patternProperties` | Regex keys |
 | `propertyNames` | Key constraints |
 | `prefixItems` | Positional list schemas |
@@ -607,7 +607,7 @@ Semantic roundtrip does not preserve every textual detail:
 - Equivalent JSON Schema spellings may normalize to one spelling.
 - `definitions` should export back as `$defs`.
 - Succinct yamlschema may expand to explicit yamlschema before JSON generation.
-- A pipe enum and an explicit `-enum` with the same values are equivalent.
+- A pipe enum and an explicit `.enum` with the same values are equivalent.
 - Unbounded `*` in yamlschema maps to an omitted JSON Schema bound.
 
 Lossless source-preserving roundtrip would require storing source metadata in

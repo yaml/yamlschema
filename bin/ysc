@@ -330,7 +330,7 @@ defn ysc-to-schema(doc):
     +{'additionalProperties' state.wildcard.if(state.additional false)}
 
 defn initial-ysc-doc-state(doc):
-  result =: add-json-meta(array-map() doc.'-json')
+  result =: add-json-meta(array-map() doc.'.json')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
     defs: {}
@@ -350,9 +350,11 @@ defn ysc-doc-step(state entry):
     key =~ /^\+/:
       name =: key.replace(/^\+/)
       update-state: state 'defs' name ysc-value-to-schema(value)
-    key =~ /^-/:
+    key =~ /^\./:
       result =: add-schema-meta(state.result key value)
       state +: +{'result' result}
+    legacy-directive?(key):
+      reject-legacy-directive: key
     else:
       add-property-schema: state key value
 
@@ -370,12 +372,24 @@ defn add-property-schema(state key value):
 
 defn add-schema-meta(result key value):
   case key:
-    '-json': result.add-json-meta(value)
-    '-Name': result + {'title' value}
-    '-desc': result + {'description' value}
-    '-additionalProperties':
-      usage: 'unsupported yamlschema directive: -additionalProperties; use +Str*'
+    '.json': result.add-json-meta(value)
+    '.Name': result + {'title' value}
+    '.desc': result + {'description' value}
+    '.additionalProperties':
+      reject-additional-properties: key
     else: result
+
+defn legacy-directive?(key):
+  key =~ /^-/
+
+defn reject-legacy-directive(key):
+  when key == '-additionalProperties':
+    reject-additional-properties: key
+  replacement =: key.replace(/^-/ '.')
+  usage: "unsupported yamlschema directive: $key; use $replacement"
+
+defn reject-additional-properties(key):
+  usage: "unsupported yamlschema directive: $key; use +Str*"
 
 defn add-json-meta(result value):
   if map?(value) && value.'$id':
@@ -403,8 +417,8 @@ defn ysc-value-to-schema(value):
     ysc-scalar-to-schema: value
 
 defn ysc-map-to-schema(value):
-  explicit =: some(\(_:S =~ /^-/) value:keys)
-  explicit =: value:keys.some(\(/^-/))
+  explicit =: some(\(_:S =~ /^\./) value:keys)
+  explicit =: value:keys.some(\(/^\./))
   if explicit:
     ysc-block-to-schema: value
     ysc-object-to-schema: value
@@ -431,6 +445,8 @@ defn ysc-object-step(state entry):
       state +::
         wildcard:: true
         additional:: ysc-value-to-schema(entry.1)
+    legacy-directive?(key):
+      reject-legacy-directive: key
     else:
       add-property-schema: state key entry.1
 
@@ -443,8 +459,10 @@ defn ysc-block-to-schema(value):
   if shaped:
     then:
       result +=:: {type: object}
-      result =: map-put-if(result empty?(state.props).! 'properties' state.props)
-      result =: map-put-if(result empty?(state.required).! 'required' state.required)
+      has-props =: empty?(state.props).!
+      has-required =: empty?(state.required).!
+      result =: map-put-if(result has-props 'properties' state.props)
+      result =: map-put-if(result has-required 'required' state.required)
       result +:
         +{'additionalProperties' state.wildcard.if(state.additional false)}
     else: result
@@ -462,41 +480,43 @@ defn ysc-block-step(state entry):
   key =: entry.0:S
   val =: entry.1
   case key:
-    '-base':
+    '.base':
       state.add-base-schema(val)
-    '-like':
+    '.like':
       result +=: +{'type' 'string'}
       result +=: +{'pattern' regex-pattern(val)}
       state +: +{'result' result}
-    '-enum':
+    '.enum':
       state + {'result' (result + {'enum' val})}
-    '-init':
+    '.init':
       state + {'result' (result + {'default' val})}
-    '-list':
+    '.list':
       state + {'result' (result + {'type' 'array'})}
-    '-uniq':
+    '.uniq':
       state + {'result' (result + {'uniqueItems' val})}
-    '-Name':
+    '.Name':
       state + {'result' (result + {'title' val})}
-    '-desc':
+    '.desc':
       state + {'result' (result + {'description' val})}
-    '-item':
+    '.item':
       state + {'item' ysc-value-to-schema(val)}
-    '-size':
+    '.size':
       state + {'result' add-size(result val)}
-    '-mini':
+    '.mini':
       state + {'result' (result + {'minimum' val})}
-    '-maxi':
+    '.maxi':
       state + {'result' (result + {'maximum' val})}
-    '-additionalProperties':
-      usage: 'unsupported yamlschema directive: -additionalProperties; use +Str*'
+    '.additionalProperties':
+      reject-additional-properties: key
     else:
       cond:
         key == WILDCARD-KEY:
           state +::
             wildcard:: true
             additional:: ysc-value-to-schema(val)
-        key =~ /^-/:
+        legacy-directive?(key):
+          reject-legacy-directive: key
+        key =~ /^\./:
           state
         else:
           add-property-schema(state key val)
@@ -657,12 +677,12 @@ defn build-doc(schema):
 
 defn add-root-annotations(result schema):
   result:
-    .map-put-if(schema.title.? '-Name' schema.title)
-    .map-put-if(schema.description.? '-desc' schema.description)
+    .map-put-if(schema.title.? '.Name' schema.title)
+    .map-put-if(schema.description.? '.desc' schema.description)
 
 defn add-json-schema-meta(result schema):
   if schema.'$id':
-    result +: +{'-json' json-id-meta(schema.'$id')}
+    result +: +{'.json' json-id-meta(schema.'$id')}
     else: result
 
 defn json-id-meta(id)::
@@ -713,8 +733,8 @@ defn build-properties-map(schema):
 defn build-block-map(schema):
   add-block(omap() schema)
 
-# Add the directive entries for an expanded schema-block (-base, -size,
-# -enum, -init, etc.) into the result map. Also walks nested items /
+# Add the directive entries for an expanded schema-block (.base, .size,
+# .enum, .init, etc.) into the result map. Also walks nested items /
 # properties when present.
 defn add-block(result schema):
   result .=: add-todos(schema)
@@ -724,32 +744,32 @@ defn add-block(result schema):
   is-array =: t.eq('array')
   result =:
     if schema.'$ref'.?:
-      then: result + {'-base' ref-sym(schema.'$ref')}
+      then: result + {'.base' ref-sym(schema.'$ref')}
       else: result
-  result =: map-put-if(result has-type '-base' ts)
-  result =: map-put-if(result is-array '-list' true)
+  result =: map-put-if(result has-type '.base' ts)
+  result =: map-put-if(result is-array '.list' true)
   result =:
     if schema.pattern.?:
-      then: result + {'-like' regex-literal(schema.pattern)}
+      then: result + {'.like' regex-literal(schema.pattern)}
       else: result
   result =:
     if schema.enum.?:
-      then: result + {'-enum' enum-block-list(schema.enum)}
+      then: result + {'.enum' enum-block-list(schema.enum)}
       else: result
   result =:
     if schema.const.?:
-      then: result + {'-base' literal-value(schema.const)}
+      then: result + {'.base' literal-value(schema.const)}
       else: result
-  result =: map-put-if(result schema.uniqueItems '-uniq' true)
+  result =: map-put-if(result schema.uniqueItems '.uniq' true)
   result =:
     if schema.default.?:
-      then: result + {'-init' literal-value(schema.default)}
+      then: result + {'.init' literal-value(schema.default)}
       else: result
-  result =: map-put-if(result schema.title.? '-Name' schema.title)
-  result =: map-put-if(result schema.description.? '-desc' schema.description)
+  result =: map-put-if(result schema.title.? '.Name' schema.title)
+  result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =:
     if schema.oneOf.?:
-      then: result + {'-pick' one-of-values(schema.oneOf)}
+      then: result + {'.pick' one-of-values(schema.oneOf)}
       else: result
   result =: result
     .add-numeric-bound-directives(schema.minimum schema.maximum)
@@ -768,13 +788,13 @@ defn add-block(result schema):
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
-    (result + {'-size' size-pair(lo hi)})
+    (result + {'.size' size-pair(lo hi)})
     result
 
 defn add-numeric-bound-directives(result lo hi):
   result:
-    .map-put-if(lo.? '-mini' lo)
-    .map-put-if(hi.? '-maxi' hi)
+    .map-put-if(lo.? '.mini' lo)
+    .map-put-if(hi.? '.maxi' hi)
 
 defn add-array-items(result is-array schema):
   if is-array && schema.items.?:
@@ -783,8 +803,8 @@ defn add-array-items(result is-array schema):
       item-scalar =: succinct-scalar(items)
       result +:
         if item-scalar: +
-          {'-base' item-scalar}
-          {'-item' build-block-map(items)}
+          {'.base' item-scalar}
+          {'.item' build-block-map(items)}
     else: result
 
 defn additional-properties-value(schema):
@@ -941,7 +961,7 @@ defn range-scalar(schema):
   hi-s =: hi:nil?.if('' hi)
   =>: "${lo-s}..${hi-s}"
 
-# Return a 2-vector for the value of a `-size` directive. Unbounded
+# Return a 2-vector for the value of a `.size` directive. Unbounded
 # sides become the literal string "*"; yaml/dump quotes it as needed.
 defn size-pair(lo hi):
   lo-v =: lo:nil?.if('*' lo)

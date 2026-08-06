@@ -22,16 +22,16 @@ test::
       "required": ["name"]
     }
   want: |
-    -Name: Arrays
-    -desc: Arrays of strings and objects
+    .Name: Arrays
+    .desc: Arrays of strings and objects
     name:
-      -base: +Str
-      -Name: Full name
-      -desc: Display name.
-    -json:
+      .base: +Str
+      .Name: Full name
+      .desc: Display name.
+    .json:
       $id: https://example.com/arrays.schema.json
 
-- name: unsupported-json-schema-dialect
+- name: unsupported.json-schema-dialect
   cmnd: |
     sh -c 'printf "%s\n" \
       "{\"\$schema\":\"https://example.com/unsupported-draft\"}" |

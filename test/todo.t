@@ -58,8 +58,8 @@ test::
   want: |
     fixed?: +Int
     +Str*:
-      -base: +Str
-      -size:
+      .base: +Str
+      .size:
       - 1
       - '*'
 

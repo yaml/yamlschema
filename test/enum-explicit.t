@@ -15,7 +15,7 @@ test::
     }
   want: |
     label:
-      -enum:
+      .enum:
       - has space
       - ok
 

@@ -4,7 +4,7 @@ use ys::taptest: :all
 
 test::
 
-- name: one-of-to-pick
+- name: one-of-to.pick
   cmnd: bin/ysc -t ysc.yaml -
   stdi: |
     {
@@ -32,7 +32,7 @@ test::
     }
   want: |
     auth:
-      -pick:
+      .pick:
       - token: +Str
       - api_key: +Str
 

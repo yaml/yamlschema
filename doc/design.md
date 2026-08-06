@@ -58,7 +58,7 @@ address:
 ```
 
 Schema keys are data keys unless they start with a reserved prefix such as `+`
-for definitions or `-` for directives.
+for definitions or `.` for directives.
 
 
 ### Required By Default
@@ -71,7 +71,7 @@ email?: +Str     # optional
 ```
 
 The optional marker is part of the key syntax.
-In the explicit model, optional fields omit `-need`.
+In the explicit model, optional fields omit `.need`.
 
 
 ### Constraints Imply Types
@@ -86,8 +86,8 @@ port: 1..65535           # numeric range
 tags[+]: +Str           # list of one or more strings
 ```
 
-The corresponding explicit form uses directives such as `-like`, `-enum`,
-`-size`, `-list`, and `-base`.
+The corresponding explicit form uses directives such as `.like`, `.enum`,
+`.size`, `.list`, and `.base`.
 
 
 ## Symbols and Definitions
@@ -147,36 +147,36 @@ server:
 
 ## Directives
 
-Directives begin with `-`.
+Directives begin with `.`.
 The design keeps directive names short and regular.
 
 | Directive | Meaning |
 | --- | --- |
-| `-need` | Required field marker; may carry a type or symbol |
-| `-base` | Base constraint or inherited symbol |
-| `-like` | Regex pattern; implies string |
-| `-enum` | Enumeration of allowed values |
-| `-size` | Number, string, list, or map size |
-| `-list` | Value is a sequence |
-| `-solo` | A scalar is also accepted where a list is declared |
-| `-also` | Alternate key names |
-| `-pick` | Mutually exclusive group alternatives |
-| `-with` | Co-dependent keys |
-| `-when` | Conditional requirement or constraint |
-| `-init` | Default value |
-| `-uniq` | List items must be unique |
-| `-null` | Null is accepted |
+| `.need` | Required field marker; may carry a type or symbol |
+| `.base` | Base constraint or inherited symbol |
+| `.like` | Regex pattern; implies string |
+| `.enum` | Enumeration of allowed values |
+| `.size` | Number, string, list, or map size |
+| `.list` | Value is a sequence |
+| `.solo` | A scalar is also accepted where a list is declared |
+| `.also` | Alternate key names |
+| `.pick` | Mutually exclusive group alternatives |
+| `.with` | Co-dependent keys |
+| `.when` | Conditional requirement or constraint |
+| `.init` | Default value |
+| `.uniq` | List items must be unique |
+| `.null` | Null is accepted |
 
 Meta directives are top-level schema metadata:
 
 | Directive | Meaning |
 | --- | --- |
-| `-from` | Import schemas or namespaces |
-| `-name` | Name of a document schema |
-| `-root` | Primary exported root type |
-| `-json` | JSON Schema interop metadata |
-| `-Name` | Human-facing display title |
-| `-desc` | JSON Schema `description` annotation |
+| `.from` | Import schemas or namespaces |
+| `.name` | Name of a document schema |
+| `.root` | Primary exported root type |
+| `.json` | JSON Schema interop metadata |
+| `.Name` | Human-facing display title |
+| `.desc` | JSON Schema `description` annotation |
 
 
 ## Succinct Values
@@ -206,9 +206,9 @@ Equivalent explicit form:
 
 ```yaml
 email:
-  -like: /^\S+@\S+$/
+  .like: /^\S+@\S+$/
 zip:
-  -like: /^\d{5}(-\d{4})?$/
+  .like: /^\d{5}(-\d{4})?$/
 ```
 
 
@@ -225,16 +225,16 @@ Equivalent explicit form:
 
 ```yaml
 role:
-  -enum: [admin, user, guest]
+  .enum: [admin, user, guest]
 level:
-  -enum: [LOW, MED, HIGH]
+  .enum: [LOW, MED, HIGH]
 ```
 
-Values that cannot safely be represented as pipe tokens use explicit `-enum`:
+Values that cannot safely be represented as pipe tokens use explicit `.enum`:
 
 ```yaml
 label:
-  -enum:
+  .enum:
   - has space
   - ok
 ```
@@ -252,16 +252,16 @@ Equivalent explicit form:
 
 ```yaml
 port:
-  -base: +Int
-  -mini: 1
-  -maxi: 65535
+  .base: +Int
+  .mini: 1
+  .maxi: 65535
 age:
-  -base: +Int
-  -mini: 0
+  .base: +Int
+  .mini: 0
 ratio:
-  -base: +Float
-  -mini: 0
-  -maxi: 1
+  .base: +Float
+  .mini: 0
+  .maxi: 1
 ```
 
 
@@ -278,9 +278,9 @@ Equivalent explicit form:
 
 ```yaml
 version:
-  -base: v1
+  .base: v1
 kind:
-  -base: User
+  .base: User
 ```
 
 The current converter maps JSON Schema `const` values this way.
@@ -359,42 +359,42 @@ The explicit form represents all constraints with directives:
 
 ```yaml
 port:
-  -need: true
-  -base: +Int
-  -mini: 1
-  -maxi: 65535
+  .need: true
+  .base: +Int
+  .mini: 1
+  .maxi: 65535
 
 email:
-  -like: /^\S+@\S+$/
+  .like: /^\S+@\S+$/
 
 tags:
-  -need: true
-  -base: +Str
-  -list: true
-  -size: [1, "*"]
-  -uniq: true
+  .need: true
+  .base: +Str
+  .list: true
+  .size: [1, "*"]
+  .uniq: true
 ```
 
-For fields with a base reference, `-need` can carry the referenced base:
+For fields with a base reference, `.need` can carry the referenced base:
 
 ```yaml
 port:
-  -need: +port
+  .need: +port
 ```
 
 This is equivalent to:
 
 ```yaml
 port:
-  -base: +port
-  -need: true
+  .base: +port
+  .need: true
 ```
 
-Optional fields omit `-need`:
+Optional fields omit `.need`:
 
 ```yaml
 port:
-  -base: +port
+  .base: +port
 ```
 
 
@@ -404,24 +404,24 @@ Custom definitions can inherit from other definitions:
 
 ```yaml
 +port:
-  -base: +Int
-  -mini: 1
-  -maxi: 65535
+  .base: +Int
+  .mini: 1
+  .maxi: 65535
 
 +secure-port:
-  -base: +port
-  -mini: 443
-  -maxi: 443
+  .base: +port
+  .mini: 443
+  .maxi: 443
 ```
 
 Implicit typing applies where possible:
 
-- `-like` implies `+Str`.
-- `-enum` implies the common value type.
+- `.like` implies `+Str`.
+- `.enum` implies the common value type.
 - A mapping shape implies `+Map`.
 - Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
 
-Use `-base` when a base constraint cannot be inferred or when inheriting from
+Use `.base` when a base constraint cannot be inferred or when inheriting from
 a custom definition.
 
 
@@ -441,7 +441,7 @@ Equivalent explicit form:
 
 ```yaml
 +auth:
-  -pick:
+  .pick:
   - api_key: +Str
   - token: +Str
   - username: +Str
@@ -483,12 +483,12 @@ Rules:
 ### Document Schema
 
 A document schema exports one shape.
-It may have `-name` and bare data keys.
+It may have `.name` and bare data keys.
 Top-level `+symbols` are private by default.
 
 ```yaml
--from: https://yaml.org/schema/base/v1
--name: contact
+.from: https://yaml.org/schema/base/v1
+.name: contact
 
 +email: /^\S+@\S+$/
 
@@ -508,13 +508,13 @@ It has no bare data keys.
 Public symbols use `+name`; private symbols use `:+name`.
 
 ```yaml
--from: https://yaml.org/schema/base/v1
+.from: https://yaml.org/schema/base/v1
 
 :+max: 65535
 
 +port:
-  -base: +Int
-  -size: [1, +max]
+  .base: +Int
+  .size: [1, +max]
 
 +email: /^\S+@\S+$/
 +hostname: /^[a-z0-9.-]+$/
@@ -523,16 +523,16 @@ Public symbols use `+name`; private symbols use `:+name`.
 
 ## Imports
 
-Imports use `-from`:
+Imports use `.from`:
 
 ```yaml
--from: https://yaml.org/schema/base/v1
+.from: https://yaml.org/schema/base/v1
 ```
 
 Multiple imports can be namespaced:
 
 ```yaml
--from:
+.from:
   net: https://yaml.org/schema/net/v1
   <: https://yaml.org/schema/base/v1
 
@@ -616,18 +616,18 @@ Example compiled shape:
 ```json
 {
   "+port": {
-    "-base": "+Int",
-    "-mini": 1,
-    "-maxi": 65535
+    ".base": "+Int",
+    ".mini": 1,
+    ".maxi": 65535
   },
   "+auth": {
-    "-pick": [
-      {"api_key": {"-need": "+Str"}},
-      {"token": {"-need": "+Str"}}
+    ".pick": [
+      {"api_key": {".need": "+Str"}},
+      {"token": {".need": "+Str"}}
     ]
   },
-  "host": {"-need": "+Str"},
-  "port": {"-need": "+port"}
+  "host": {".need": "+Str"},
+  "port": {".need": "+port"}
 }
 ```
 
@@ -658,19 +658,19 @@ yamlschema.
 | `additionalProperties: true` | `+Str*: +Any` |
 | schema-valued `additionalProperties` | `+Str*: schema` |
 | `additionalProperties: false` | Closed mapping; no wildcard |
-| `enum` | Pipe enum or `-enum` list |
-| `pattern` | Regex literal or `-like` |
-| `minimum` / `maximum` | Range scalar or `-mini` / `-maxi` |
-| `minLength` / `maxLength` | `-size` on strings |
-| `minItems` / `maxItems` | List suffix or `-size` |
-| `minProperties` / `maxProperties` | `-size` on maps |
-| `uniqueItems` | `!` list suffix or `-uniq` |
-| `items` | List value type or `-item` |
+| `enum` | Pipe enum or `.enum` list |
+| `pattern` | Regex literal or `.like` |
+| `minimum` / `maximum` | Range scalar or `.mini` / `.maxi` |
+| `minLength` / `maxLength` | `.size` on strings |
+| `minItems` / `maxItems` | List suffix or `.size` |
+| `minProperties` / `maxProperties` | `.size` on maps |
+| `uniqueItems` | `!` list suffix or `.uniq` |
+| `items` | List value type or `.item` |
 | `const` | Literal value constraint |
-| `default` | `-init` |
-| `description` | `-desc` |
-| `title` | `-Name` |
-| `$id` | `-json.$id` |
+| `default` | `.init` |
+| `description` | `.desc` |
+| `title` | `.Name` |
+| `$id` | `.json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | `$ref` | `+name` symbol reference |
 

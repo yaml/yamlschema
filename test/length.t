@@ -16,13 +16,13 @@ test::
     }
   want: |
     bio:
-      -base: +Str
-      -size:
+      .base: +Str
+      .size:
       - 1
       - 500
     code:
-      -base: +Str
-      -size:
+      .base: +Str
+      .size:
       - 3
       - '*'
 

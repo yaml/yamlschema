@@ -16,10 +16,10 @@ test::
     }
   want: |
     port:
-      -base: +Int
-      -init: 8080
+      .base: +Int
+      .init: 8080
     host:
-      -base: +Str
-      -init: localhost
+      .base: +Str
+      .init: localhost
 
 done:
