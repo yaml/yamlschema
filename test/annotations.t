@@ -22,11 +22,11 @@ test::
       "required": ["name"]
     }
   want: |
-    .Name: Arrays
+    .titl: Arrays
     .desc: Arrays of strings and objects
     name:
       .base: +Str
-      .Name: Full name
+      .titl: Full name
       .desc: Display name.
     .json:
       $id: https://example.com/arrays.schema.json

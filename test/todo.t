@@ -61,6 +61,5 @@ test::
       .base: +Str
       .size:
       - 1
-      - '*'
 
 done:

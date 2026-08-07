@@ -71,7 +71,8 @@ email?: +Str     # optional
 ```
 
 The optional marker is part of the key syntax.
-In the explicit model, optional fields omit `.need`.
+The optional marker remains on the key in the canonical explicit model.
+`.need` is reserved until requiredness has a separate final design.
 
 
 ### Constraints Imply Types
@@ -83,7 +84,7 @@ already implies it:
 email: /^\S+@\S+$/      # string matching regex
 role: admin|user|guest  # enum
 port: 1..65535           # numeric range
-tags[+]: +Str           # list of one or more strings
+tags[1+]: +Str          # list of one or more strings
 ```
 
 The corresponding explicit form uses directives such as `.like`, `.enum`,
@@ -152,7 +153,7 @@ The design keeps directive names short and regular.
 
 | Directive | Meaning |
 | --- | --- |
-| `.need` | Required field marker; may carry a type or symbol |
+| `.need` | Reserved; currently rejected in favor of key-side `?` |
 | `.base` | Base constraint or inherited symbol |
 | `.like` | Regex pattern; implies string |
 | `.enum` | Enumeration of allowed values |
@@ -175,11 +176,58 @@ Meta directives are top-level schema metadata:
 | `.name` | Name of a document schema |
 | `.root` | Primary exported root type |
 | `.json` | JSON Schema interop metadata |
-| `.Name` | Human-facing display title |
+| `.titl` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
 
 
 ## Succinct Values
+
+### Descriptions
+
+A schema scalar may end with a double-quoted description:
+
+```yaml
+repository?: +Str "Repository path without registry host"
+right: +Str "This isn't wrong"
+dbRepository?: +Str[] "Repositories for the vulnerability DB"
+```
+
+This expands to:
+
+```yaml
+repository?:
+  .base: +Str
+  .desc: Repository path without registry host
+right:
+  .base: +Str
+  .desc: This isn't wrong
+dbRepository?:
+  .list: true
+  .base: +Str
+  .desc: Repositories for the vulnerability DB
+```
+
+The whole value is a YAML plain scalar.
+The quote characters are yamlschema syntax, not YAML quoting syntax.
+The description starts after the schema expression and opening double quote.
+It ends at the scalar's final double quote.
+The two outer quote characters are removed, while all characters between them
+are preserved unchanged.
+There is no escape syntax for internal double quotes.
+List suffixes may follow the schema expression before the description.
+
+YAML plain-scalar folding is allowed:
+
+```yaml
+repository?: +Str
+  "Repository path without registry host"
+```
+
+A YAML-quoted scalar such as `"Description"` loses its quote style when loaded
+and therefore is not this shorthand.
+Descriptions that cannot be safely represented in a YAML plain scalar use the
+explicit `.desc` form.
+
 
 ### Built-in Types
 
@@ -206,9 +254,10 @@ Equivalent explicit form:
 
 ```yaml
 email:
-  .like: /^\S+@\S+$/
+  .base: +Str
+  .like: ^\S+@\S+$
 zip:
-  .like: /^\d{5}(-\d{4})?$/
+  .like: ^\d{5}(-\d{4})?$
 ```
 
 
@@ -291,26 +340,24 @@ The current converter maps JSON Schema `const` values this way.
 Suffixes are attached to field names:
 
 ```text
-name [list-or-size] ? ~ :
+name ? [list-or-size] :
 ```
 
 | Suffix | Meaning |
 | --- | --- |
 | `key:` | Required key |
 | `key?:` | Optional key |
-| `key~:` | Required key that may be null |
-| `key?~:` | Optional key that may be null |
 | `key[]:` | Required list |
-| `key[]?:` | Optional list |
+| `key?[]:` | Optional list |
 | `key[3]:` | List with exactly 3 items |
 | `key[1-3]:` | List with 1 to 3 items |
-| `key[+]:` | List with 1 or more items |
+| `key[1+]:` | List with 1 or more items |
 | `key[5+]:` | List with 5 or more items |
 | `key[$]:` | Scalar or list |
-| `key[$|+]:` | Scalar or list with 1 or more items |
+| `key[$|1+]:` | Scalar or list with 1 or more items |
 | `key[$|1-3]:` | Scalar or list with 1 to 3 items |
 | `key[!]:` | Unique list |
-| `key[!+]:` | Unique list with 1 or more items |
+| `key[!1+]:` | Unique list with 1 or more items |
 | `key[!3]:` | Unique list with exactly 3 items |
 | `key[!1-3]:` | Unique list with 1 to 3 items |
 | `key|alias:` | Key with an alias |
@@ -319,18 +366,18 @@ Examples:
 
 ```yaml
 tags[]: +Str
-names[+]: +Str
+names[1+]: +Str
 triple[3]: +Int
 subset[1-3]: +Str
-unique_tags[!+]: +Str
+unique_tags[!1+]: +Str
 ```
 
 Key suffix grammar:
 
 ```text
-key_expr = name bracket? "?"? "~"? ":"
-bracket  = "[" "!"? (quantity ("|$")? | "$" ("|" quantity)?) "]"
-quantity = n | n "-" m | n "-*" | n "+" | "+" | empty
+key_expr = name "?"? bracket? ":"
+bracket  = "[" "!"? (quantity | "$" ("|" quantity)?) "]"
+quantity = n | n "-" m | n "+" | empty
 ```
 
 
@@ -359,41 +406,25 @@ The explicit form represents all constraints with directives:
 
 ```yaml
 port:
-  .need: true
   .base: +Int
   .mini: 1
   .maxi: 65535
 
 email:
-  .like: /^\S+@\S+$/
+  .base: +Str
+  .like: ^\S+@\S+$
 
 tags:
-  .need: true
   .base: +Str
   .list: true
-  .size: [1, "*"]
+  .size: [1]
   .uniq: true
 ```
 
-For fields with a base reference, `.need` can carry the referenced base:
+Optional fields retain `?` on the key:
 
 ```yaml
-port:
-  .need: +port
-```
-
-This is equivalent to:
-
-```yaml
-port:
-  .base: +port
-  .need: true
-```
-
-Optional fields omit `.need`:
-
-```yaml
-port:
+port?:
   .base: +port
 ```
 
@@ -622,12 +653,12 @@ Example compiled shape:
   },
   "+auth": {
     ".pick": [
-      {"api_key": {".need": "+Str"}},
-      {"token": {".need": "+Str"}}
+      {"api_key": {".base": "+Str"}},
+      {"token": {".base": "+Str"}}
     ]
   },
-  "host": {".need": "+Str"},
-  "port": {".need": "+port"}
+  "host": {".base": "+Str"},
+  "port": {".base": "+port"}
 }
 ```
 
@@ -668,8 +699,8 @@ yamlschema.
 | `items` | List value type or `.item` |
 | `const` | Literal value constraint |
 | `default` | `.init` |
-| `description` | `.desc` |
-| `title` | `.Name` |
+| `description` | Trailing `"description"` or `.desc` |
+| `title` | `.titl` |
 | `$id` | `.json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | `$ref` | `+name` symbol reference |

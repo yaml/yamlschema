@@ -39,7 +39,7 @@ test::
     }
   want: |
     tags[!]: +Str
-    names[!+]: +Str
+    names[!1+]: +Str
     triple[!3]: +Int
     subset[!1-3]: +Str
 

@@ -18,10 +18,11 @@ test::
 
     Options:
       -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
+      -f, --from FORMAT     Input format. Short values: ysc, jsc, yscj.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
-      -C, --compact         Emit compact JSON for schema.json output.
+      -C, --compact         Emit compact JSON output.
           --help            Show this help text.
           --version         Show version.
 
@@ -39,10 +40,11 @@ test::
 
     Options:
       -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
+      -f, --from FORMAT     Input format. Short values: ysc, jsc, yscj.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
-      -C, --compact         Emit compact JSON for schema.json output.
+      -C, --compact         Emit compact JSON output.
           --help            Show this help text.
           --version         Show version.
 

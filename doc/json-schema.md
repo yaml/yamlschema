@@ -40,13 +40,13 @@ The `.ysc.json` explicit form is the canonical internal shape:
 
 ```json
 {
-  "name": {".need": "+Str"},
-  "email": {".base": "+Str", ".like": "/^\\S+@\\S+$/"},
+  "name": {".base": "+Str"},
+  "email": {".base": "+Str", ".like": "^\\S+@\\S+$"},
   "tags": {
-    ".need": "+Str",
+    ".base": "+Str",
     ".list": true,
     ".uniq": true,
-    ".size": [1, "*"]
+    ".size": [1]
   }
 }
 ```
@@ -74,22 +74,23 @@ Use `.schema.json` for JSON Schema files, `.ysc.yaml` for human-maintained
 yamlschema DSL files, and `.ysc.json` for compiled yamlschema files.
 
 
-## Current Direction
+## Conversion Directions
 
-The current repo implements the first direction with `bin/ysc`:
+`bin/ysc` implements all three direct conversion targets:
 
 ```text
 contact.schema.json -> contact.ysc.yaml
+contact.ysc.yaml -> contact.ysc.json
+contact.ysc.yaml -> contact.schema.json
 ```
 
-The reverse direction is part of the design:
+The explicit form is the shared expansion boundary:
 
 ```text
 contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
 ```
 
-That reverse compiler should target the explicit form, because succinct syntax
-is sugar.
+The compiler targets the explicit form because succinct syntax is sugar.
 Once succinct yamlschema has been expanded, JSON Schema generation is mostly a
 directive-to-keyword mapping.
 
@@ -364,7 +365,7 @@ Homogeneous arrays use key suffixes when possible:
 
 ```yaml
 tags[]: +Str
-names[+]: +Str
+names[1+]: +Str
 triple[3]: +Int
 subset[1-3]: +Str
 ```
@@ -389,7 +390,7 @@ Roundtrip mapping:
 | yamlschema | JSON Schema |
 | --- | --- |
 | `key[]: +Str` | `type: array`, `items: {type: string}` |
-| `key[+]: +Str` | plus `minItems: 1` |
+| `key[1+]: +Str` | plus `minItems: 1` |
 | `key[3]: +Int` | plus `minItems: 3`, `maxItems: 3` |
 | `key[1-3]: +Str` | plus `minItems: 1`, `maxItems: 3` |
 | `key[!]: +Str` | plus `uniqueItems: true` |
@@ -437,8 +438,8 @@ metadata.
 | JSON Schema | yamlschema |
 | --- | --- |
 | `$id` | `.json.$id` |
-| `title` | `.Name` |
-| `description` | `.desc` |
+| `title` | `.titl` |
+| `description` | Trailing `"description"` or `.desc` |
 
 
 ## Definitions and References

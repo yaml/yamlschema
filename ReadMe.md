@@ -7,7 +7,8 @@ common validation constraints short and readable. It is intended to cover the
 same kind of data-model validation as JSON Schema, but with YAML-native syntax
 and a succinct form for human-authored schemas.
 
-For the full language design, see [doc/design.md](doc/design.md).
+For the authoring syntax, see [doc/dsl.md](doc/dsl.md). For the broader
+language design, see [doc/design.md](doc/design.md).
 
 ## Example
 
@@ -41,6 +42,8 @@ This schema describes a mapping where:
 - [test/](test/) contains YAMLScript TAP tests for the converter.
 - [doc/design.md](doc/design.md) describes the language model, syntax,
   directives, JSON Schema mapping, and current implementation scope.
+- [doc/dsl.md](doc/dsl.md) is the normative succinct and explicit DSL
+  reference.
 - [doc/json-schema.md](doc/json-schema.md) describes roundtripping with JSON
   Schema and the `.schema.json` convention.
 - [note/yaml-schema-language-plan.md](note/yaml-schema-language-plan.md) is the
@@ -72,6 +75,7 @@ After that, the converter can be run as `ysc`:
 
 ```sh
 ysc -t ysc contact.schema.json
+ysc -t yscj contact.ysc.yaml
 ysc -t jsc contact.ysc.yaml
 ysc -t jsc -C contact.ysc.yaml
 ysc -F contact.schema.json

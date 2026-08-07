@@ -24,6 +24,5 @@ test::
       .base: +Str
       .size:
       - 3
-      - '*'
 
 done:

@@ -68,11 +68,11 @@ test::
 - name: annotations-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    .Name: Arrays
+    .titl: Arrays
     .desc: Arrays of strings and objects
     name:
       .base: +Str
-      .Name: Full name
+      .titl: Full name
       .desc: Display name.
     .json:
       $id: https://example.com/arrays.schema.json
@@ -112,7 +112,7 @@ test::
       fixed?: +Str
       +Str*:
         .base: +Str
-        .size: [1, 20]
+        .size: 1-20
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object"},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
 
@@ -139,6 +139,18 @@ test::
     '
   want: |
     ysc: unsupported yamlschema directive: -base; use .base
+
+- name: reject-uppercase-title-directive
+  cmnd: |
+    sh -c '
+      output=$(printf "%s\n" ".Name: Old title" |
+        bin/ysc -t schema.json -C - 2>&1)
+      status=$?
+      test $status -eq 2
+      printf "%s\n" "$output" | sed -n 1p
+    '
+  want: |
+    ysc: unsupported yamlschema directive: .Name; use .titl
 
 - name: pretty-schema.json
   cmnd: bin/ysc -t schema.json -
