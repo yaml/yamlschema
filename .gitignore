@@ -1,0 +1,6 @@
+bin/jsonschema
+json-schemas/
+/*.clj
+/*.json
+/*.md
+/*.yaml
