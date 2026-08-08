@@ -10,16 +10,36 @@ test::
     {
       "properties": {
         "port": {"type": "integer", "default": 8080},
-        "host": {"type": "string",  "default": "localhost"}
+        "ratio": {"type": "number", "default": 1.5},
+        "create": {"type": "boolean", "default": true},
+        "host": {"type": "string", "default": "localhost"},
+        "word": {"type": "string", "default": "8gcr"},
+        "booleanWord": {"type": "string", "default": "true"},
+        "label": {"type": "string", "default": "hello world"},
+        "quoted": {"type": "string", "default": "say \"hi\""},
+        "logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warning", "error", "fatal"],
+          "default": "info",
+          "description": "Component log level"
+        }
       },
-      "required": ["port", "host"]
+      "required": [
+        "port", "ratio", "create", "host", "word",
+        "booleanWord", "label", "quoted", "logLevel"
+      ]
     }
   want: |
-    port:
-      .base: +Int
-      .init: 8080
-    host:
+    port: +Int =8080
+    ratio: +Float =1.5
+    create: +Bool =true
+    host: +Str =localhost
+    word: +Str =8gcr
+    booleanWord: +Str ="true"
+    label: +Str ="hello world"
+    quoted:
       .base: +Str
-      .init: localhost
+      .init: say "hi"
+    logLevel: +Str [debug,=info,warning,error,fatal] "Component log level"
 
 done:

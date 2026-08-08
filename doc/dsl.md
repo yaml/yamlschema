@@ -30,38 +30,61 @@ same slug:
 
 ```yaml
 +resources:
-  requests?: +Map
-  limits?: +Map
+  requests?: +Map[+Any]
+  limits?: +Map[+Any]
 
 resources?: +resources
 ```
 
-Anonymous mapping shapes infer `.base: +Map`. Shaped mappings are closed;
-`+Str*` admits otherwise unmatched string keys:
+Anonymous mapping shapes need no `.base` marker. Shaped mappings are closed;
+key-side `+Str` admits otherwise unmatched string keys:
 
 ```yaml
 labels:
   fixed?: +Str
-  +Str*: +Str
+  +Str: +Str
 ```
+
+String-keyed maps can name their value type directly:
+
+```yaml
+config: +Map[+Any]
+labels: +Map[+Str]
+flags: +Map[+flag]
+```
+
+`+Map[+Type]` expands to `+Str: +Type`. The value type must be one built-in,
+user-defined, or namespaced reference. Bare `+Map` and `+Map[]` are errors.
+
+Lists of maps use key-side list syntax or a suffix after the typed map:
+
+```yaml
+maps[]: +Map[+Any]
+other: +Map[+Str][]
+```
+
+The reserved future form `+Map[+Key,+Value]` will support YAML key schemas.
+It is not implemented yet. The current one-reference form is shorthand for
+`+Map[+Str,+Value]` and therefore fixes keys to strings.
 
 
 ## Tight Type Expressions
 
-A tight type expression is a YAML plain scalar. Its clauses have one order:
+A tight type expression is a YAML plain scalar. A base reference is normally
+first, but labeled clauses may appear in any order:
 
 ```text
-core [list] [null] [pattern-or-range] [enum] [size]
-     [default] [title] [description]
++Base [list] [null] [pattern-or-range] [enum] [size]
+      [default] [title] [description]
 ```
 
-The core is a `+Type` reference, regex, numeric range, pipe enum, or literal.
-A leading reference may be refined:
+The core is a `+Type` reference, regex, numeric range, or literal. A leading
+reference may be refined:
 
 ```yaml
 foo: +Str /a.*b/
 port: +Int 1..65535
-mode: +Str debug|info|error
+mode: +Str [debug,info,error]
 ```
 
 These expand to explicit directives. Inferred bases are always materialized:
@@ -69,19 +92,45 @@ These expand to explicit directives. Inferred bases are always materialized:
 ```yaml
 foo:
   .base: +Str
-  .like: a.*b
+  .find: a.*b
 port:
   .base: +Int
-  .mini: 1
-  .maxi: 65535
+  .range: 1..65535
 mode:
   .base: +Str
   .enum: [debug, info, error]
 ```
 
-Regex delimiters are removed in canonical form. Pipe members are parsed as
-YAML scalars and must have a common type. `1|2` infers `+Int`; `+Str 1|2`
-forces string members. A literal becomes its inferred base plus `.only`.
+`=~"pattern"` matches the complete string; leading `^` and trailing `$`
+anchors are implied. `match:"pattern"` is an accepted alias. `find:"pattern"`
+searches within the string. The `/pattern/` form is shorthand for
+`find:"pattern"` and is available only when the pattern contains neither
+whitespace nor `/`. The quoted bodies cannot contain `"`. Use explicit `.match`
+or `.find` when no tight form can represent the pattern. Both directives imply
+`+Str`. Generated yamlschema uses the canonical `=~"pattern"` spelling.
+
+Compact enums require an explicit base reference and comma-separated members:
+
+```yaml
+mode: +Str [debug,info,error]
+level: +Int [1,2,3]
+logLevel: +Str [debug,=info,warning,error,fatal]
+```
+
+Members may contain letters, digits, whitespace, `.`, `-`, `_`, and `+`.
+Whitespace around each comma-separated member is trimmed; whitespace inside a
+member is preserved. Thus `[foo,bar,foo bar]` and
+`[ foo, bar, foo bar ]` have the same meaning. Quotes are not supported inside
+compact enums; use explicit `.enum` with a YAML sequence for quoted or other
+punctuated values. The base controls scalar parsing, so `+Str [true,1]`
+contains two strings. Prefix one member with `=` to also set `.init` to that
+value. At most one member may be marked.
+
+`+Str ==User` becomes `.const: User`, the exact-value constraint corresponding
+to JSON Schema `const`. `+Str =="foo bar"` is the quoted form, and
+`const:User` is the labeled alternative. A bare literal remains an accepted
+inferred-base shorthand. It also means a constant, while `=value` means only a
+default.
 
 
 ## Lists and Sizes
@@ -114,7 +163,7 @@ A size clause also works after string, list, or mapping constraints:
 ```yaml
 code: +Str 8
 names: +Str[] 1+
-labels: +Map 1-20
+labels: +Map[+Any] 1-20
 ```
 
 Canonical sizes contain one number for an open upper bound and two for a
@@ -140,20 +189,28 @@ enabled?: +Bool~
 Tight annotations follow all constraints:
 
 ```yaml
-enabled?: +Bool~ =false titl:"Enabled" "Enable the service"
+enabled?: +Bool~ =false title:"Enabled" "Enable the service"
 label?: +Str ="pretty good"
+mode?: base:+Str enum:[debug,info] init:info desc:"Log level"
 ```
 
 - `=value` is a single YAML scalar default.
 - `="..."` is a string default that may contain spaces.
-- `titl:"..."` is `.titl`.
+- `title:"..."` is `.title`.
 - A final `"..."` is `.desc`.
+- Labeled scalar clauses may occur in any order. They are `base`, `match`,
+  `find`, `const`, `range`, `size`, `list`, `item`, `solo`, `uniq`,
+  `null`, `init`, `title`, `desc`, and scalar `also`.
+- `enum:[...]` is the compact enum form. Structural `.oneof`, `.anyof`,
+  `.allof`, `.not`, `.with`, and `.when` values remain explicit.
 
-The double-quoted bodies have no escapes and cannot contain a double quote.
-Use the explicit directive when that is needed. A scalar consisting entirely
-of a YAML-quoted string is a literal value, not an annotation, because YAML
-does not preserve its original quote style. The obsolete trailing
-single-quoted description form is an error.
+Two exact triplets protect text that YAML forbids in a plain scalar: `:\ `
+represents colon-space, and ` \#` represents space-hash. No other backslash
+sequence is special, so `foo\ bar`, `\n`, and `\t` remain literal. A body
+cannot contain a double quote. Use the explicit directive when that is needed.
+A scalar consisting entirely of a YAML-quoted string is a literal value, not
+an annotation, because YAML does not preserve its original quote style. The
+obsolete trailing single-quoted description form is an error.
 
 
 ## Hybrid Explicit Types
@@ -164,7 +221,7 @@ tight expression and sibling directives add the exceptional parts:
 ```yaml
 foo:
   .base: +Str[] /a.*b/ 10-20
-  .titl: The "Good" Parts
+  .title: The "Good" Parts
 ```
 
 This is equivalent to:
@@ -173,14 +230,47 @@ This is equivalent to:
 foo:
   .base: +Str
   .list: true
-  .like: a.*b
+  .find: a.*b
   .size: 10-20
-  .titl: The "Good" Parts
+  .title: The "Good" Parts
 ```
 
 Directive order is insignificant. Expansion normalizes `.size` and emits a
 stable directive order. A directive supplied by both the `.base` expression
 and a sibling is an error, even when the values agree.
+
+
+## Combinators
+
+Reference-only alternatives have compact forms:
+
+```yaml
+one: +One[+Str,+Int]
+any: +Any[+foo,+bar]
+all: +All[+foo,+bar]
+neither: +Not[+foo,+bar]
+values[]: +Any[+foo,+bar]
+```
+
+`One`, `Any`, and `All` require at least two references. `Not` requires at
+least one; multiple references mean the value must match none of them. A list
+of combinator values uses the key-side `[]` suffix.
+
+Multiple references without brackets are an implicit conjunction. The first
+is the base and the rest are additional constraint groups:
+
+```yaml
+value: +base +constraint +other
+```
+
+Branches containing complete type definitions use explicit directives:
+
+```yaml
+value:
+  .oneof:
+  - +Str 1+
+  - name: +Str
+```
 
 
 ## Canonical Expansion
@@ -200,11 +290,17 @@ the source format clear. File suffixes `.ysc.yaml`, `.ysc.json`, and
 Canonical directives are emitted in this order:
 
 ```text
-.base .list .item .like .enum .only .mini .maxi
-.size .solo .uniq .null .init .titl .desc
+.base .list .item .oneof .anyof .allof .not .match .find
+.enum .const .range .size .solo .uniq .null .init .title
+.desc .also .with .when
 ```
 
 Unknown directives are errors. `.need` is reserved while requiredness is
-represented by the property key. `.also`, `.pick`, `.with`, and `.when` may
-be retained in explicit yamlschema, but an export that cannot represent one
-fails rather than silently discarding it.
+represented by the property key. `.also`, `.with`, and `.when` may be retained
+in explicit yamlschema, but an export that cannot represent one fails rather
+than silently discarding it. `.pick` is rejected with guidance to use
+`.oneof`.
+
+The former names `.titl`, `.just`, `.only`, `.like`, `.mini`, and `.maxi` are
+rejected with replacement diagnostics. Their replacements are `.title`,
+`.const`, `.match`, and `.range`.

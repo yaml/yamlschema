@@ -9,14 +9,17 @@ test::
   stdi: |
     {
       "properties": {
-        "label": {"enum": ["has space", "ok"]}
+        "label": {"enum": ["has space", "ok"]},
+        "symbol": {"enum": ["ok", "bad/value"]}
       },
-      "required": ["label"]
+      "required": ["label", "symbol"]
     }
   want: |
-    label:
+    label: +Str [has space,ok]
+    symbol:
+      .base: +Str
       .enum:
-      - has space
       - ok
+      - bad/value
 
 done:

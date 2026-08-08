@@ -10,12 +10,14 @@ test::
     {
       "properties": {
         "version": {"const": "v1"},
-        "kind":    {"const": "User"}
+        "kind":    {"const": "User"},
+        "fixed":   {"const": "User", "default": "User"}
       },
-      "required": ["version", "kind"]
+      "required": ["version", "kind", "fixed"]
     }
   want: |
-    version: v1
-    kind: User
+    version: +Str ==v1
+    kind: +Str ==User
+    fixed: +Str ==User =User
 
 done:

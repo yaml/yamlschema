@@ -4,7 +4,7 @@ use ys::taptest: :all
 
 test::
 
-- name: todo
+- name: any-of
   cmnd: bin/ysc -t ysc.yaml -
   stdi: |
     {
@@ -20,7 +20,9 @@ test::
     }
   want: |
     auth:
-      # TODO: anyOf
+      .anyof:
+      - token?: +Str
+      - api_key?: +Str
 
 - name: closed-object
   cmnd: bin/ysc -t ysc.yaml -
@@ -40,7 +42,7 @@ test::
       "additionalProperties": true
     }
   want: |
-    +Str*: +Any
+    +Str: +Any
 
 - name: typed-wildcard
   cmnd: bin/ysc -t ysc.yaml -
@@ -57,9 +59,6 @@ test::
     }
   want: |
     fixed?: +Int
-    +Str*:
-      .base: +Str
-      .size:
-      - 1
+    +Str: +Str 1+
 
 done:

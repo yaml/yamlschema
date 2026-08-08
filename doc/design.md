@@ -41,7 +41,7 @@ A mapping in a schema describes a mapping in the data:
 
 ```yaml
 name: +Str
-email?: /^\S+@\S+$/
+email?: +Str =~"\S+@\S+"
 address:
   street: +Str
   city: +Str
@@ -81,13 +81,13 @@ The succinct syntax avoids repeating type information when the constraint
 already implies it:
 
 ```yaml
-email: /^\S+@\S+$/      # string matching regex
-role: admin|user|guest  # enum
+email: +Str =~"\S+@\S+"  # whole-string regex match
+role: +Str [admin,user,guest]  # enum with explicit base
 port: 1..65535           # numeric range
 tags[1+]: +Str          # list of one or more strings
 ```
 
-The corresponding explicit form uses directives such as `.like`, `.enum`,
+The corresponding explicit form uses directives such as `.match`, `.enum`,
 `.size`, `.list`, and `.base`.
 
 
@@ -112,7 +112,7 @@ Built-in symbols are uppercase:
 +Float
 +Bool
 +Null
-+Map
++Map[+Type]
 ```
 
 User-defined symbols are normally lowercase:
@@ -155,18 +155,27 @@ The design keeps directive names short and regular.
 | --- | --- |
 | `.need` | Reserved; currently rejected in favor of key-side `?` |
 | `.base` | Base constraint or inherited symbol |
-| `.like` | Regex pattern; implies string |
+| `.match` | Whole-string regex pattern; `^` and `$` are implied |
+| `.find` | Regex search pattern; implies string |
 | `.enum` | Enumeration of allowed values |
+| `.const` | The one exact allowed value; JSON Schema `const` |
+| `.range` | Inclusive numeric range, with either bound optional |
 | `.size` | Number, string, list, or map size |
 | `.list` | Value is a sequence |
+| `.item` | Explicit sequence item type |
+| `.oneof` | Exactly one alternative must match |
+| `.anyof` | One or more alternatives must match |
+| `.allof` | Every alternative must match |
+| `.not` | The nested type must not match |
 | `.solo` | A scalar is also accepted where a list is declared |
-| `.also` | Alternate key names |
-| `.pick` | Mutually exclusive group alternatives |
-| `.with` | Co-dependent keys |
-| `.when` | Conditional requirement or constraint |
-| `.init` | Default value |
 | `.uniq` | List items must be unique |
 | `.null` | Null is accepted |
+| `.init` | Default value |
+| `.title` | Human-facing display title |
+| `.desc` | Description annotation |
+| `.also` | Alternate key names |
+| `.with` | Co-dependent keys |
+| `.when` | Conditional requirement or constraint |
 
 Meta directives are top-level schema metadata:
 
@@ -176,11 +185,26 @@ Meta directives are top-level schema metadata:
 | `.name` | Name of a document schema |
 | `.root` | Primary exported root type |
 | `.json` | JSON Schema interop metadata |
-| `.titl` | Human-facing display title |
+| `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
 
 
 ## Succinct Values
+
+A succinct value is a YAML plain scalar. A base reference is conventionally
+first, and labeled clauses can occur in any order. The scalar labels are
+`base`, `match`, `find`, `const`, `range`, `size`, `list`, `item`,
+`solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
+`enum:[...]` uses the compact enum grammar. Structural `.oneof`, `.anyof`,
+`.allof`, `.not`, `.with`, and `.when` values remain explicit.
+
+```yaml
+foo: desc:"Words" size:1-3 =~"a b" title:"Title" base:+Str
+```
+
+The canonical explicit form uses the period-prefixed directive names. The old
+names `titl`, `just`, `only`, and `like`, including their period-prefixed
+forms, are errors with diagnostics naming `title`, `const`, and `match`.
 
 ### Descriptions
 
@@ -211,9 +235,10 @@ The whole value is a YAML plain scalar.
 The quote characters are yamlschema syntax, not YAML quoting syntax.
 The description starts after the schema expression and opening double quote.
 It ends at the scalar's final double quote.
-The two outer quote characters are removed, while all characters between them
-are preserved unchanged.
-There is no escape syntax for internal double quotes.
+The two outer quote characters are removed. Inside them, `:\ ` represents
+colon-space and ` \#` represents space-hash so the containing YAML value can
+remain a plain scalar. These are exact triplets: `foo\ bar`, `\n`, and `\t`
+remain literal. Internal double quotes are not representable.
 List suffixes may follow the schema expression before the description.
 
 YAML plain-scalar folding is allowed:
@@ -236,18 +261,18 @@ name: +Str
 age: +Int
 ratio: +Float
 enabled: +Bool
-metadata: +Map
+metadata: +Map[+Any]
 anything: +Any
 ```
 
 
 ### Regex
 
-Regex values are delimited with `/`:
+Use `=~"..."` for a whole-string match. `match:"..."` is also accepted:
 
 ```yaml
-email: /^\S+@\S+$/
-zip: /^\d{5}(-\d{4})?$/
+email: +Str =~"\S+@\S+"
+zip: +Str =~"\d{5}(-\d{4})?"
 ```
 
 Equivalent explicit form:
@@ -255,46 +280,60 @@ Equivalent explicit form:
 ```yaml
 email:
   .base: +Str
-  .like: ^\S+@\S+$
+  .match: \S+@\S+
 zip:
-  .like: ^\d{5}(-\d{4})?$
+  .match: \d{5}(-\d{4})?
+```
+
+Use `find:"..."` for an unanchored search. `/pattern/` is its compact form
+when `pattern` contains neither whitespace nor `/`:
+
+```yaml
+word: /good/
+path: find:"usr/local"
 ```
 
 
 ### Enums
 
-Simple enum values can be written with `|`:
+Simple enum values use an explicit base and a compact list:
 
 ```yaml
-role: admin|user|guest
-level: LOW|MED|HIGH
+role: +Str [admin,user,guest]
+level: +Str [LOW,MED,HIGH]
+logLevel: +Str [debug,=info,warning,error,fatal]
 ```
 
 Equivalent explicit form:
 
 ```yaml
 role:
+  .base: +Str
   .enum: [admin, user, guest]
 level:
+  .base: +Str
   .enum: [LOW, MED, HIGH]
 ```
 
-Values that cannot safely be represented as pipe tokens use explicit `.enum`:
+Compact members may contain letters, digits, whitespace, `.`, `-`, `_`, and
+`+`. Whitespace surrounding members is trimmed and interior whitespace is
+preserved. A leading `=` marks the one member that is also the default. Quoted
+or otherwise punctuated values use explicit `.enum`:
 
 ```yaml
-label:
-  .enum:
-  - has space
-  - ok
+label: +Str [has space,ok]
+symbol:
+  .base: +Str
+  .enum: [ok, bad/value]
 ```
 
 
 ### Numeric Ranges
 
 ```yaml
-port: 1..65535
-age: 0..
-ratio: 0..1
+port: +Int 1..65535
+age: +Int 0..
+ratio: +Float 0..1
 ```
 
 Equivalent explicit form:
@@ -302,37 +341,39 @@ Equivalent explicit form:
 ```yaml
 port:
   .base: +Int
-  .mini: 1
-  .maxi: 65535
+  .range: 1..65535
 age:
   .base: +Int
-  .mini: 0
+  .range: 0..
 ratio:
   .base: +Float
-  .mini: 0
-  .maxi: 1
+  .range: 0..1
 ```
 
 
 ### Literal Constants
 
-A literal value can be used as a constant constraint:
+A base-qualified `==` clause is a constant constraint:
 
 ```yaml
-version: v1
-kind: User
+version: +Str ==v1
+kind: +Str ==User
+label: +Str =="foo bar"
 ```
 
 Equivalent explicit form:
 
 ```yaml
 version:
-  .base: v1
+  .base: +Str
+  .const: v1
 kind:
-  .base: User
+  .base: +Str
+  .const: User
 ```
 
-The current converter maps JSON Schema `const` values this way.
+`const:User` is the labeled alternative. `=User` is independently a default,
+so `+Str ==User =User` exports both `const` and `default`.
 
 
 ## Key Suffixes
@@ -384,20 +425,40 @@ quantity = n | n "-" m | n "+" | empty
 ## Wildcard Keys
 
 Mappings with declared keys are closed by default.
-Use the reserved `+Str*` key to allow otherwise-unmatched string keys and
+Use the reserved `+Str` key to allow otherwise-unmatched string keys and
 constrain their values:
 
 ```yaml
 labels:
-  +Str*: +Str
+  +Str: +Str
 config:
   known?: +Bool
-  +Str*: +Any
+  +Str: +Any
 ```
 
 The first mapping accepts any string key with a string value.
 The second accepts `known` plus any other string key with any value.
-A bare `+Map` remains an open arbitrary mapping.
+Pure arbitrary mappings use `+Map[+Any]`.
+
+The succinct typed-map form constrains values for otherwise-unmatched string
+keys:
+
+```yaml
+config: +Map[+Any]
+labels: +Map[+Str]
+custom: +Map[+value]
+```
+
+It expands to the existing canonical wildcard model:
+
+```yaml
+labels:
+  +Str: +Str
+```
+
+Bare `+Map` and `+Map[]` are errors; the value type is required. The supported
+form `+Map[+Value]` is shorthand for `+Map[+Str,+Value]`. The two-reference
+form is reserved for future YAML key schemas but is not implemented yet.
 
 
 ## Explicit Form
@@ -407,12 +468,11 @@ The explicit form represents all constraints with directives:
 ```yaml
 port:
   .base: +Int
-  .mini: 1
-  .maxi: 65535
+  .range: 1..65535
 
 email:
   .base: +Str
-  .like: ^\S+@\S+$
+  .match: \S+@\S+
 
 tags:
   .base: +Str
@@ -436,51 +496,50 @@ Custom definitions can inherit from other definitions:
 ```yaml
 +port:
   .base: +Int
-  .mini: 1
-  .maxi: 65535
+  .range: 1..65535
 
 +secure-port:
   .base: +port
-  .mini: 443
-  .maxi: 443
+  .range: 443..443
 ```
 
 Implicit typing applies where possible:
 
-- `.like` implies `+Str`.
+- `.match` and `.find` imply `+Str`.
 - `.enum` implies the common value type.
-- A mapping shape implies `+Map`.
+- A mapping shape implies the mapping type without emitting a base marker.
 - Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
 
 Use `.base` when a base constraint cannot be inferred or when inheriting from
 a custom definition.
 
 
-## Pick Groups
+## Schema Combinators
 
-A sequence of maps can describe mutually exclusive alternatives:
+Compact combinators contain type references:
 
 ```yaml
-+auth:
-- api_key: +Str
-- token: +Str
-- username: +Str
-  password: +Str
++scalar: +One[+Str,+Int]
++value: +Any[+foo,+bar]
++both: +All[+foo,+bar]
++neither: +Not[+foo,+bar]
 ```
 
-Equivalent explicit form:
+`One`, `Any`, and `All` require two or more references. `Not` requires one or
+more and excludes every listed type. Complete branch definitions use the
+explicit form:
 
 ```yaml
 +auth:
-  .pick:
+  .oneof:
   - api_key: +Str
   - token: +Str
   - username: +Str
     password: +Str
 ```
 
-This is the intended direction for JSON Schema `oneOf`, but the converter does
-not fully implement it yet.
+Multiple unbracketed references are conjunctive. The first becomes `.base` and
+the remaining references become `.allof` branches.
 
 
 ## Regex Composition
@@ -648,11 +707,10 @@ Example compiled shape:
 {
   "+port": {
     ".base": "+Int",
-    ".mini": 1,
-    ".maxi": 65535
+    ".range": "1..65535"
   },
   "+auth": {
-    ".pick": [
+    ".oneof": [
       {"api_key": {".base": "+Str"}},
       {"token": {".base": "+Str"}}
     ]
@@ -683,15 +741,16 @@ yamlschema.
 | `type: "number"` | `+Float` |
 | `type: "boolean"` | `+Bool` |
 | `type: "null"` | `+Null` |
-| `type: "object"` | `+Map` or a nested mapping shape |
+| `type: "object"` | `+Map[+Any]` or a nested mapping shape |
 | `properties` | Bare mapping keys |
 | `required` | Default required keys; omitted names get `?` |
-| `additionalProperties: true` | `+Str*: +Any` |
-| schema-valued `additionalProperties` | `+Str*: schema` |
+| `additionalProperties: true` | `+Map[+Any]` |
+| simple schema-valued `additionalProperties` | `+Map[+Type]` |
+| constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | Closed mapping; no wildcard |
-| `enum` | Pipe enum or `.enum` list |
-| `pattern` | Regex literal or `.like` |
-| `minimum` / `maximum` | Range scalar or `.mini` / `.maxi` |
+| `enum` | Compact enum or `.enum` list |
+| `pattern` | `.match` for outer `^...$`; otherwise `.find` or `/.../` |
+| `minimum` / `maximum` | Range scalar or `.range` |
 | `minLength` / `maxLength` | `.size` on strings |
 | `minItems` / `maxItems` | List suffix or `.size` |
 | `minProperties` / `maxProperties` | `.size` on maps |
@@ -700,7 +759,7 @@ yamlschema.
 | `const` | Literal value constraint |
 | `default` | `.init` |
 | `description` | Trailing `"description"` or `.desc` |
-| `title` | `.titl` |
+| `title` | `.title` |
 | `$id` | `.json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | `$ref` | `+name` symbol reference |
@@ -762,14 +821,14 @@ language design or implementation:
 
 ```yaml
 auth:
-  # TODO: oneOf
+  # TODO: if
 ```
 
 Current TODO keywords include:
 
 ```text
-allOf anyOf oneOf not if then else dependentRequired dependentSchemas
-patternProperties propertyNames prefixItems contains
+if then else dependentRequired dependentSchemas patternProperties
+propertyNames prefixItems contains
 unevaluatedItems unevaluatedProperties exclusiveMinimum exclusiveMaximum format
 ```
 
@@ -783,18 +842,17 @@ Implemented or directly represented by the design:
 - Nested object properties.
 - Closed shaped mappings and typed wildcard keys.
 - Regex patterns.
-- Pipe enums and explicit enums.
+- Compact base-qualified enums and explicit enums.
 - Numeric ranges.
 - String/list/map sizes.
 - Array item schemas for simple homogeneous arrays.
 - Unique arrays.
 - Constants and defaults.
+- `allOf`, `anyOf`, `oneOf`, and `not` combinators.
 - `$defs`, `definitions`, and `$ref`.
 
 Still open or incomplete:
 
-- `allOf`, `anyOf`, and `oneOf` semantics.
-- `not`.
 - `if` / `then` / `else`.
 - Dependency constraints.
 - Regex property names and pattern properties.

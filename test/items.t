@@ -30,4 +30,53 @@ test::
     triple[3]: +Int
     subset[1-3]: +Str
 
+- name: described-array-of-one-of-items
+  cmnd: bin/ysc -t ysc.yaml -
+  stdi: |
+    {
+      "properties": {
+        "imagePullSecrets": {
+          "type": "array",
+          "description": "List of image pull secrets",
+          "items": {
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "string", "minLength": 1}
+                },
+                "required": ["name"]
+              }
+            ]
+          }
+        }
+      }
+    }
+  want: |
+    imagePullSecrets?[]:
+      .oneof:
+      - +Str 1+
+      - name: +Str 1+
+      .desc: List of image pull secrets
+
+- name: described-array-of-any-items
+  cmnd: bin/ysc -t ysc.yaml -
+  stdi: |
+    {
+      "properties": {
+        "extraManifests": {
+          "type": "array",
+          "description": "Extra static manifests to deploy"
+        },
+        "extraTemplateManifests": {
+          "type": "array",
+          "description": "Extra templated manifests to deploy"
+        }
+      }
+    }
+  want: |
+    extraManifests?[]: +Any "Extra static manifests to deploy"
+    extraTemplateManifests?[]: +Any "Extra templated manifests to deploy"
+
 done:

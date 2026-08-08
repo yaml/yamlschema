@@ -17,24 +17,34 @@ test::
 - name: refs-and-regex-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    +email: /^\S+@\S+$/
+    +email: +Str =~"\S+@\S+"
 
     host: +Str
     admin?: +email
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"admin":{"$ref":"#\/$defs\/email"},"host":{"type":"string"}},"required":["host"],"additionalProperties":false,"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
 
+- name: match-find-and-regex-to-schema.json
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    full: =~"abc"
+    alias: match:"xyz"
+    found: find:"abc"
+    short: /abc/
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"alias":{"type":"string","pattern":"^xyz$"},"found":{"type":"string","pattern":"abc"},"full":{"type":"string","pattern":"^abc$"},"short":{"type":"string","pattern":"abc"}},"required":["full","alias","found","short"],"additionalProperties":false}
+
 - name: defs-only-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    +airflow: front-to-rear|rear-to-front
+    +airflow: +Str [front-to-rear,rear-to-front]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"$defs":{"airflow":{"type":"string","enum":["front-to-rear","rear-to-front"]}}}
 
-- name: pipe.enum-to-schema.json
+- name: compact-enum-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    role: admin|user|guest
+    role: +Str [admin,user,guest]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"role":{"type":"string","enum":["admin","user","guest"]}},"required":["role"],"additionalProperties":false}
 
@@ -50,8 +60,7 @@ test::
   stdi: |
     port:
       .base: +Int
-      .mini: 1
-      .maxi: 65535
+      .range: 1..65535
       .init: 8080
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"port":{"type":"integer","default":8080,"minimum":1,"maximum":65535}},"required":["port"],"additionalProperties":false}
@@ -68,11 +77,11 @@ test::
 - name: annotations-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    .titl: Arrays
+    .title: Arrays
     .desc: Arrays of strings and objects
     name:
       .base: +Str
-      .titl: Full name
+      .title: Full name
       .desc: Display name.
     .json:
       $id: https://example.com/arrays.schema.json
@@ -82,14 +91,14 @@ test::
 - name: wildcard-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    +Str*: +Str
+    +Str: +Str
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":{"type":"string"}}
 
 - name: any-wildcard-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    +Str*: +Any
+    +Str: +Any
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":{}}
 
@@ -98,7 +107,7 @@ test::
   stdi: |
     +label: +Str
 
-    +Str*: +label
+    +Str: +label
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":{"$ref":"#\/$defs\/label"},"$defs":{"label":{"type":"string"}}}
 
@@ -107,14 +116,14 @@ test::
   stdi: |
     server:
       port: +Int
-    data: +Map
+    data: +Map[+Any]
     labels:
       fixed?: +Str
-      +Str*:
+      +Str:
         .base: +Str
         .size: 1-20
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object"},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object","additionalProperties":{}},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
 
 - name: reject-additional-properties-directive
   cmnd: |
@@ -126,7 +135,7 @@ test::
       printf "%s\n" "$output" | sed -n 1p
     '
   want: |
-    ysc: unsupported yamlschema directive: -additionalProperties; use +Str*
+    ysc: unsupported yamlschema directive: -additionalProperties; use +Str
 
 - name: reject-dash-directive
   cmnd: |
@@ -150,7 +159,7 @@ test::
       printf "%s\n" "$output" | sed -n 1p
     '
   want: |
-    ysc: unsupported yamlschema directive: .Name; use .titl
+    ysc: unsupported yamlschema directive: .Name; use .title
 
 - name: pretty-schema.json
   cmnd: bin/ysc -t schema.json -

@@ -17,9 +17,38 @@ test::
       "required": ["port", "age", "ratio", "debt"]
     }
   want: |
-    port: 1..65535
-    age: 0..
-    ratio: 0..1
-    debt: ..-1
+    port: +Int 1..65535
+    age: +Int 0..
+    ratio: +Float 0..1
+    debt: +Int ..-1
+
+- name: range-expansion
+  cmnd: bin/ysc -t yscj -
+  stdi: |
+    port: +Int 1..65535
+    age: range:0..
+    ratio:
+      .base: +Float
+      .range: 0..1
+    debt: +Int range:..-1
+  want: |
+    {
+      "port": {
+        ".base": "+Int",
+        ".range": "1..65535"
+      },
+      "age": {
+        ".base": "+Int",
+        ".range": "0.."
+      },
+      "ratio": {
+        ".base": "+Float",
+        ".range": "0..1"
+      },
+      "debt": {
+        ".base": "+Int",
+        ".range": "..-1"
+      }
+    }
 
 done:

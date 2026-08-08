@@ -35,17 +35,17 @@ test::
       "required": ["name", "phone", "address"]
     }
   want: |
-    +phone: /^\+?[0-9\s\-()]{7,20}$/
+    +phone: +Str =~"\+?[0-9\s\-()]{7,20}"
 
     name: +Str
-    email?: /^\S+@\S+$/
+    email?: +Str =~"\S+@\S+"
     phone: +phone
     phone2?: +phone
     address:
       street: +Str
       city: +Str
-      state: /^[A-Z]{2}$/
-      zip: /^\d{5}(-\d{4})?$/
+      state: +Str =~"[A-Z]{2}"
+      zip: +Str =~"\d{5}(-\d{4})?"
       country?: +Str
 
 done:

@@ -7,14 +7,14 @@
 # it via yaml/dump, and post-processes the result for `# TODO` comments and
 # the blank line separator between `$defs` and the document body.
 #
-# Feature scope (v1): the 15 "direct mapping" features from the plan's
-# JSON Schema Mapping table. Features requiring further design (oneOf,
-# allOf, not, if/then/else, patternProperties, etc.) are emitted as a
-# `# TODO: <keyword>` comment so the user can spot them.
+# Features requiring further design (if/then/else, patternProperties,
+# etc.) are emitted as a `# TODO: <keyword>` comment so the user can spot
+# them.
 
 VERSION =: '0.1.0'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
-WILDCARD-KEY =: '+Str*'
+WILDCARD-KEY =: '+Str'
+LEGACY-WILDCARD-KEY =: '+Str*'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) [INPUT]
          ysc -F, --fmt [INPUT]
@@ -348,7 +348,7 @@ defn indent(width):
 defn expand-ysc(doc):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
-  metadata =: +['.from', '.name', '.root', '.json', '.titl', '.desc']
+  metadata =: +['.from', '.name', '.root', '.json', '.title', '.desc']
   result =: reduce(\(put-present(_1 _2 doc)) array-map() metadata)
   entries =: doc.filter(\(_1.0:S.in?(metadata).!))
   reduce expand-doc-entry: result entries
@@ -359,7 +359,9 @@ defn expand-doc-entry(result entry):
   cond:
     key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
+    renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
+    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     key =~ /^\./:
       expand-top-directive: result key value
@@ -371,7 +373,7 @@ defn expand-doc-entry(result entry):
       add-expanded-field: result key value
 
 defn top-directive?(key):
-  key.in?(['.from', '.name', '.root', '.json', '.titl', '.desc'])
+  key.in?(['.from', '.name', '.root', '.json', '.title', '.desc'])
 
 defn expand-top-directive(result key value):
   when-not top-directive?(key):
@@ -410,27 +412,24 @@ defn expand-type-map(value):
     expand-shape-type: value
 
 defn expand-shape-type(value):
-  result =: array-map() + {'.base' '+Map'}
-  reduce expand-shape-entry: result value
+  reduce expand-shape-entry: array-map() value
 
 defn expand-shape-entry(result entry):
   key =: entry.0:S
-  if key == WILDCARD-KEY:
-    result +: +{key expand-type(entry.1)}
-    add-expanded-field: result key entry.1
+  cond:
+    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
+    key == WILDCARD-KEY: result + {key expand-type(entry.1)}
+    else: add-expanded-field(result key entry.1)
 
 defn expand-explicit-type(value):
+  shaped =: value:keys.some(\(_ !~ /^\./))
+  old-map-marker =: shaped && value.'.base'.eq('+Map')
   base =:
-    if value.has?('.base'):
+    if value.has?('.base') && old-map-marker.!:
       expand-tight: value.'.base'
       array-map:
   result =: reduce(expand-explicit-entry base value)
-  has-fields =:
-    result:keys.some(\(_ !~ /^\./))
-  needs-base =: has-fields && result.has?('.base').!
-  if needs-base:
-    ordered-directives(result + {'.base' '+Map'})
-    ordered-directives(result)
+  ordered-directives: result
 
 defn expand-explicit-entry(result entry):
   key val =: entry
@@ -439,7 +438,9 @@ defn expand-explicit-entry(result entry):
     key == '.base': result
     key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
+    renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
+    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     key =~ /^\./:
       expand-explicit-directive: result key val
@@ -450,38 +451,52 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.like', '.enum', '.only', '.mini', '.maxi', '.size',
+    +['.match', '.find', '.enum', '.const', '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
-     '.titl', '.desc', '.also', '.pick', '.with', '.when']
+     '.oneof', '.anyof', '.allof', '.not',
+     '.title', '.desc', '.also', '.with', '.when']
   key: .in?(directives)
 
 defn expand-explicit-directive(result key value):
   when-not type-directive?(key):
     reject-unknown-directive: key
   normalized =:
-    if result.has?('.base') && key.in?(['.enum', '.only']):
-      then: +{key value}
+    cond:
+      key == '.range': range-block(value result.'.base')
+      result.has?('.base') && key.in?(['.enum', '.const']): +{key value}
       else: normalize-directive(key value)
   normalized =: add-implied-directive-base(normalized key value result)
   merge-directives: result normalized "directive $key"
 
 defn add-implied-directive-base(normalized key value result):
   missing =: result.has?('.base').! && normalized.has?('.base').!
-  bases =: +{'.like' '+Str', '.list' '+Any'}
-  numeric =: key.in?(['.mini', '.maxi']).when(base-for-value(value))
-  base =: missing.when(bases.$key || numeric)
+  bases =: +{'.match' '+Str', '.find' '+Str', '.list' '+Any'}
+  base =: missing.when(bases.$key)
   if base:
     then: normalized + {'.base' base}
     else: normalized
 
 defn normalize-directive(key value):
   case key:
-    '.like': +{key regex-pattern(value)}
+    '.match': +{key regex-pattern(value)}
+    '.find': +{key regex-pattern(value)}
     '.size': +{key normalize-size(value)}
     '.item': +{key expand-type(value)}
+    '.oneof': +{key expand-combinator-sequence(key value)}
+    '.anyof': +{key expand-combinator-sequence(key value)}
+    '.allof': +{key expand-combinator-sequence(key value)}
+    '.not': +{key expand-type(value)}
     '.enum': inferred-directive(key value)
-    '.only': inferred-directive(key value)
+    '.const': inferred-directive(key value)
     else: +{key value}
+
+defn expand-combinator-sequence(key value):
+  when-not sequential?(value):
+    usage: "yamlschema $key requires a sequence of type definitions"
+  values =: vec(value)
+  when values:empty?:
+    usage: "yamlschema $key requires at least one type definition"
+  vec: values.map(expand-type)
 
 defn inferred-directive(key value):
   result =: +{key value}
@@ -496,9 +511,10 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.base', '.list', '.item', '.like', '.enum', '.only',
-     '.mini', '.maxi', '.size', '.solo', '.uniq', '.null',
-     '.init', '.titl', '.desc', '.also', '.pick', '.with', '.when']
+    +['.base', '.list', '.item', '.oneof', '.anyof', '.allof', '.not',
+     '.match', '.find', '.enum', '.const',
+     '.range', '.size', '.solo', '.uniq', '.null',
+     '.init', '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) array-map() order)
   reduce put-non-directive: result value
 
@@ -521,58 +537,68 @@ defn reject-need-directive():
 
 defn expand-tight(value):
   if string?(value):
-    then:
-      parts =: split-tight-annotations(value)
-      core =: expand-tight-core(parts.core)
-      merge-directives: core parts.directives 'tight expression'
+    expand-tight-string: value
     else: literal-block(value)
 
-defn split-tight-annotations(value):
-  state =: +{'core' value, 'directives' array-map()}
+defn expand-tight-string(value):
   when value =~ /\s+'[^']*'$/:
     usage: 'single-quoted descriptions are unsupported; use "description"'
-  state =: take-description(state)
-  state =: take-title(state)
-  take-default: state
-
-defn take-description(state):
-  match =: re-matches(/^(.*?)\s+"([^"]*)"$/ state.core)
-  if match:
+  when value =~ /^\/.*[ \t].*\/(?:\s|$)/:
+    usage: 'regex literals cannot contain whitespace; use find:"..."'
+  tokens =: tight-tokens(value)
+  when tokens:empty?:
+    usage: 'empty yamlschema type expression'
+  bases =: tokens.filter(base-primary-token?):vec
+  if bases:seq:
     then:
-      directives =: state.directives + {'.desc' match.2}
-      state +: +{'core' match.1, 'directives' directives}
-    else: state
+      primary =: bases.0
+      result =: expand-primary-token(primary)
+      rest =: remove-first-token(tokens primary)
+      reduce expand-tight-token: result rest
+    else:
+      result =: expand-primary-token(tokens.0)
+      reduce expand-tight-token: result vec(tokens:rest)
 
-defn take-title(state):
-  match =: re-matches(/^(.*?)\s+titl:"([^"]*)"$/ state.core)
-  if match:
-    then:
-      directives =: +{'.titl' match.2} + state.directives
-      state +: +{'core' match.1, 'directives' directives}
-    else: state
+defn remove-first-token(tokens target):
+  state =: +{'found' false, 'tokens' []}
+  state =: reduce(\(remove-first-token-step(_1 _2 target)) state tokens)
+  =>: state.tokens
 
-defn take-default(state):
-  match =: re-matches(/^(.*?)\s+=(?:"([^"]*)"|(\S+))$/ state.core)
-  if match:
-    then:
-      token =: match.2
-      token =:
-        if nil?(match.3):
-          token
-          parse-yaml-scalar(match.3)
-      directives =: +{'.init' token} + state.directives
-      state +: +{'core' match.1, 'directives' directives}
-    else: state
+defn remove-first-token-step(state token target):
+  if state.found.! && (token == target):
+    then: state + {'found' true}
+    else: state + {'tokens' (state.tokens + token)}
 
-defn parse-yaml-scalar(token):
-  token:yaml/load
+defn tight-tokens(value):
+  pattern =:
+    re-pattern:
+      str: +
+        '\+(?:One|Any|All|Not)\[[^\]]*\]'
+        '|(?:[A-Za-z]+:|=~|==|=)?"[^"]*"'
+        '|(?:enum:)?\[[^\]]*\]|\S+'
+  tokens =: vec(re-seq(pattern value))
+  quote =: C(34):S
+  bad-quote =:
+    tokens.some(\(quote.in?(_) &&
+      tight-token-quoted?(_).! &&
+      compact-enum-token?(_).!))
+  when bad-quote:
+    usage: 'tight quoted values cannot contain a double quote'
+  =>: tokens
 
-defn expand-tight-core(text):
-  text =: text:trim
-  tokens =: text.split(/\s+/)
-  first =: tokens.0
-  rest =: vec(tokens:rest)
-  primary =: parse-primary(first)
+defn base-primary-token?(token):
+  normal =: token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\[[^\]]*\])?~?$/
+  primary =: compact-combinator-token?(token) ||
+    typed-map-primary-token?(token) || normal
+  primary ||: token.starts?('base:')
+
+defn typed-map-primary-token?(token):
+  token =~ /^(?:base:)?\+Map\[\+[A-Za-z_][A-Za-z0-9_\/-]*\](?:\[[^\]]*\])?~?$/
+
+defn expand-primary-token(token):
+  when compact-enum-token?(token):
+    usage: 'compact enum requires a preceding base reference'
+  primary =: parse-primary(token)
   result =: primary.block
   result =:
     if primary.suffix:
@@ -580,15 +606,79 @@ defn expand-tight-core(text):
         suffix =: list-directives(primary.suffix)
         merge-directives: result suffix 'value list suffix'
       else: result
-  result =:
-    if primary.null:
-      then: merge-directives(result {'.null' true} 'nullable suffix')
-      else: result
-  reduce expand-tight-token: result rest
+  if primary.null:
+    then: merge-directives(result {'.null' true} 'nullable suffix')
+    else: result
+
+defn parse-yaml-scalar(token):
+  token:yaml/load
 
 defn parse-primary(token):
   null =: token.ends?('~')
   token =: null.if(token.replace(/~$/) token)
+  pattern =:
+    /^(?:base:)?\+Map\[(\+[A-Za-z_][A-Za-z0-9_\/-]*)\](\[[^\]]*\])?$/
+  map-match =: re-matches(pattern token)
+  cond:
+    compact-combinator-token?(token):
+      compact-combinator-primary(token null)
+    map-match: typed-map-primary(map-match null)
+    map-parameter-token?(token): reject-map-parameters(token)
+    else: normal-primary(token null)
+
+defn map-parameter-token?(token):
+  token =~ /^(?:base:)?\+Map\[[^\]]*\](?:\[[^\]]*\])?$/
+
+defn reject-map-parameters(token):
+  body =: token.replace(/^(?:base:)?\+Map\[/).replace(/\].*$/)
+  if ','.in?(body):
+    usage: '+Map[+Key,+Value] is reserved but not supported yet'
+    usage: '+Map requires exactly one value type reference'
+
+defn compact-combinator-token?(token):
+  match =: re-matches(/^\+(One|Any|All|Not)\[(.*)\]~?$/ token)
+  when match:
+    name =: match.1
+    body =: match.2:trim
+    if name == 'Any':
+      body.starts?('+')
+      true
+
+defn compact-combinator-primary(token null):
+  match =: re-matches(/^\+(One|Any|All|Not)\[(.*)\]$/ token)
+  name =: match.1
+  members =: compact-combinator-members(name match.2)
+  directive =: +{'One' '.oneof', 'Any' '.anyof',
+                  'All' '.allof', 'Not' '.not'}.$name
+  branches =: vec(members.map(expand-type))
+  block =:
+    if name == 'Not':
+      then:
+        negated =:
+          if members.# == 1:
+            then: branches.0
+            else: +{'.anyof' branches}
+        =>: +{directive negated}
+      else: +{directive branches}
+  =>: +{'block' block, 'suffix' nil, 'null' null}
+
+defn compact-combinator-members(name body):
+  members =: body.split(',').map(trim):vec
+  minimum =: name.eq('Not').if(1 2)
+  too-few =: body:trim:empty? || (members.# < minimum)
+  when too-few:
+    requirement =:
+      minimum.eq(1).if('one type reference' 'two type references')
+    usage: "+$name requires at least $requirement"
+  when-not members.every?(type-symbol?):
+    usage: "+$name accepts only type references"
+  =>: members
+
+defn typed-map-primary(match null):
+  +{'block' typed-map-block(match.1),
+    'suffix' match.2, 'null' null}
+
+defn normal-primary(token null):
   match =: re-matches(/^(.*?)(\[[^\]]*\])$/ token)
   suffix =: match.when(match.2)
   token =: match.if(match.1 token)
@@ -596,46 +686,242 @@ defn parse-primary(token):
     +{'block' primary-block(token), 'suffix' suffix, 'null' null}
   =>: result
 
+defn typed-map-block(value-type):
+  +{WILDCARD-KEY expand-type(value-type)}
+
 defn primary-block(token):
   cond:
+    token.starts?('base:'): labeled-base-block(token)
+    token.starts?('=~'):
+      +{'.base' '+Str', '.match'
+        tight-string-value(token.replace(/^=~/))}
+    token.starts?('match:'):
+      +{'.base' '+Str', '.match' tight-label-string(token)}
+    token.starts?('find:'):
+      +{'.base' '+Str', '.find' tight-label-string(token)}
+    token.starts?('range:'):
+      range-block(tight-label-raw(token) nil)
+    token.starts?('const:') || token.starts?('=='):
+      usage: 'const requires a preceding base reference'
+    old-tight-keyword?(token): reject-old-tight-keyword(token)
+    token == '+Map': reject-bare-map()
     type-symbol?(token): +{'.base' token}
-    token =~ /^\/.*\/$/:
-      +{'.base' '+Str', '.like' regex-pattern(token)}
-    token =~ /\|/: enum-block(token nil)
+    regex-literal-token?(token):
+      +{'.base' '+Str', '.find' regex-pattern(token)}
+    slash-delimited-token?(token):
+      usage: 'regex literals cannot contain /; use find:"..."'
+    compact-enum-token?(token):
+      usage: 'compact enum requires a preceding base reference'
+    token =~ /\|/:
+      usage: 'pipe enums are unsupported; use +Base [a,b]'
     range-literal?(token): range-block(token nil)
     else: literal-block(parse-yaml-scalar(token))
 
 defn expand-tight-token(result token):
   cond:
-    token =~ /^\/.*\/$/:
+    type-symbol?(token): append-allof-reference(result token)
+    token.starts?('=~'):
       merge-directives:
-        result {'.like' regex-pattern(token)} 'pattern clause'
+        result {'.match' tight-string-value(token.replace(/^=~/))}
+        'match clause'
+    regex-literal-token?(token):
+      merge-directives:
+        result {'.find' regex-pattern(token)} 'pattern clause'
+    slash-delimited-token?(token):
+      usage: 'regex literals cannot contain /; use find:"..."'
     range-literal?(token):
       merge-directives: result range-block(token result.'.base') 'range clause'
+    compact-enum-token?(token):
+      merge-directives:
+        result compact-enum-block(token result.'.base') 'enum clause'
+    token.starts?('=='):
+      raw =: token.replace(/^=/).replace(/^=/)
+      merge-directives:
+        result const-block(raw result.'.base') 'const clause'
+    token.starts?('='):
+      merge-directives:
+        result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
+    tight-quoted?(token):
+      merge-directives:
+        result {'.desc' tight-string-value(token)} 'description clause'
+    labeled-tight-token?(token):
+      merge-directives:
+        result labeled-tight-block(token result) "$(tight-label(token)) clause"
     token =~ /\|/:
-      merge-directives: result enum-block(token result.'.base') 'enum clause'
+      usage: 'pipe enums are unsupported; use +Base [a,b]'
     size-token?(token):
       merge-directives:
         result {'.size' normalize-size(token)} 'size clause'
     else:
       usage: "invalid or out-of-order yamlschema clause: $token"
 
+defn append-allof-reference(result token):
+  branches =: result.'.allof' || []
+  ordered-directives:
+    result + {'.allof' vec(branches + expand-type(token))}
+
+defn regex-literal-token?(token):
+  token =~ /^\/[^\/\s]*\/$/
+
+defn slash-delimited-token?(token):
+  token.starts?('/') && token.ends?('/')
+
 defn type-symbol?(token):
   token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
 
-defn literal-block(value):
-  +{'.base' infer-base([value]), '.only' value}
+defn labeled-base-block(token):
+  base =: tight-label-string(token)
+  when base == '+Map':
+    reject-bare-map:
+  when-not type-symbol?(base):
+    usage: "invalid yamlschema base reference: $base"
+  =>: +{'.base' base}
 
-defn enum-block(token base):
-  raw =: token.split(/\|/)
+defn reject-bare-map():
+  usage: 'bare +Map is unsupported; use +Map[+Any]'
+
+defn compact-enum-token?(token):
+  token =~ /^(?:enum:)?\[[^\]]*\]$/
+
+defn labeled-tight-token?(token):
+  token =~ /^[A-Za-z]+:/
+
+defn tight-label(token):
+  token.replace(/:.*$/)
+
+defn tight-label-raw(token):
+  token.replace(/^[^:]+:/)
+
+defn tight-quoted?(value):
+  text =: value:S
+  quote =: C(34):S
+  if text.# >= 2:
+    then:
+      body =: text.replace(/^./).replace(/.$/)
+      (text.0:S == quote) &&:
+        (text:last:S == quote) && quote.in?(body).!
+    else: false
+
+defn tight-token-quoted?(token):
+  raw =:
+    cond:
+      token.starts?('=~'): token.replace(/^=~/)
+      token.starts?('=='): token.replace(/^=/).replace(/^=/)
+      token.starts?('='): token.replace(/^=/)
+      labeled-tight-token?(token): tight-label-raw(token)
+      else: token
+  tight-quoted?: raw
+
+defn tight-string-value(raw):
+  if tight-quoted?(raw):
+    decode-tight-string(raw.replace(/^./).replace(/.$/)) raw
+
+defn tight-data-value(raw):
+  if tight-quoted?(raw):
+    tight-string-value: raw
+    parse-yaml-scalar: raw
+
+defn tight-label-string(token):
+  tight-string-value: tight-label-raw(token)
+
+defn old-tight-keyword?(token):
+  labeled-tight-token?(token) &&
+  tight-label(token).in?(qw(titl just only like mini maxi pick))
+
+defn reject-old-tight-keyword(token):
+  key =: tight-label(token)
+  replacements =: +{'titl' 'title', 'just' 'const',
+                    'only' 'const', 'like' 'match',
+                    'mini' 'range', 'maxi' 'range',
+                    'pick' 'oneof'}
+  usage: "unsupported yamlschema keyword: $key; use $(replacements.$key)"
+
+defn labeled-tight-block(token result):
+  when old-tight-keyword?(token):
+    reject-old-tight-keyword: token
+  name =: tight-label(token)
+  raw =: tight-label-raw(token)
+  key =: ".$name"
+  case name:
+    'base': labeled-base-block(token)
+    'match': +{key tight-string-value(raw)}
+    'find': +{key tight-string-value(raw)}
+    'const': const-block(raw result.'.base')
+    'enum': usage('enum requires a bracketed value list')
+    'range': range-block(raw result.'.base')
+    'size': +{key normalize-size(tight-string-value(raw))}
+    'list': boolean-label-block(key raw)
+    'item': +{key expand-type(tight-string-value(raw))}
+    'solo': boolean-label-block(key raw)
+    'uniq': boolean-label-block(key raw)
+    'null': boolean-label-block(key raw)
+    'init': +{key tight-data-value(raw)}
+    'title': +{key tight-string-value(raw)}
+    'desc': +{key tight-string-value(raw)}
+    'also': +{key tight-string-value(raw)}
+    'oneof': structural-tight-label-error(name)
+    'anyof': structural-tight-label-error(name)
+    'allof': structural-tight-label-error(name)
+    'not': structural-tight-label-error(name)
+    'with': structural-tight-label-error(name)
+    'when': structural-tight-label-error(name)
+    else: usage("unsupported yamlschema keyword $name")
+
+defn boolean-label-block(key raw):
+  value =: tight-data-value(raw)
+  when-not boolean?(value):
+    usage: "yamlschema $key requires true or false"
+  =>: +{key value}
+
+defn structural-tight-label-error(name):
+  usage: "yamlschema $name requires an explicit structural value"
+
+defn const-block(raw base):
+  when-not base:
+    usage: 'const requires a preceding base reference'
+  when raw.empty?:
+    usage: 'const requires a value'
+  text =: tight-string-value(raw)
+  value =:
+    if base.eq('+Str') || tight-quoted?(raw):
+      text parse-yaml-scalar(text)
+  =>: +{'.const' value}
+
+defn literal-block(value):
+  +{'.base' infer-base([value]), '.const' value}
+
+defn compact-enum-block(token base):
+  when-not base:
+    usage: 'compact enum requires a preceding base reference'
+  body =: token.replace(/^enum:/).replace(/^\[/).replace(/\]$/)
+  when body:trim:empty?:
+    usage: 'compact enum must contain at least one value'
+  raw =: body.split(',').map(trim):vec
+  defaults =: raw.filter(\(_.starts?('=')))
+  when defaults.# > 1:
+    usage: 'compact enum can mark only one default'
+  members =: raw.map(\(_.replace(/^=/):trim)):vec
+  when members.some(empty?):
+    usage: 'compact enum default must have a value'
+  when members.some(\(_.starts?('"'))):
+    usage: 'quoted values are not allowed in compact enum; use .enum'
+  when-not members.every?(safe-compact-enum-token?):
+    prefix =: 'compact enum values allow alphanumerics, whitespace, '
+    usage: "$prefix.-_+; use .enum"
   values =:
-    if base == '+Str':
-      raw
-      vec(raw.map(parse-yaml-scalar))
-  inferred =: base || infer-base(values)
-  if base:
-    then: +{'.enum' values}
-    else: +{'.base' inferred, '.enum' values}
+    if base.eq('+Str'):
+      members
+      vec(members.map(parse-yaml-scalar))
+  result =: +{'.enum' values}
+  if defaults:seq:
+    then:
+      token =: defaults.0.replace(/^=/):trim
+      value =: base.eq('+Str').if(token parse-yaml-scalar(token))
+      result +: +{'.init' value}
+    else: result
+
+defn safe-compact-enum-token?(token):
+  token =~ /^[A-Za-z0-9._+\-\s]+$/
 
 defn infer-base(values):
   bases =: values.map(base-for-value):set
@@ -656,6 +942,9 @@ defn base-for-value(value):
     else: '+Any'
 
 defn range-block(token base):
+  token =: token:S
+  when-not range-literal?(token):
+    usage: "invalid yamlschema range: $token"
   parts =: token.split(/\.\./)
   lo =: parts.0
   hi =: parts.1
@@ -664,11 +953,7 @@ defn range-block(token base):
     if base:
       then: +{}
       else: +{'.base' inferred}
-  result =:
-    lo:empty?.if(result (result + {'.mini' scalar-number(lo)}))
-  result =:
-    hi:empty?.if(result (result + {'.maxi' scalar-number(hi)}))
-  =>: result
+  result +: +{'.range' token}
 
 defn list-directives(suffix):
   body =: suffix.replace(/^\[/).replace(/\]$/)
@@ -739,6 +1024,7 @@ defn ysc-doc-step(state entry):
   key =: entry.0:S
   value =: entry.1
   cond:
+    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
@@ -769,7 +1055,7 @@ defn add-property-schema(state key value):
 defn add-schema-meta(result key value):
   case key:
     '.json': result.add-json-meta(value)
-    '.titl': result + {'title' value}
+    '.title': result + {'title' value}
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
     '.additionalProperties':
@@ -786,10 +1072,24 @@ defn reject-legacy-directive(key):
   usage: "unsupported yamlschema directive: $key; use $replacement"
 
 defn reject-additional-properties(key):
-  usage: "unsupported yamlschema directive: $key; use +Str*"
+  usage: "unsupported yamlschema directive: $key; use +Str"
+
+defn reject-legacy-wildcard():
+  usage: 'unsupported yamlschema wildcard: +Str*; use +Str'
 
 defn reject-title-directive(key):
-  usage: "unsupported yamlschema directive: $key; use .titl"
+  usage: "unsupported yamlschema directive: $key; use .title"
+
+defn renamed-directive?(key):
+  key.in?(['.titl', '.just', '.only', '.like', '.mini', '.maxi',
+           '.pick'])
+
+defn reject-renamed-directive(key):
+  replacements =:
+    +{'.titl' '.title', '.just' '.const',
+      '.only' '.const', '.like' '.match',
+      '.mini' '.range', '.maxi' '.range', '.pick' '.oneof'}
+  usage: "unsupported yamlschema directive: $key; use $(replacements.$key)"
 
 defn add-json-meta(result value):
   if map?(value) && value.'$id':
@@ -841,6 +1141,7 @@ defn initial-object-state()::
 defn ysc-object-step(state entry):
   key =: entry.0:S
   cond:
+    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
@@ -863,7 +1164,7 @@ defn ysc-block-to-schema(value):
   add-null-schema: result value.'.null'
 
 defn reject-unexportable-directives(value):
-  unsupported =: +['.also', '.pick', '.with', '.when']
+  unsupported =: +['.also', '.with', '.when']
   each key unsupported:
     when contains?(value key):
       usage: "cannot export yamlschema directive to JSON Schema: $key"
@@ -877,17 +1178,36 @@ defn canonical-item-schema(value):
     if contains?(value '.item'):
       ysc-value-to-schema: value.'.item'
       else: result
-  result =: map-put-if(result contains?(value '.like')
-    'pattern' value.'.like')
+  result =: map-put-if(result contains?(value '.match')
+    'pattern' anchored-pattern(value.'.match'))
+  result =: map-put-if(result contains?(value '.find')
+    'pattern' value.'.find')
   result =: map-put-if(result contains?(value '.enum')
     'enum' value.'.enum')
   result =:
-    if contains?(value '.only'):
-      then: dissoc(result 'type') + {'const' value.'.only'}
+    if contains?(value '.const'):
+      then: dissoc(result 'type') + {'const' value.'.const'}
       else: result
-  result =: map-put-if(result contains?(value '.mini')
-    'minimum' value.'.mini')
-  map-put-if: result contains?(value '.maxi') 'maximum' value.'.maxi'
+  result =:
+    if contains?(value '.range'):
+      then: result + dissoc(range-to-schema(value.'.range') 'type')
+      else: result
+  add-canonical-combinators: result value
+
+defn add-canonical-combinators(result value):
+  result =: add-canonical-combinator(result value '.oneof' 'oneOf')
+  result =: add-canonical-combinator(result value '.anyof' 'anyOf')
+  result =: add-canonical-combinator(result value '.allof' 'allOf')
+  if contains?(value '.not'):
+    then: result + {'not' ysc-value-to-schema(value.'.not')}
+    else: result
+
+defn add-canonical-combinator(result value directive keyword):
+  if contains?(value directive):
+    then:
+      schemas =: vec(value.$directive.map(ysc-value-to-schema))
+      result +: +{keyword schemas}
+    else: result
 
 defn canonical-shape-schema(value):
   entries =: value.filter(\(_1.0:S !~ /^\./))
@@ -933,8 +1253,8 @@ defn add-canonical-bounds(result lo hi min-key max-key):
 defn add-canonical-annotations(result value):
   result =: map-put-if(result contains?(value '.init')
     'default' value.'.init')
-  result =: map-put-if(result contains?(value '.titl')
-    'title' value.'.titl')
+  result =: map-put-if(result contains?(value '.title')
+    'title' value.'.title')
   map-put-if:
     result contains?(value '.desc') 'description' value.'.desc'
 
@@ -961,7 +1281,11 @@ defn ysc-block-step(state entry):
   case key:
     '.base':
       state.add-base-schema(val)
-    '.like':
+    '.match':
+      result +=: +{'type' 'string'}
+      result +=: +{'pattern' anchored-pattern(val)}
+      state +: +{'result' result}
+    '.find':
       result +=: +{'type' 'string'}
       result +=: +{'pattern' regex-pattern(val)}
       state +: +{'result' result}
@@ -973,7 +1297,7 @@ defn ysc-block-step(state entry):
       state + {'result' (result + {'type' 'array'})}
     '.uniq':
       state + {'result' (result + {'uniqueItems' val})}
-    '.titl':
+    '.title':
       state + {'result' (result + {'title' val})}
     '.Name':
       reject-title-directive: key
@@ -983,14 +1307,14 @@ defn ysc-block-step(state entry):
       state + {'item' ysc-value-to-schema(val)}
     '.size':
       state + {'result' add-size(result val)}
-    '.mini':
-      state + {'result' (result + {'minimum' val})}
-    '.maxi':
-      state + {'result' (result + {'maximum' val})}
+    '.range':
+      state +:
+        +{'result' (result + dissoc(range-to-schema(val) 'type'))}
     '.additionalProperties':
       reject-additional-properties: key
     else:
       cond:
+        key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
         key == WILDCARD-KEY:
           state +::
             wildcard:: true
@@ -1058,7 +1382,7 @@ defn ysc-bare-scalar-to-schema(value):
     s == '+Any': +{}
     s =~ /^\+[A-Za-z_][A-Za-z0-9_-]*$/:
       ref-schema(s)
-    s =~ /^\/.*\/$/:
+    regex-literal-token?(s):
       +{'type' 'string', 'pattern' regex-pattern(s)}
     s =~ /^[^|]+\|[^|]+/:
       +{'type' 'string', 'enum' split(s /\|/)}
@@ -1083,7 +1407,9 @@ defn regex-pattern(value):
   value:S
     .replace(/^\//)
     .replace(/\/$/)
-    .replace(/\\\// '/')
+
+defn anchored-pattern(pattern):
+  str('^' pattern '$')
 
 defn ref-schema(s):
   name =: s.replace(/^\+/)
@@ -1182,7 +1508,7 @@ defn build-doc(schema):
 
 defn add-root-annotations(result schema):
   result:
-    .map-put-if(schema.title.? '.titl' schema.title)
+    .map-put-if(schema.title.? '.title' schema.title)
     .map-put-if(schema.description.? '.desc' schema.description)
 
 defn add-json-schema-meta(result schema):
@@ -1198,6 +1524,8 @@ defn add-defs(result defs):
 
 defn add-def-step(result entry):
   name sub =: entry
+  when name:S == 'Str':
+    usage: 'JSON Schema definition name Str conflicts with the +Str wildcard'
   result +: +{"+$name" build-value(sub)}
 
 defn add-body(result schema):
@@ -1205,7 +1533,9 @@ defn add-body(result schema):
     then:
       result =: add-properties(result schema)
       add-wildcard-entry: result schema
-    else: add-block(result schema)
+    else:
+      if json-type(schema).eq('object') && typed-map-base(schema):
+        add-wildcard-entry(result schema) add-block(result schema)
 
 defn add-properties(result schema):
   props =: schema.properties
@@ -1214,18 +1544,40 @@ defn add-properties(result schema):
 
 defn add-property(result entry required):
   name sub =: entry
+  when name:S == WILDCARD-KEY:
+    usage: 'JSON Schema property name +Str is reserved for the wildcard'
   is-req =: required.has?(name)
   array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
-  value-sub =: array?.if(array-item-schema(sub) sub)
   key =: key-for(name sub is-req array?)
-  result +: +{key build-value(value-sub)}
+  value =:
+    if array?:
+      build-array-suffix-value: sub
+      build-value: sub
+  result +: +{key value}
+
+defn build-array-suffix-value(schema):
+  item =: array-item-schema(schema)
+  value =: empty?(item).if('+Any' build-value(item))
+  if schema.description.?:
+    add-array-description: value schema.description
+    else: value
+
+defn add-array-description(value description):
+  if string?(value) && plain-description-safe?(description):
+    annotated-scalar: value description
+    else:
+      value =:
+        if string?(value):
+          then: +{'.base' value}
+          else: value
+      ordered-directives: value + {'.desc' description}
 
 # Return the value side of a property (or def) — either a scalar in
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
 defn build-value(schema):
   scalar-schema =: schema-without-description(schema)
-  scalar =: succinct-scalar(scalar-schema)
+  scalar =: succinct-default-scalar(scalar-schema)
   description-scalar =: scalar || succinct-array-scalar(scalar-schema)
   cond:
     description-scalar && succinct-description?(schema):
@@ -1240,20 +1592,47 @@ defn schema-without-description(schema):
       dissoc: schema 'description'
     else: schema
 
+defn succinct-default-scalar(schema):
+  if contains?(schema 'default'):
+    then:
+      marked =: schema.has?('enum').when(
+        compact-enum-default-scalar(schema))
+      if marked:
+        then: marked
+        else:
+          scalar =: succinct-scalar(dissoc(schema 'default'))
+          token =: tight-default-token(schema.'default')
+          when scalar && token.?:
+            =>: "$scalar =$token"
+    else: succinct-scalar(schema)
+
+defn tight-default-token(value):
+  cond:
+    string?(value): tight-string-default-token(value)
+    boolean?(value): value:S
+    number?(value): value:S
+    nil?(value): 'null'
+
+defn tight-string-default-token(value):
+  cond:
+    tight-plain-default?(value): value
+    tight-string-body?(value): "\"$(encode-tight-string(value))\""
+
+defn tight-plain-default?(value):
+  (value =~ /^[A-Za-z0-9_][A-Za-z0-9_.\/-]*$/) &&
+  (parse-yaml-scalar(value) == value)
+
 defn succinct-description?(schema):
   schema.has?('description') &&
   schema.has?('title').! &&
   plain-description-safe?(schema.description)
 
 defn plain-description-safe?(description):
-  string?(description) &&
-  (description !~ /[\r\n\t]/) &&
-  (description !~ /:\s/) &&
-  (description !~ /\s#/) &&
-  (description !~ /"/)
+  tight-string-body?: description
 
 defn annotated-scalar(scalar description):
-  =>: "$scalar \"$description\""
+  body =: encode-tight-string(description)
+  =>: "$scalar \"$body\""
 
 defn succinct-array-scalar(schema):
   is-array =: json-type(schema).eq('array')
@@ -1263,8 +1642,7 @@ defn succinct-array-scalar(schema):
       =>: "$item$(list-suffix(schema))"
 
 defn build-properties-map(schema):
-  result =: omap()
-    .add-properties(schema)
+  result =: add-properties(omap() schema)
   add-wildcard-entry: result schema
 
 defn build-block-map(schema):
@@ -1279,6 +1657,9 @@ defn add-block(result schema):
   ts =: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
+  pure-map =: t.eq('object') && object-with-props?(schema).!
+  map-base =: pure-map.when(open-map-base(schema))
+  result =: map-put-if(result map-base '.base' map-base)
   result =:
     if schema.'$ref'.?:
       then: result + {'.base' ref-sym(schema.'$ref')}
@@ -1287,30 +1668,43 @@ defn add-block(result schema):
   result =: map-put-if(result is-array '.list' true)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
-    if schema.pattern.?:
-      then: result + {'.like' schema.pattern}
+    if schema.has?('pattern'):
+      then: result + pattern-directive(schema.pattern)
       else: result
   result =:
     if schema.enum.?:
-      then: result + {'.enum' enum-block-list(schema.enum)}
+      then:
+        result =:
+          if result.has?('.base'):
+            then: result
+            else: result + {'.base' infer-base(schema.enum)}
+        result +: +{'.enum' enum-block-list(schema.enum)}
       else: result
   result =:
     if schema.const.?:
-      then: result + {'.base' literal-value(schema.const)}
+      then:
+        result =:
+          if result.has?('.base'):
+            then: result
+            else: result + {'.base' base-for-value(schema.const)}
+        result +: +{'.const' literal-value(schema.const)}
       else: result
   result =: map-put-if(result schema.uniqueItems '.uniq' true)
   result =:
     if contains?(schema 'default'):
       then: result + {'.init' literal-value(schema.'default')}
       else: result
-  result =: map-put-if(result schema.title.? '.titl' schema.title)
+  result =: map-put-if(result schema.title.? '.title' schema.title)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
+  result =: result.add-combinator-directive(schema 'oneOf' '.oneof')
+  result =: result.add-combinator-directive(schema 'anyOf' '.anyof')
+  result =: result.add-combinator-directive(schema 'allOf' '.allof')
   result =:
-    if schema.oneOf.?:
-      then: result + {'.pick' one-of-values(schema.oneOf)}
+    if schema.not.?:
+      then: result + {'.not' build-value(schema.not)}
       else: result
   result =: result
-    .add-numeric-bound-directives(schema.minimum schema.maximum)
+    .add-numeric-range-directive(schema.minimum schema.maximum)
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
@@ -1321,7 +1715,7 @@ defn add-block(result schema):
         then:
           result =: result.add-properties(schema)
           add-wildcard-entry: result schema
-        else: add-wildcard-entry(result schema)
+        else: map-base.if(result add-wildcard-entry(result schema))
     else: result
 
 defn add-size-directive(result lo hi):
@@ -1329,10 +1723,10 @@ defn add-size-directive(result lo hi):
     (result + {'.size' size-pair(lo hi)})
     result
 
-defn add-numeric-bound-directives(result lo hi):
-  result:
-    .map-put-if(lo.? '.mini' lo)
-    .map-put-if(hi.? '.maxi' hi)
+defn add-numeric-range-directive(result lo hi):
+  if lo.? || hi.?:
+    then: result + {'.range' range-token(lo hi)}
+    else: result
 
 defn add-array-items(result is-array schema):
   if is-array && schema.items.?:
@@ -1351,6 +1745,28 @@ defn additional-properties-value(schema):
     then: '+Any'
     else: build-value(value)
 
+defn typed-map-base(schema):
+  value-type =: map-value-type-ref(schema)
+  value-type: .when("+Map[$value-type]")
+
+defn open-map-base(schema):
+  if contains?(schema 'additionalProperties'):
+    then: typed-map-base(schema)
+    else: '+Map[+Any]'
+
+defn map-value-type-ref(schema):
+  when contains?(schema 'additionalProperties'):
+    value =: schema.get('additionalProperties')
+    cond:
+      value == true: '+Any'
+      map?(value):
+        cond:
+          empty?(value): '+Any'
+          only-ref?(value): ref-sym(value.'$ref')
+          type-only?(value):
+            when value.type != 'array':
+              type-sym: value.type
+
 defn add-wildcard-entry(result schema):
   has-additional =: schema.has?('additionalProperties')
   open =: has-additional && (schema.get('additionalProperties') != false)
@@ -1358,14 +1774,16 @@ defn add-wildcard-entry(result schema):
     then: result + {WILDCARD-KEY additional-properties-value(schema)}
     else: result
 
-defn one-of-values(values):
-  vec: values.map(build-value)
+defn add-combinator-directive(result schema keyword directive):
+  if schema.has?(keyword):
+    then: result + {directive vec(schema.$keyword.map(build-value))}
+    else: result
 
 # Insert sentinel keys for unsupported keywords. Post-processing turns
 # them into `# TODO: <keyword>` comments.
 defn add-todos(result schema):
-  todos =: qw(allOf anyOf not if then else dependentRequired
-              dependentSchemas patternProperties propertyNames
+  todos =: qw(if then else dependentRequired dependentSchemas
+              patternProperties propertyNames
               prefixItems contains unevaluatedItems unevaluatedProperties
               exclusiveMinimum exclusiveMaximum format)
   reduce \(add-todo(_1 _2 schema)): result todos
@@ -1389,45 +1807,121 @@ defn succinct-scalar(schema):
 defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
+    typed-map-only?(schema): typed-map-base(schema)
+    base-allof-only?(schema): compact-base-allof-scalar(schema)
+    combinator-only?(schema): compact-combinator-scalar(schema)
     schema.has?('$ref'):
       only-ref?(schema).when(ref-sym(schema.'$ref'))
     schema.has?('const'):
-      only-const?(schema).when(literal-value(schema.const))
+      only-const?(schema).when(compact-const-scalar(schema.const))
     schema.has?('enum'):
-      only-enum?(schema).when(enum-pipe(schema.enum))
-    schema.has?('pattern'):
-      pattern-only?(schema).when(regex-literal(schema.pattern))
+      only-enum?(schema).when(compact-enum-scalar(schema))
+    string-constraints-only?(schema):
+      string-constraints-scalar(schema)
     numeric-range-only?(schema):
       range-scalar(schema)
     type-only?(schema):
-      type-sym(schema.type)
+      type-only-scalar(schema)
+
+defn type-only-scalar(schema):
+  if schema.type == 'object':
+    then: '+Map[+Any]'
+    else: type-sym(schema.type)
 
 defn key-set(schema):
   schema:keys:set
 
+defn typed-map-only?(schema):
+  allowed =: set(qw(type additionalProperties))
+  object-type =: schema.type:nil? || schema.type.eq('object')
+  object-type &&:
+    schema.has?('additionalProperties') &&
+    key-set(schema).every?(\(allowed.has?(_))) &&
+    typed-map-base(schema).?
+
 defn only-ref?(schema):
   key-set(schema) ==: \{'$ref'}
+
+defn schema-type-ref(schema):
+  typed =:
+    if type-only?(schema):
+      then: schema.type != 'array'
+      else: false
+  cond:
+    empty?(schema): '+Any'
+    only-ref?(schema): ref-sym(schema.'$ref')
+    typed: type-sym(schema.type)
+
+defn combinator-only?(schema):
+  keys =: key-set(schema)
+  and:
+    keys.#.eq(1)
+    keys:first.in?(qw(oneOf anyOf allOf not))
+
+defn compact-combinator-scalar(schema):
+  keyword =: key-set(schema):first
+  info =: +{'oneOf' ['One' 2], 'anyOf' ['Any' 2],
+            'allOf' ['All' 2], 'not' ['Not' 1]}.$keyword
+  values =:
+    if keyword == 'not':
+      compact-not-values(schema.not)
+      schema.$keyword
+  refs =: values.when(vec(values.map(schema-type-ref)))
+  when refs:
+    when refs.# >= info.1:
+      when refs.every?(some?):
+        =>: "+$(info.0)[$(refs.join(','))]"
+
+defn compact-not-values(schema):
+  if map?(schema) && key-set(schema).eq(\{'anyOf'}):
+    get: schema 'anyOf'
+    else: +[schema]
+
+defn base-allof-only?(schema):
+  keys =: key-set(schema)
+  base-key =:
+    cond:
+      keys.has?('$ref'): '$ref'
+      keys.has?('type'): 'type'
+  when base-key:
+    when keys.# == 2:
+      has?: keys 'allOf'
+
+defn compact-base-allof-scalar(schema):
+  base-schema =:
+    if schema.has?('$ref'):
+      then: +{'$ref' schema.'$ref'}
+      else: +{'type' schema.type}
+  base =: schema-type-ref(base-schema)
+  refs =: vec(schema.allOf.map(schema-type-ref))
+  when base:
+    when refs.# >= 1:
+      when refs.every?(some?):
+        parts =: +[base] + refs
+        =>: parts:joins
 
 defn only-const?(schema):
   key-set(schema) ==: \{'const'}
 
-defn only-enum?(schema):
-  ks =: key-set(schema)
-  just-enum =:
-    ks == \{'enum'}
-  enum-and-str =:
-    (ks == \{'enum' 'type'}) &&
-    (schema.type == 'string')
-  just-enum ||: enum-and-str
+defn compact-const-scalar(value):
+  token =: compact-const-token(value)
+  when token:
+    base =: base-for-value(value)
+    =>: "$base ==$token"
 
-defn pattern-only?(schema):
-  ks =: key-set(schema)
-  just-pat =:
-    ks == \{'pattern'}
-  pat-and-str =:
-    (ks == \{'pattern' 'type'}) &&
-    (schema.type == 'string')
-  just-pat ||: pat-and-str
+defn compact-const-token(value):
+  cond:
+    string?(value):
+      cond:
+        tight-plain-default?(value): value
+        tight-string-body?(value): "\"$(encode-tight-string(value))\""
+    boolean?(value): value:S
+    number?(value): value:S
+    nil?(value): 'null'
+
+defn only-enum?(schema):
+  (key-set(schema) == \{'enum'}) ||
+  (key-set(schema) == \{'enum' 'type'})
 
 defn type-only?(schema):
   type-ks =: +['type']:set
@@ -1442,6 +1936,90 @@ defn numeric-range-only?(schema):
   all-allowed =: ks.every?(\(allowed.has?(_)))
   all-allowed &&: is-num && has-any-bound
 
+defn string-constraints-only?(schema):
+  (nil?(schema.type) || schema.type.eq('string')) &&
+  (schema.type.eq('string') || schema.has?('pattern')) &&
+  (schema.has?('pattern') || schema.minLength.? || schema.maxLength.?) &&
+  key-set(schema).every?(
+    \(_.in?(qw(type pattern minLength maxLength))))
+
+defn string-constraints-scalar(schema):
+  has-pattern =: schema.has?('pattern')
+  token =: has-pattern.when(tight-pattern-token(schema.pattern))
+  if has-pattern:
+    when token:
+      finish-string-constraints: schema ['+Str' token]
+    finish-string-constraints: schema ['+Str']
+
+defn finish-string-constraints(schema parts):
+  size =:
+    when schema.minLength.? || schema.maxLength.?:
+      size-scalar: schema.minLength schema.maxLength
+  parts =: size.if(parts.conj(size) parts)
+  joins: parts
+
+defn tight-pattern-token(pattern):
+  directive =: pattern-directive(pattern)
+  if directive.has?('.match'):
+    tight-match-token: directive.'.match'
+    tight-find-token: directive.'.find'
+
+defn tight-match-token(pattern):
+  when tight-string-body?(pattern):
+    body =: encode-tight-string(pattern)
+    =>: "=~\"$body\""
+
+defn tight-find-token(pattern):
+  cond:
+    pattern !~ /[\s\/]/: "/$pattern/"
+    tight-string-body?(pattern):
+      body =: encode-tight-string(pattern)
+      =>: "find:\"$body\""
+
+defn tight-string-body?(value):
+  colon-escape =: str(':' C(92) ' ')
+  hash-escape =: str(' ' C(92) '#')
+  string?(value) &&:
+    (value !~ /[\r\n\t"]/) &&
+    colon-escape.in?(value).! &&
+    hash-escape.in?(value).!
+
+defn encode-tight-string(value):
+  colon-space =: str(':' ' ')
+  space-hash =: str(' ' '#')
+  colon-escape =: str(':' C(92) ' ')
+  hash-escape =: str(' ' C(92) '#')
+  value:
+    .replace(colon-space colon-escape)
+    .replace(space-hash hash-escape)
+
+defn decode-tight-string(value):
+  colon-space =: str(':' ' ')
+  space-hash =: str(' ' '#')
+  colon-escape =: str(':' C(92) ' ')
+  hash-escape =: str(' ' C(92) '#')
+  value:
+    .replace(colon-escape colon-space)
+    .replace(hash-escape space-hash)
+
+defn pattern-directive(pattern):
+  if anchored-pattern?(pattern):
+    then: +{'.match' strip-pattern-anchors(pattern)}
+    else: +{'.find' pattern}
+
+defn anchored-pattern?(pattern):
+  pattern.starts?('^') && pattern.ends?('$')
+
+defn strip-pattern-anchors(pattern):
+  pattern.replace(/^\^/).replace(/\$$/)
+
+defn size-scalar(lo hi):
+  cond:
+    lo == hi: lo:S
+    lo:nil?: "0-$hi"
+    hi:nil?: "$lo+"
+    else: "$lo-$hi"
+
 defn object-with-props?(schema):
   map?(schema) &&
   schema.has?('properties')
@@ -1450,12 +2028,19 @@ defn schema-annotations?(schema):
   schema.has?('description') ||
   schema.has?('title')
 
-# True when an array schema's only keys are {type, items, minItems,
-# maxItems, uniqueItems} — i.e. the whole thing can be expressed as
-# a `[]` key suffix plus the inner item value.
+# True when the whole array can be expressed as a `[]` key suffix plus
+# its item value and array-level description.
 defn array-as-suffix?(schema):
+  array-suffix-keys?(schema) &&
+  scalar-described-array?(schema).!
+
+defn array-suffix-keys?(schema):
   every? _ key-set(schema):
-    \(_.in?(qw(type items minItems maxItems uniqueItems)))
+    \(_.in?(qw(type items minItems maxItems uniqueItems description)))
+
+defn scalar-described-array?(schema):
+  schema.description.? &&
+  succinct-scalar(array-item-schema(schema)).?
 
 defn array-item-schema(schema):
   schema.items || {}
@@ -1506,8 +2091,10 @@ defn ref-sym(ref):
   str '+': ref.split('/').$
 
 defn range-scalar(schema):
-  lo =: schema.minimum
-  hi =: schema.maximum
+  token =: range-token(schema.minimum schema.maximum)
+  =>: "$(type-sym(schema.type)) $token"
+
+defn range-token(lo hi):
   lo-s =: lo:nil?.if('' lo)
   hi-s =: hi:nil?.if('' hi)
   =>: "${lo-s}..${hi-s}"
@@ -1522,15 +2109,40 @@ defn size-pair(lo hi):
     else: +[0]
 
 defn regex-literal(pattern):
-  esc =: pattern.replace('/' '\\/')
-  =>: "/$esc/"
+  =>: "/$pattern/"
 
-defn safe-pipe-token?(v):
-  v =~ /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/
+defn compact-enum-scalar(schema):
+  values =: schema.enum
+  when values.every?(safe-compact-enum-value?):
+    base =: schema.type.if(type-sym(schema.type) infer-base(values))
+    members =: values.map(\(_:S)):vec.join(',')
+    =>: "$base [$members]"
 
-defn enum-pipe(values):
-  when values.every?(safe-pipe-token?):
-    values.join('|')
+defn compact-enum-default-scalar(schema):
+  bare =: dissoc(schema 'default')
+  default =: schema.'default'
+  valid =:
+    only-enum?(bare) &&
+    default.in?(schema.enum) &&
+    schema.enum.every?(safe-compact-enum-value?)
+  when valid:
+    base =: schema.type.if(type-sym(schema.type) infer-base(schema.enum))
+    members =:
+      schema.enum
+        .map(\(enum-default-member(_ default)))
+        .vec()
+        .join(',')
+    =>: "$base [$members]"
+
+defn enum-default-member(value default):
+  token =: value:S
+  value: .eq(default).if("=$token" token)
+
+defn safe-compact-enum-value?(value):
+  text =: value:S
+  text:seq &&:
+    (text == text:trim) &&
+    (text =~ /^[A-Za-z0-9._+\-\s]+$/)
 
 defn enum-block-list(values):
   vec: values

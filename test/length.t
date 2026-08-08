@@ -15,14 +15,7 @@ test::
       "required": ["bio", "code"]
     }
   want: |
-    bio:
-      .base: +Str
-      .size:
-      - 1
-      - 500
-    code:
-      .base: +Str
-      .size:
-      - 3
+    bio: +Str 1-500
+    code: +Str 3+
 
 done:

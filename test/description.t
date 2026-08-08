@@ -12,6 +12,8 @@ test::
     folded?: +Str
       "Description folded by YAML"
     possessive?: +Str "James'"
+    escaped?: +Str "this:\ that \# the other"
+    literal?: +Str "foo\ bar and foo\nbar and foo\tbar"
     dbRepository?: +Str[] "Repositories for the vulnerability DB"
     quoted?: 'Description'
   want: |
@@ -26,8 +28,16 @@ test::
             "type": "string"
           }
         },
+        "escaped": {
+          "description": "this: that # the other",
+          "type": "string"
+        },
         "folded": {
           "description": "Description folded by YAML",
+          "type": "string"
+        },
+        "literal": {
+          "description": "foo\\ bar and foo\\nbar and foo\\tbar",
           "type": "string"
         },
         "possessive": {
@@ -89,11 +99,7 @@ test::
     enabled?: +Bool "Pod-level TLS"
     repository?: +Str "Repository path without registry host"
     right?: +Str "This isn't wrong"
-    colon?:
-      .base: +Str
-      .desc: 'Unsafe: colon'
-    hash?:
-      .base: +Str
-      .desc: 'Unsafe # hash'
+    colon?: +Str "Unsafe:\ colon"
+    hash?: +Str "Unsafe \# hash"
 
 done:

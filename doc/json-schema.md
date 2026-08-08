@@ -32,7 +32,7 @@ The `.ysc.yaml` succinct form is optimized for humans:
 
 ```yaml
 name: +Str
-email?: /^\S+@\S+$/
+email?: +Str =~"\S+@\S+"
 tags[!+]: +Str
 ```
 
@@ -41,7 +41,7 @@ The `.ysc.json` explicit form is the canonical internal shape:
 ```json
 {
   "name": {".base": "+Str"},
-  "email": {".base": "+Str", ".like": "^\\S+@\\S+$"},
+  "email": {".base": "+Str", ".match": "\\S+@\\S+"},
   "tags": {
     ".base": "+Str",
     ".list": true,
@@ -142,7 +142,7 @@ If no keys are required, the `required` array can be omitted.
 | `{"type": "number"}` | `+Float` |
 | `{"type": "boolean"}` | `+Bool` |
 | `{"type": "null"}` | `+Null` |
-| `{"type": "object"}` | `+Map` or a mapping shape |
+| `{"type": "object"}` | `+Map[+Any]` or a mapping shape |
 | `{"type": "array"}` | `.list: true` or a list key suffix |
 
 Example:
@@ -186,21 +186,29 @@ JSON Schema:
 yamlschema:
 
 ```yaml
-email: /^\S+@\S+$/
-zip: /^\d{5}$/
+email: +Str =~"\S+@\S+"
+zip: +Str =~"\d{5}"
 ```
 
 Roundtrip notes:
 
 - JSON Schema regexes are strings.
-- yamlschema regexes are delimited with `/`.
-- `/` characters inside the pattern must be escaped in yamlschema.
-- A yamlschema regex implies string validation.
+- `.match` is a whole-string match; `^` and `$` are implied and restored when
+  exporting JSON Schema.
+- `.find` is an unanchored search and exports its pattern unchanged.
+- `/pattern/` is shorthand for `find:"pattern"` only when the body contains
+  neither whitespace nor `/`.
+- `=~"..."`, its accepted `match:"..."` alias, and `find:"..."` cannot contain
+  `"`; use an explicit `.match` or `.find` property when needed. Generated
+  yamlschema uses `=~"..."` for `.match`.
+- In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
+  represents space-hash. Other backslash sequences remain literal.
+- Both regex properties imply string validation.
 
 
 ## Enums
 
-Simple token enums roundtrip through pipe syntax:
+Simple token enums roundtrip through a base-qualified compact list:
 
 ```json
 {
@@ -212,31 +220,44 @@ Simple token enums roundtrip through pipe syntax:
 ```
 
 ```yaml
-role: admin|user|guest
+role: +Str [admin,user,guest]
 ```
 
-Values that are not safe pipe tokens use explicit `.enum`:
+An enum default is marked on its member:
+
+```yaml
+logLevel: +Str [debug,=info,warning,error,fatal]
+```
+
+This expands to `.enum: [debug, info, warning, error, fatal]` plus
+`.init: info`.
+
+Compact members may contain whitespace; surrounding whitespace is trimmed and
+interior whitespace is preserved. Thus `[foo,bar,foo bar]` and
+`[ foo, bar, foo bar ]` are equivalent. Quoted members and punctuation other
+than `.`, `-`, `_`, and `+` use explicit `.enum`:
 
 ```json
 {
   "properties": {
-    "label": {"enum": ["has space", "ok"]}
+    "symbol": {"enum": ["ok", "bad/value"]}
   },
   "required": ["label"]
 }
 ```
 
 ```yaml
-label:
+symbol:
+  .base: +Str
   .enum:
-  - has space
   - ok
+  - bad/value
 ```
 
 Both forms roundtrip back to:
 
 ```json
-{"enum": ["has space", "ok"]}
+{"enum": ["ok", "bad/value"]}
 ```
 
 when used as a property schema.
@@ -259,8 +280,20 @@ JSON Schema:
 yamlschema:
 
 ```yaml
-version: v1
-kind: User
+version: +Str ==v1
+kind: +Str ==User
+```
+
+`==value` maps to `const`; `=="foo bar"` is the quoted form and
+`const:value` is the labeled alternative. A following `=value` independently
+adds JSON Schema `default`:
+
+```yaml
+fixed: +Str ==User =User
+```
+
+```json
+{"const": "User", "default": "User"}
 ```
 
 Roundtrip back to JSON Schema should preserve this as `const`, not as an enum
@@ -325,7 +358,7 @@ code:
 
 Roundtrip rule:
 
-- `.mini` and `.maxi` on `+Int` or `+Float` map to `minimum` and
+- `.range` on `+Int` or `+Float` maps its optional bounds to `minimum` and
   `maximum`.
 - `.size` on `+Str` maps to `minLength` and `maxLength`.
 - `.size` on lists maps to `minItems` and `maxItems`.
@@ -438,7 +471,7 @@ metadata.
 | JSON Schema | yamlschema |
 | --- | --- |
 | `$id` | `.json.$id` |
-| `title` | `.titl` |
+| `title` | `.title` |
 | `description` | Trailing `"description"` or `.desc` |
 
 
@@ -531,53 +564,79 @@ Roundtrip back to JSON Schema restores each object level with its own
 
 ## Additional Properties
 
-The reserved `+Str*` key describes otherwise-unmatched string keys.
+The reserved `+Str` key describes otherwise-unmatched string keys.
 Its value is any yamlschema value schema:
 
 ```yaml
 labels:
-  +Str*: +Str
+  +Str: +Str
 config:
   enabled?: +Bool
-  +Str*: +Any
+  +Str: +Any
 ```
 
 Explicit JSON Schema values import as follows:
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `additionalProperties: true` | `+Str*: +Any` |
-| schema-valued `additionalProperties` | `+Str*: schema` |
+| `additionalProperties: true` | `+Map[+Any]` |
+| `additionalProperties: {"type":"string"}` | `+Map[+Str]` |
+| `additionalProperties: {"$ref":"..."}` | `+Map[+name]` |
+| constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | No wildcard |
 
-An omitted `additionalProperties` also imports without a wildcard.
-This intentionally adopts yamlschema's stricter closed default for shaped
-mappings instead of JSON Schema's open default.
-On export, shaped mappings without `+Str*` receive
+On a shaped mapping, omitted `additionalProperties` imports without a
+wildcard. This intentionally adopts yamlschema's stricter closed default for
+shapes. A pure object with no declared properties remains open and imports as
+`+Map[+Any]`.
+On export, shaped mappings without `+Str` receive
 `additionalProperties: false`.
-Bare `+Map` values remain open.
+Bare `+Map` is invalid; pure open objects use `+Map[+Any]`.
+
+When named properties coexist with `additionalProperties`, the importer emits
+an explicit wildcard after the named properties:
+
+```yaml
+labels:
+  fixed?: +Str
+  +Str: +Str
+```
+
+`+Map[+Type]` accepts one built-in, user-defined, or namespaced reference.
+It is shorthand for the future `+Map[+Str,+Type]` form. Two-reference maps are
+reserved for YAML key schemas but are not implemented. More complex value
+constraints continue to use explicit `+Str` syntax.
+
+
+## Schema Combinators
+
+JSON Schema combinators round-trip through explicit directives:
+
+| JSON Schema | yamlschema |
+| --- | --- |
+| `oneOf` | `.oneof` or `+One[...]` |
+| `anyOf` | `.anyof` or `+Any[...]` |
+| `allOf` | `.allof` or `+All[...]` |
+| `not` | `.not` or `+Not[...]` |
+
+The compact forms contain type references only. `One`, `Any`, and `All`
+require at least two references. `Not` requires at least one; multiple
+references mean `not(anyOf(...))`.
 
 
 ## Unsupported or Open JSON Schema Features
 
-Some JSON Schema features need more yamlschema design before they can roundtrip
-cleanly.
-
-The current converter emits TODO comments for these when they are encountered:
+The converter emits TODO comments for features that still need design:
 
 ```yaml
 auth:
-  # TODO: oneOf
+  # TODO: if
 ```
 
 Open mappings include:
 
 | JSON Schema | Possible yamlschema direction |
 | --- | --- |
-| `allOf` | Type inheritance or composition |
-| `anyOf` | Union constraint |
-| `oneOf` | `.pick` |
-| `not` | Negative constraint, still undecided |
 | `if` / `then` / `else` | `.when` |
 | `dependentRequired` | `.with` |
 | `dependentSchemas` | Extended `.with` or conditional schema |
@@ -608,7 +667,7 @@ Semantic roundtrip does not preserve every textual detail:
 - Equivalent JSON Schema spellings may normalize to one spelling.
 - `definitions` should export back as `$defs`.
 - Succinct yamlschema may expand to explicit yamlschema before JSON generation.
-- A pipe enum and an explicit `.enum` with the same values are equivalent.
+- A compact enum and an explicit `.enum` with the same values are equivalent.
 - Unbounded `*` in yamlschema maps to an omitted JSON Schema bound.
 
 Lossless source-preserving roundtrip would require storing source metadata in
