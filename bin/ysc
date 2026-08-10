@@ -413,6 +413,7 @@ defn add-expanded-field(result key value):
         suffix-block =: list-directives(info.suffix)
         merge-directives: block suffix-block "field $key"
       else: block
+  block =: canonicalize-type-reference(block)
   result +: +{info.key block}
 
 defn parse-expanded-key(key):
@@ -425,9 +426,11 @@ defn parse-expanded-key(key):
     else: +{'key' key}
 
 defn expand-type(value):
-  if map?(value):
-    expand-type-map: value
-    expand-tight: value
+  block =:
+    if map?(value):
+      expand-type-map: value
+      expand-tight: value
+  canonicalize-type-reference: block
 
 defn expand-type-map(value):
   explicit =: value:keys.some(\(_:S =~ /^\./))
@@ -446,11 +449,17 @@ defn expand-shape-entry(result entry):
     else: add-expanded-field(result key entry.1)
 
 defn expand-explicit-type(value):
+  when value.has?('.type') && value.has?('.base'):
+    usage: 'yamlschema type cannot contain both .type and .base'
   shaped =: value:keys.some(\(_ !~ /^\./))
   old-map-marker =: shaped && value.'.base'.eq('+Map')
+  reference-key =: value.has?('.type').if('.type' '.base')
+  reference =: value.$reference-key
+  when value.has?('.type') && type-symbol?(reference:S).!:
+    usage: 'yamlschema .type requires a bare type reference'
   base =:
-    if value.has?('.base') && old-map-marker.!:
-      expand-tight: value.'.base'
+    if value.has?(reference-key) && old-map-marker.!:
+      expand-tight: reference
       omap:
   result =: reduce(expand-explicit-entry base value)
   ordered-directives: result
@@ -459,7 +468,7 @@ defn expand-explicit-entry(result entry):
   key val =: entry
   key =: key:S
   cond:
-    key == '.base': result
+    key.in?(['.type', '.base']): result
     key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
@@ -475,7 +484,7 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.match', '.find', '.enum', '.const', '.range', '.size',
+    +['.type', '.match', '.find', '.enum', '.const', '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
      '.oneof', '.anyof', '.allof', '.not',
      '.title', '.desc', '.also', '.with', '.when']
@@ -535,12 +544,31 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.base', '.list', '.item', '.oneof', '.anyof', '.allof', '.not',
+    +['.type', '.base', '.list', '.item',
+     '.oneof', '.anyof', '.allof', '.not',
      '.match', '.find', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
      '.init', '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
   reduce put-non-directive: result value
+
+defn canonicalize-type-reference(value):
+  when value.has?('.type') && value.has?('.base'):
+    usage: 'yamlschema type cannot contain both .type and .base'
+  key =:
+    cond:
+      value.has?('.type'): '.type'
+      value.has?('.base'): '.base'
+  if key:
+    then:
+      target =: refined-type?(value).if('.base' '.type')
+      reference =: value.$key
+      ordered-directives: dissoc(value key) + {target reference}
+    else: value
+
+defn refined-type?(value):
+  annotations =: +['.type', '.base', '.init', '.title', '.desc']
+  some: \(_:S.in?(annotations).!) value:keys
 
 defn put-present(result key value):
   if contains?(value key):
@@ -965,19 +993,53 @@ defn base-for-value(value):
     map?(value): '+Map'
     else: '+Any'
 
-defn range-block(token base):
-  token =: token:S
-  when-not range-literal?(token):
-    usage: "invalid yamlschema range: $token"
-  parts =: token.split(/\.\./)
-  lo =: parts.0
-  hi =: parts.1
-  inferred =: base || range-type(lo hi).eq('integer').if('+Int' '+Float')
+defn range-block(value base):
+  range =: normalize-range(value)
+  inferred =:
+    base || range-number-type(range).eq('integer').if('+Int' '+Float')
   result =:
     if base:
       then: +{}
       else: +{'.base' inferred}
-  result +: +{'.range' token}
+  result +: +{'.range' range}
+
+defn normalize-range(value):
+  if sequential?(value):
+    normalize-range-sequence: value
+    normalize-range-expression: value
+
+defn normalize-range-sequence(value):
+  range =: vec(value)
+  when-not range.#.in?([1 2]):
+    usage: '.range array must contain one or two bounds'
+  when range.every?(nil?):
+    usage: '.range must contain at least one bound'
+  when range.some(\(nil?(_).! && number?(_).!)):
+    usage: '.range bounds must be numbers or null'
+  open-upper =: range.#.eq(2) && range.1:nil?
+  if open-upper:
+    V+: range.0
+    identity: range
+
+defn normalize-range-expression(value):
+  text =: value:S
+  when-not range-literal?(text):
+    usage: "invalid yamlschema range: $text"
+  lo-text =: text.replace(/\.\..*$/)
+  hi-text =: text.replace(/^.*\.\./)
+  lo =:
+    when-not lo-text:empty?:
+      scalar-number: lo-text
+  hi =:
+    when-not hi-text:empty?:
+      scalar-number: hi-text
+  normalize-range-sequence: lo:nil?.if([nil hi] hi:nil?.if([lo] [lo hi]))
+
+defn range-number-type(range):
+  values =: range.remove(nil?)
+  if values.every?(integer?): +
+    'integer'
+    'number'
 
 defn list-directives(suffix):
   body =: suffix.replace(/^\[/).replace(/\]$/)
@@ -1194,9 +1256,10 @@ defn reject-unexportable-directives(value):
       usage: "cannot export yamlschema directive to JSON Schema: $key"
 
 defn canonical-item-schema(value):
+  reference-key =: value.has?('.type').if('.type' '.base')
   result =:
-    if contains?(value '.base'):
-      ysc-bare-scalar-to-schema: value.'.base'
+    if value.has?(reference-key):
+      ysc-bare-scalar-to-schema: value.$reference-key
       else: +{}
   result =:
     if contains?(value '.item'):
@@ -1303,6 +1366,8 @@ defn ysc-block-step(state entry):
   key =: entry.0:S
   val =: entry.1
   case key:
+    '.type':
+      state.add-base-schema(val)
     '.base':
       state.add-base-schema(val)
     '.match':
@@ -1439,30 +1504,21 @@ defn ref-schema(s):
   name =: s.replace(/^\+/)
   +{} +: +{'$ref' str('#/$defs/' name)}
 
-defn range-to-schema(s):
-  parts =: s.split(/\.\./)
-  lo =: parts.0 || ''
-  hi =:
-    if parts.# > 1:
-      then: parts.1
-      else: ''
-  t =: range-type(lo hi)
+defn range-to-schema(value):
+  range =: normalize-range(value)
+  lo =: range.0
+  hi =: range.#.eq(2).when(range.1)
+  t =: range-number-type(range)
   result =:: {type:: t}
-  has-lo =: lo != ''
-  has-hi =: hi != ''
+  has-lo =: lo:nil?.!
+  has-hi =: hi:nil?.!
   result =:
     if has-lo:
-      then: result + {'minimum' scalar-number(lo)}
+      then: result + {'minimum' lo}
       else: result
   if has-hi:
-    then: result + {'maximum' scalar-number(hi)}
+    then: result + {'maximum' hi}
     else: result
-
-defn range-type(lo hi):
-  has-dot =: (lo =~ /\./).or(hi =~ /\./)
-  if has-dot: +
-    'number'
-    'integer'
 
 defn scalar-number(s):
   json/load: s

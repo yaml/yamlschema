@@ -16,13 +16,13 @@ test::
     namespaced: +Any[+net/port,+contact/email]
     values[]: +Any[+foo,+bar]
   want: |
-    {"one":{".oneof":[{".base":"+Str"},{".base":"+Int"}]},"any":{".anyof":[{
-    ".base":"+foo"},{".base":"+bar"}]},"all":{".allof":[{".base":"+foo"},{".
-    base":"+bar"}]},"composed":{".base":"+base",".allof":[{".base":"+constra
-    int"},{".base":"+other"}]},"not-one":{".not":{".base":"+foo"}},"not-many
-    ":{".not":{".anyof":[{".base":"+Str"},{".base":"+Int"}]}},"namespaced":{
-    ".anyof":[{".base":"+net\/port"},{".base":"+contact\/email"}]},"values":
-    {".list":true,".anyof":[{".base":"+foo"},{".base":"+bar"}]}}
+    {"one":{".oneof":[{".type":"+Str"},{".type":"+Int"}]},"any":{".anyof":[{
+    ".type":"+foo"},{".type":"+bar"}]},"all":{".allof":[{".type":"+foo"},{".
+    type":"+bar"}]},"composed":{".base":"+base",".allof":[{".type":"+constra
+    int"},{".type":"+other"}]},"not-one":{".not":{".type":"+foo"}},"not-many
+    ":{".not":{".anyof":[{".type":"+Str"},{".type":"+Int"}]}},"namespaced":{
+    ".anyof":[{".type":"+net\/port"},{".type":"+contact\/email"}]},"values":
+    {".list":true,".anyof":[{".type":"+foo"},{".type":"+bar"}]}}
 
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysc -t schema.json -

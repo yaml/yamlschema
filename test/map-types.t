@@ -15,10 +15,10 @@ test::
       .base: +Map[+Str]
       fixed?: +Str
   want: |
-    {"any":{"+Str":{".base":"+Any"}},"strings":{".null":true,"+Str":{".base"
-    :"+Str"}},"custom":{"+Str":{".base":"+types\/value"}},"many":{".list":tr
-    ue,"+Str":{".base":"+Str"}},"hybrid":{"+Str":{".base":"+Str"},"fixed?":{
-    ".base":"+Str"}}}
+    {"any":{"+Str":{".type":"+Any"}},"strings":{".null":true,"+Str":{".type"
+    :"+Str"}},"custom":{"+Str":{".type":"+types\/value"}},"many":{".list":tr
+    ue,"+Str":{".type":"+Str"}},"hybrid":{"+Str":{".type":"+Str"},"fixed?":{
+    ".type":"+Str"}}}
 
 - name: typed-map-to-json-schema
   cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
@@ -122,15 +122,15 @@ test::
     {
       "closed": {
         "fixed?": {
-          ".base": "+Str"
+          ".type": "+Str"
         }
       },
       "open": {
         "fixed?": {
-          ".base": "+Str"
+          ".type": "+Str"
         },
         "+Str": {
-          ".base": "+Any"
+          ".type": "+Any"
         }
       }
     }

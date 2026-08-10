@@ -12,9 +12,9 @@ test::
       printf "%s\n" "$input" | bin/ysc -t yscy -
     '
   want: |
-    {"foo":{".base":"+Str"}}
+    {"foo":{".type":"+Str"}}
     foo:
-      .base: +Str
+      .type: +Str
 
 - name: expanded-long-formats
   cmnd: |
@@ -24,9 +24,9 @@ test::
       printf "%s\n" "$input" | bin/ysc -t ysc.yaml -
     '
   want: |
-    {"foo":{".base":"+Str"}}
+    {"foo":{".type":"+Str"}}
     foo:
-      .base: +Str
+      .type: +Str
 
 - name: succinct-short-and-long-formats
   cmnd: |
@@ -56,8 +56,8 @@ test::
   cmnd: |
     sh -c '
       dsl="foo: +Str"
-      canonical_yaml="foo:\n  .base: +Str"
-      canonical_json="{\"foo\":{\".base\":\"+Str\"}}"
+      canonical_yaml="foo:\n  .type: +Str"
+      canonical_json="{\"foo\":{\".type\":\"+Str\"}}"
       json_schema="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
       for format in ysd ysd.yaml; do
         printf "%s\n" "$dsl" | bin/ysc -f "$format" -t jsc -C - |
@@ -98,7 +98,7 @@ test::
     }
   want: |
     foo:
-      .base: +Str
+      .type: +Str
 
 - name: expanded-output-extension-inference
   cmnd: |
@@ -111,9 +111,9 @@ test::
       rm -r "$dir"
     '
   want: |
-    {"foo":{".base":"+Str"}}
+    {"foo":{".type":"+Str"}}
     foo:
-      .base: +Str
+      .type: +Str
 
 - name: succinct-output-extension-inference
   cmnd: |
@@ -140,14 +140,14 @@ test::
     '
   want: |
     foo?:
-      .base: +Str
+      .type: +Str
 
 - name: expanded-from-values
   cmnd: |
     sh -c '
-      printf "%s\n" "{\"foo\":{\".base\":\"+Str\"}}" |
+      printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" |
         bin/ysc -f yscj -t jsc -C - | fold -w 72
-      printf "foo:\n  .base: +Str\n" |
+      printf "foo:\n  .type: +Str\n" |
         bin/ysc -f yscy -t jsc -C - | fold -w 72
     '
   want: |
@@ -162,17 +162,17 @@ test::
   cmnd: |
     sh -c '
       dir=$(mktemp -d)
-      printf "foo:\n  .base: +Str\n" > "$dir/in.ysc.yaml"
-      printf "%s\n" "{\"foo\":{\".base\":\"+Str\"}}" \
+      printf "foo:\n  .type: +Str\n" > "$dir/in.ysc.yaml"
+      printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" \
         > "$dir/in.ysc.json"
       bin/ysc -t yscj -C "$dir/in.ysc.yaml"
       bin/ysc -t yscy "$dir/in.ysc.json"
       rm -r "$dir"
     '
   want: |
-    {"foo":{".base":"+Str"}}
+    {"foo":{".type":"+Str"}}
     foo:
-      .base: +Str
+      .type: +Str
 
 - name: succinct-input-extension-inference
   cmnd: |

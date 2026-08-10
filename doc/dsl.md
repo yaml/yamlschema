@@ -88,7 +88,7 @@ port: +Int 1..65535
 mode: +Str [debug,info,error]
 ```
 
-These expand to explicit directives. Inferred bases are always materialized:
+These expand to explicit directives. Refined bases are always materialized:
 
 ```yaml
 foo:
@@ -96,7 +96,7 @@ foo:
   .find: a.*b
 port:
   .base: +Int
-  .range: 1..65535
+  .range: [1, 65535]
 mode:
   .base: +Str
   .enum: [debug, info, error]
@@ -174,6 +174,15 @@ bounded or exact size:
 1+    -> [1]
 10    -> [10, 10]
 10-20 -> [10, 20]
+```
+
+Canonical ranges use the same structural convention, with `null` for a
+missing lower bound:
+
+```text
+0..    -> [0]
+1..10  -> [1, 10]
+..-1   -> [null, -1]
 ```
 
 The old `"*"` bound is invalid.
@@ -292,10 +301,14 @@ are inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.base .list .item .oneof .anyof .allof .not .match .find
+.type .base .list .item .oneof .anyof .allof .not .match .find
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
+
+An unrefined built-in or named reference uses `.type`. A reference combined
+with validation or structural constraints uses `.base`. `.init`, `.title`,
+and `.desc` are annotations, so they do not turn `.type` into `.base`.
 
 Unknown directives are errors. `.need` is reserved while requiredness is
 represented by the property key. `.also`, `.with`, and `.when` may be retained

@@ -89,8 +89,8 @@ port: 1..65535           # numeric range
 tags[1+]: +Str          # list of one or more strings
 ```
 
-The corresponding explicit form uses directives such as `.match`, `.enum`,
-`.size`, `.list`, and `.base`.
+The corresponding explicit form uses directives such as `.type`, `.base`,
+`.match`, `.enum`, `.size`, and `.list`.
 
 
 ## Symbols and Definitions
@@ -156,7 +156,8 @@ The design keeps directive names short and regular.
 | Directive | Meaning |
 | --- | --- |
 | `.need` | Reserved; currently rejected in favor of key-side `?` |
-| `.base` | Base constraint or inherited symbol |
+| `.type` | Complete built-in or named type reference |
+| `.base` | Type reference refined by additional constraints |
 | `.match` | Whole-string regex pattern; `^` and `$` are implied |
 | `.find` | Regex search pattern; implies string |
 | `.enum` | Enumeration of allowed values |
@@ -222,14 +223,14 @@ This expands to:
 
 ```yaml
 repository?:
-  .base: +Str
+  .type: +Str
   .desc: Repository path without registry host
 right:
-  .base: +Str
+  .type: +Str
   .desc: This isn't wrong
 dbRepository?:
-  .list: true
   .base: +Str
+  .list: true
   .desc: Repositories for the vulnerability DB
 ```
 
@@ -343,13 +344,13 @@ Equivalent explicit form:
 ```yaml
 port:
   .base: +Int
-  .range: 1..65535
+  .range: [1, 65535]
 age:
   .base: +Int
-  .range: 0..
+  .range: [0]
 ratio:
   .base: +Float
-  .range: 0..1
+  .range: [0, 1]
 ```
 
 
@@ -470,7 +471,7 @@ The explicit form represents all constraints with directives:
 ```yaml
 port:
   .base: +Int
-  .range: 1..65535
+  .range: [1, 65535]
 
 email:
   .base: +Str
@@ -487,7 +488,7 @@ Optional fields retain `?` on the key:
 
 ```yaml
 port?:
-  .base: +port
+  .type: +port
 ```
 
 
@@ -498,11 +499,11 @@ Custom definitions can inherit from other definitions:
 ```yaml
 +port:
   .base: +Int
-  .range: 1..65535
+  .range: [1, 65535]
 
 +secure-port:
   .base: +port
-  .range: 443..443
+  .range: [443, 443]
 ```
 
 Implicit typing applies where possible:
@@ -512,8 +513,9 @@ Implicit typing applies where possible:
 - A mapping shape implies the mapping type without emitting a base marker.
 - Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
 
-Use `.base` when a base constraint cannot be inferred or when inheriting from
-a custom definition.
+Use `.type` for an unrefined built-in or named reference. Use `.base` when
+additional validation or structural constraints refine that reference.
+`.init`, `.title`, and `.desc` are annotations and do not require `.base`.
 
 
 ## Schema Combinators
@@ -709,16 +711,16 @@ Example compiled shape:
 {
   "+port": {
     ".base": "+Int",
-    ".range": "1..65535"
+    ".range": [1, 65535]
   },
   "+auth": {
     ".oneof": [
-      {"api_key": {".base": "+Str"}},
-      {"token": {".base": "+Str"}}
+      {"api_key": {".type": "+Str"}},
+      {"token": {".type": "+Str"}}
     ]
   },
-  "host": {".base": "+Str"},
-  "port": {".base": "+port"}
+  "host": {".type": "+Str"},
+  "port": {".type": "+port"}
 }
 ```
 
@@ -754,7 +756,7 @@ yamlschema.
 | `additionalProperties: false` | Closed mapping; no wildcard |
 | `enum` | Compact enum or `.enum` list |
 | `pattern` | `.match` for outer `^...$`; otherwise `.find` or `/.../` |
-| `minimum` / `maximum` | Range scalar or `.range` |
+| `minimum` / `maximum` | Range scalar or structural `.range` sequence |
 | `minLength` / `maxLength` | `.size` on strings |
 | `minItems` / `maxItems` | List suffix or `.size` |
 | `minProperties` / `maxProperties` | `.size` on maps |

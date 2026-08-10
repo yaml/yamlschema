@@ -42,7 +42,7 @@ shape:
 
 ```json
 {
-  "name": {".base": "+Str"},
+  "name": {".type": "+Str"},
   "email": {".base": "+Str", ".match": "\\S+@\\S+"},
   "tags": {
     ".base": "+Str",
@@ -453,10 +453,10 @@ yamlschema:
 
 ```yaml
 port:
-  .base: +Int
+  .type: +Int
   .init: 8080
 host:
-  .base: +Str
+  .type: +Str
   .init: localhost
 ```
 

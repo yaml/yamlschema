@@ -67,7 +67,10 @@ test::
       },
       "ratio": {
         ".base": "+Float",
-        ".range": "0.5..1"
+        ".range": [
+          0.5,
+          1
+        ]
       },
       "constant": {
         ".base": "+Str",
@@ -75,7 +78,7 @@ test::
       },
       "object": {
         "child?": {
-          ".base": "+Bool"
+          ".type": "+Bool"
         }
       }
     }
@@ -158,7 +161,7 @@ test::
           10
         ],
         "+Str": {
-          ".base": "+Any"
+          ".type": "+Any"
         }
       }
     }
@@ -179,7 +182,7 @@ test::
         ".desc": "Whether it is enabled"
       },
       "label?": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".init": "pretty good"
       },
       "level?": {
@@ -204,6 +207,39 @@ test::
   want: |
     {"foo":{".base":"+Str",".list":true,".match":"a.*b",".size":[10,20]}}
 
+- name: direct-and-refined-type-directives
+  cmnd: bin/ysc -t yscj -
+  stdi: |
+    +named: +Str
+    plain: +Str
+    named: +named
+    annotated: +Float =1.5 title:"Number" "A number"
+    refined:
+      .type: +Str
+      .enum: [foo, bar]
+  want: |
+    {
+      "+named": {
+        ".type": "+Str"
+      },
+      "plain": {
+        ".type": "+Str"
+      },
+      "named": {
+        ".type": "+named"
+      },
+      "annotated": {
+        ".type": "+Float",
+        ".init": 1.5,
+        ".title": "Number",
+        ".desc": "A number"
+      },
+      "refined": {
+        ".base": "+Str",
+        ".enum": ["foo","bar"]
+      }
+    }
+
 - name: json-schema-to-yscj
   cmnd: bin/ysc -t yscj -f jsc -
   stdi: |
@@ -216,7 +252,7 @@ test::
   want: |
     {
       "enabled?": {
-        ".base": "+Bool",
+        ".type": "+Bool",
         ".init": false
       },
       "flag?": {
@@ -386,7 +422,7 @@ test::
     enum-marked: +Str [=User]
     enum-default: +Str [User] =User
   want: |
-    {"short":{".base":"+Str",".const":"User"},"quoted":{".base":"+Str",".const":"foo bar"},"labeled":{".base":"+Str",".const":"foo bar"},"default":{".base":"+Str",".init":"User"},"enum-marked":{".base":"+Str",".enum":["User"],".init":"User"},"enum-default":{".base":"+Str",".enum":["User"],".init":"User"}}
+    {"short":{".base":"+Str",".const":"User"},"quoted":{".base":"+Str",".const":"foo bar"},"labeled":{".base":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".base":"+Str",".enum":["User"],".init":"User"},"enum-default":{".base":"+Str",".enum":["User"],".init":"User"}}
 
 - name: labeled-clauses-in-arbitrary-order
   cmnd: bin/ysc -t yscj -C -
@@ -399,7 +435,7 @@ test::
     alternate: also:former base:+Str
     choice: enum:[a,b c] base:+Str
   want: |
-    {"string":{".base":"+Str",".match":"a b",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".find":"a\/b c"},"number":{".base":"+Int",".range":"1..10"},"sequence":{".base":"+Any",".list":true,".item":{".base":"+Str"},".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
+    {"string":{".base":"+Str",".match":"a b",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".find":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any",".list":true,".item":{".type":"+Str"},".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |
@@ -432,5 +468,17 @@ test::
     ysc: unsupported yamlschema directive: .like; use .match
     ysc: unsupported yamlschema directive: .mini; use .range
     ysc: unsupported yamlschema directive: .maxi; use .range
+
+- name: reject-invalid-type-directives
+  cmnd: |
+    sh -c '
+      printf "foo:\n  .type: +Str\n  .base: +Str\n" |
+        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      printf "foo:\n  .type: +Str[]\n" |
+        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+    '
+  want: |
+    ysc: yamlschema type cannot contain both .type and .base
+    ysc: yamlschema .type requires a bare type reference
 
 done:
