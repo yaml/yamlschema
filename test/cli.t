@@ -17,8 +17,8 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
-      -f, --from FORMAT     Input format. Short values: ysc, jsc, yscj.
+      -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
+      -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
@@ -39,8 +39,8 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
-      -f, --from FORMAT     Input format. Short values: ysc, jsc, yscj.
+      -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
+      -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.

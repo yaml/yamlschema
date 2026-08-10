@@ -54,14 +54,19 @@ This schema describes a mapping where:
 yamlschema uses these file extensions:
 
 - `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysc.json` is the compiled, expanded yamlschema form.
+- `.ysx.yaml` is the expanded yamlschema form serialized as YAML.
+- `.ysx.json` is the expanded yamlschema form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
 Typical flow:
 
 ```text
-contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
+contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
+contact.ysc.yaml -> contact.schema.json
 ```
+
+The expanded targets are `ysxy` / `ysx.yaml` for YAML and `ysxj` /
+`ysx.json` for JSON.
 
 ## Installation
 
@@ -75,7 +80,8 @@ After that, the converter can be run as `ysc`:
 
 ```sh
 ysc -t ysc contact.schema.json
-ysc -t yscj contact.ysc.yaml
+ysc -t ysxj contact.ysc.yaml
+ysc -t ysxy contact.ysc.yaml
 ysc -t jsc contact.ysc.yaml
 ysc -t jsc -C contact.ysc.yaml
 ysc -F contact.schema.json

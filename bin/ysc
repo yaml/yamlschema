@@ -26,8 +26,8 @@ HELP =: |
     INPUT                 Input schema path. Defaults to stdin.
 
   Options:
-    -t, --to FORMAT       Output format. Short values: ysc, jsc, yscj.
-    -f, --from FORMAT     Input format. Short values: ysc, jsc, yscj.
+    -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
+    -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -F, --fmt             Format JSON Schema to stdout.
     -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
@@ -38,6 +38,7 @@ HELP =: |
 defn main(*args):
   handle-info-options: args
   opts =: parse-args(args)
+  validate-format-options: opts
   path =: opts.input || '-'
   text =: (path == '-').if(IN path):read
   when opts.fmt:
@@ -61,9 +62,12 @@ defn convert-to(target text opts):
       data =: text:yaml/load
       schema =: ysc-to-schema(expand-ysc(data))
       json-output: schema opts
-    'ysc.json':
-      data =: ysc-json-input(text opts)
-      ysc-json-output: expand-ysc(data) opts
+    'ysx.json':
+      data =: ysx-input(text opts)
+      ysx-json-output: expand-ysc(data) opts
+    'ysx.yaml':
+      data =: ysx-input(text opts)
+      post-process: yaml/dump(expand-ysc(data))
     else:
       usage: "unsupported output format: $target"
 
@@ -133,18 +137,34 @@ defn handle-input(state arg):
     state +: +{'inputs' (state.inputs + arg)}
 
 defn output-format(opts):
-  fmt =: normalize-output-format(opts.to) || infer-output-format(opts.output)
+  fmt =: normalize-format(opts.to) || infer-output-format(opts.output)
   fmt ||: 'ysc.yaml'
 
-defn normalize-output-format(fmt):
+defn normalize-format(fmt):
   case fmt:
     'ysc': 'ysc.yaml'
     'jsc': 'schema.json'
-    'yscj': 'ysc.json'
+    'ysxj': 'ysx.json'
+    'ysxy': 'ysx.yaml'
+    'yscj': old-format('yscj' 'ysxj')
+    'ysc.json': old-format('ysc.json' 'ysx.json')
     else: fmt
 
-defn ysc-json-input(text opts):
-  source =: normalize-output-format(opts.from)
+defn old-format(old new):
+  usage: "unsupported format: $old; use $new"
+
+defn validate-format-options(opts):
+  when opts.to.?: normalize-format(opts.to)
+  when opts.from.?: normalize-format(opts.from)
+  reject-old-file-extension: opts.input
+  reject-old-file-extension: opts.output
+
+defn reject-old-file-extension(path):
+  when path.? && path.ends?('.ysc.json'):
+    usage: 'unsupported file extension: .ysc.json; use .ysx.json'
+
+defn ysx-input(text opts):
+  source =: normalize-format(opts.from)
   source ||=: infer-input-format(opts.input)
   if source == 'schema.json':
     then:
@@ -159,10 +179,11 @@ defn infer-input-format(path):
     path:nil?: nil
     path == '-': nil
     path =~ /\.schema\.json$/: 'schema.json'
-    path =~ /\.ysc\.json$/: 'ysc.json'
+    path =~ /\.ysx\.json$/: 'ysx.json'
+    path =~ /\.ysx\.yaml$/: 'ysx.yaml'
     path =~ /\.ysc\.yaml$/: 'ysc.yaml'
 
-defn ysc-json-output(value opts):
+defn ysx-json-output(value opts):
   if opts.compact:
     json/dump(value)
     pretty-json(value)
@@ -173,7 +194,8 @@ defn infer-output-format(output):
     output == '-': nil
     output =~ /\.schema\.json$/: 'schema.json'
     output =~ /\.ysc\.yaml$/: 'ysc.yaml'
-    output =~ /\.ysc\.json$/: 'ysc.json'
+    output =~ /\.ysx\.json$/: 'ysx.json'
+    output =~ /\.ysx\.yaml$/: 'ysx.yaml'
 
 defn emit-output(text output):
   when output.?:
@@ -234,7 +256,7 @@ defn normalize-json-schema(value root?):
       value
 
 defn normalize-json-map(value root?):
-  result =: array-map()
+  result =: omap()
   result =: reduce(\(normalize-json-entry(_1 _2)) result value)
   result =: normalize-definitions(result)
   result =: normalize-ref(result)
@@ -279,7 +301,7 @@ defn canonical-json-schema(value):
       value
 
 defn canonical-json-map(value):
-  result =: array-map()
+  result =: omap()
   result =: reduce(\(add-canonical-key(_1 _2 value))
                    result preferred-json-schema-keys())
   extra-keys =: sort(remove(\(preferred-json-schema-key?(_)) value:keys))
@@ -348,10 +370,7 @@ defn indent(width):
 defn expand-ysc(doc):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
-  metadata =: +['.from', '.name', '.root', '.json', '.title', '.desc']
-  result =: reduce(\(put-present(_1 _2 doc)) array-map() metadata)
-  entries =: doc.filter(\(_1.0:S.in?(metadata).!))
-  reduce expand-doc-entry: result entries
+  reduce expand-doc-entry: omap() doc
 
 defn expand-doc-entry(result entry):
   key value =: entry
@@ -412,7 +431,7 @@ defn expand-type-map(value):
     expand-shape-type: value
 
 defn expand-shape-type(value):
-  reduce expand-shape-entry: array-map() value
+  reduce expand-shape-entry: omap() value
 
 defn expand-shape-entry(result entry):
   key =: entry.0:S
@@ -427,7 +446,7 @@ defn expand-explicit-type(value):
   base =:
     if value.has?('.base') && old-map-marker.!:
       expand-tight: value.'.base'
-      array-map:
+      omap:
   result =: reduce(expand-explicit-entry base value)
   ordered-directives: result
 
@@ -515,7 +534,7 @@ defn ordered-directives(value):
      '.match', '.find', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
      '.init', '.title', '.desc', '.also', '.with', '.when']
-  result =: reduce(\(put-present(_1 _2 value)) array-map() order)
+  result =: reduce(\(put-present(_1 _2 value)) omap() order)
   reduce put-non-directive: result value
 
 defn put-present(result key value):
@@ -1011,7 +1030,7 @@ defn ysc-to-schema(doc):
     +{'additionalProperties' state.wildcard.if(state.additional false)}
 
 defn initial-ysc-doc-state(doc):
-  result =: add-json-meta(array-map() doc.'.json')
+  result =: add-json-meta(omap() doc.'.json')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
     defs: {}

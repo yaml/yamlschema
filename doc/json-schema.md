@@ -6,7 +6,7 @@ JSON Schema Roundtrip
 ```text
 contact.schema.json
   -> contact.ysc.yaml
-  -> contact.ysc.json
+  -> contact.ysx.yaml or contact.ysx.json
   -> contact.schema.json
 ```
 
@@ -19,12 +19,13 @@ still validating the same data.
 
 ## Roundtrip Model
 
-There are three useful representations:
+There are three useful semantic representations. Expanded yamlschema has YAML
+and JSON serializations:
 
 ```text
 contact.schema.json
   -> contact.ysc.yaml
-  -> contact.ysc.json
+  -> contact.ysx.yaml or contact.ysx.json
   -> contact.schema.json
 ```
 
@@ -36,7 +37,8 @@ email?: +Str =~"\S+@\S+"
 tags[!+]: +Str
 ```
 
-The `.ysc.json` explicit form is the canonical internal shape:
+The `.ysx.json` explicit form is one serialization of the canonical internal
+shape:
 
 ```json
 {
@@ -70,24 +72,27 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 }
 ```
 
-Use `.schema.json` for JSON Schema files, `.ysc.yaml` for human-maintained
-yamlschema DSL files, and `.ysc.json` for compiled yamlschema files.
+Use `.schema.json` for JSON Schema files and `.ysc.yaml` for human-maintained
+yamlschema DSL files. Use `.ysx.yaml` or `.ysx.json` for the same non-human,
+fully expanded yamlschema model.
 
 
 ## Conversion Directions
 
-`bin/ysc` implements all three direct conversion targets:
+`bin/ysc` implements all four direct conversion targets:
 
 ```text
 contact.schema.json -> contact.ysc.yaml
-contact.ysc.yaml -> contact.ysc.json
+contact.ysc.yaml -> contact.ysx.yaml
+contact.ysc.yaml -> contact.ysx.json
 contact.ysc.yaml -> contact.schema.json
 ```
 
 The explicit form is the shared expansion boundary:
 
 ```text
-contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
+contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
+contact.ysc.yaml -> contact.schema.json
 ```
 
 The compiler targets the explicit form because succinct syntax is sugar.

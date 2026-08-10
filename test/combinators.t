@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: compact-combinator-expansion
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysc -t ysxj -C - | fold -w 72'
   stdi: |
     one: +One[+Str,+Int]
     any: +Any[ +foo, +bar ]
@@ -182,7 +182,7 @@ test::
       for value in "+One[]" "+One[+Str]" "+Any[+Str]" \
                    "+All[+Str]" "+Not[]"; do
         printf "x: %s\n" "$value" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysc -t ysxj -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -194,14 +194,14 @@ test::
 
 - name: reject-non-reference-combinator-member
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +One[+Str,foo]
   want: |
     ysc: +One accepts only type references
 
 - name: list-suffixes-remain-distinct
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysc -t ysxj -C - | fold -w 72'
   stdi: |
     any[]: +Any
     exact: +Any[2]
@@ -212,8 +212,8 @@ test::
 - name: base-plus-one-allof-roundtrip
   cmnd: |
     sh -c '
-      bin/ysc -t yscj -C - |
-        bin/ysc -f yscj -t schema.json -C - |
+      bin/ysc -t ysxj -C - |
+        bin/ysc -f ysxj -t schema.json -C - |
         fold -w 72
     '
   stdi: |
@@ -226,7 +226,7 @@ test::
 
 - name: explicit-combinator-empty-error
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       .anyof: []
@@ -237,9 +237,9 @@ test::
   cmnd: |
     sh -c '
       printf "bad:\n  .pick:\n  - +Str\n  - +Int\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysc -t ysxj -C - 2>&1 | sed -n 1p
       printf "bad: pick:x\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysc -t ysxj -C - 2>&1 | sed -n 1p
     '
   want: |
     ysc: unsupported yamlschema directive: .pick; use .oneof

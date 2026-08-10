@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: typed-map-expansion
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysc -t ysxj -C - | fold -w 72'
   stdi: |
     any: +Map[+Any]
     strings: +Map[+Str]~
@@ -90,7 +90,7 @@ test::
 
 - name: reject-invalid-map-value-type
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +Map[Str]
   want: |
@@ -101,7 +101,7 @@ test::
     sh -c '
       for value in "+Map[]" "+Map[+Any,+Any]"; do
         printf "bad: %s\n" "$value" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysc -t ysxj -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -109,7 +109,7 @@ test::
     ysc: +Map[+Key,+Value] is reserved but not supported yet
 
 - name: old-shaped-map-marker-normalizes-away
-  cmnd: bin/ysc -t yscj -
+  cmnd: bin/ysc -t ysxj -
   stdi: |
     closed:
       .base: +Map
@@ -137,7 +137,7 @@ test::
 
 - name: marker-only-map-is-rejected
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       .base: +Map
@@ -147,7 +147,7 @@ test::
 
 - name: legacy-wildcard-is-rejected
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       +Str*: +Any

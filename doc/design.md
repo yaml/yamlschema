@@ -19,16 +19,18 @@ yamlschema uses separate extensions for human-authored source, compiled
 yamlschema, and JSON Schema interchange.
 
 ```text
-contact.ysc.yaml -> contact.ysc.json -> contact.schema.json
+contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
+contact.ysc.yaml -> contact.schema.json
 ```
 
 - `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysc.json` is the compiled, expanded yamlschema form.
+- `.ysx.yaml` is the expanded yamlschema form serialized as YAML.
+- `.ysx.json` is the expanded yamlschema form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
 The `.ysc.yaml` form is ordinary YAML and should be pleasant to edit by hand.
-The `.ysc.json` form is JSON data and is the long form intended for validators,
-caches, publication, and generated artifacts.
+The `ysx` forms contain the same non-human, fully expanded data and are
+intended for validators, caches, publication, and generated artifacts.
 The `.schema.json` form is the JSON Schema representation used for interop with
 the JSON Schema ecosystem.
 
@@ -728,6 +730,8 @@ yamlschema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
 Generated human-facing yamlschema output should use `.ysc.yaml`.
+Expanded yamlschema should use `.ysx.yaml` or `.ysx.json`; both contain the
+same canonical model.
 The converter can also generate `.schema.json` from `.ysc.yaml` for the
 same direct mapping subset.
 The `.schema.json` target currently uses JSON Schema Draft 2020-12 only.
@@ -804,17 +808,20 @@ tags[!+]: +Str
    is `-`.
 2. Require either `-t` / `--to` or `-o` / `--output`.
 3. Use `-t ysc` to parse Draft 2020-12 JSON Schema and emit yamlschema.
-4. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON
+4. Use `-t ysxy` or `-t ysxj` to emit fully expanded yamlschema as YAML or
+   JSON.
+5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON
    Schema.
-5. Build a YAMLScript data structure for the output document.
-6. Prefer succinct scalar forms where possible.
-7. Use explicit directive maps when a schema cannot be represented as one
+6. Build a YAMLScript data structure for the output document.
+7. Prefer succinct scalar forms where possible.
+8. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-8. Dump `ysc.yaml` results as YAML and `schema.json` results as canonical,
-   two-space-indented JSON.
+9. Dump `ysc.yaml` and `ysx.yaml` results as YAML. Dump `ysx.json` and
+   `schema.json` results as canonical, two-space-indented JSON.
    Use `-C` / `--compact` for compact JSON output.
-9. Post-process generated TODO sentinel keys into `# TODO: <keyword>` comments.
-10. Insert a blank line between top-level definitions and the document body.
+10. Post-process generated TODO sentinel keys into `# TODO: <keyword>`
+    comments.
+11. Insert a blank line between top-level definitions and the document body.
 
 The converter emits TODO comments for JSON Schema features that still need
 language design or implementation:

@@ -44,7 +44,7 @@ test::
     type?: +Str [ieee802.11a,1.6tbase-cr8]
 
 - name: compact-enum-default-expansion
-  cmnd: bin/ysc -t yscj -
+  cmnd: bin/ysc -t ysxj -
   stdi: |
     logLevel?: +Str [debug,=info,warning,error,fatal]
       "Log level for all components"
@@ -76,7 +76,7 @@ test::
 
 - name: reject-multiple-compact-enum-defaults
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysc -t ysxj -C - 2>&1 | sed -n 1p'
   stdi: |
     level: +Str [=debug,=info,error]
   want: |

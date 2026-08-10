@@ -23,7 +23,7 @@ test::
     debt: +Int ..-1
 
 - name: range-expansion
-  cmnd: bin/ysc -t yscj -
+  cmnd: bin/ysc -t ysxj -
   stdi: |
     port: +Int 1..65535
     age: range:0..
