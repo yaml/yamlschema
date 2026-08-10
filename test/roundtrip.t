@@ -10,8 +10,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysc -t ysc.yaml "$d/in.schema.json" > "$d/out.ysc.yaml"
-      bin/ysc -t schema.json "$d/out.ysc.yaml" > "$d/out.schema.json"
+      bin/ysc -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysc -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == ARGS.1:read:json/load" \
         -- "$d/in.schema.json" "$d/out.schema.json"
     '
@@ -65,8 +65,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysc -t ysc.yaml "$d/in.schema.json" > "$d/out.ysc.yaml"
-      bin/ysc -t schema.json "$d/out.ysc.yaml" > "$d/out.schema.json"
+      bin/ysc -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysc -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == ARGS.1:read:json/load" \
         -- "$d/in.schema.json" "$d/out.schema.json"
     '

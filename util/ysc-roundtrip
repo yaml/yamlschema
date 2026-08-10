@@ -13,7 +13,7 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 before=$tmpdir/before.json
 after=$tmpdir/after.json
-ysc_yaml=$tmpdir/out.ysc.yaml
+ysd_yaml=$tmpdir/out.ysd.yaml
 schema_json=$tmpdir/out.schema.json
 canon='
   def normalize:
@@ -58,8 +58,8 @@ canon='
 
 jq "$canon" "$input" > "$before"
 
-bin/ysc "$input" -t ysc.yaml > "$ysc_yaml"
-bin/ysc "$ysc_yaml" -t schema.json > "$schema_json"
+bin/ysc "$input" -t ysd.yaml > "$ysd_yaml"
+bin/ysc "$ysd_yaml" -t schema.json > "$schema_json"
 jq "$canon" "$schema_json" > "$after"
 
 if cmp -s "$before" "$after"; then

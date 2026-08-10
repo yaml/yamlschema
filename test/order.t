@@ -7,7 +7,7 @@ test::
 - name: expanded-json-root-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t ysxj - |
+      bin/ysc -t yscj - |
         ys -e "say: IN:read:yaml/load:keys:joins"
     '
   stdi: |
@@ -27,7 +27,7 @@ test::
 - name: expanded-yaml-root-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t ysxy - |
+      bin/ysc -t yscy - |
         ys -e "say: IN:read:yaml/load:keys:joins"
     '
   stdi: |
@@ -47,7 +47,7 @@ test::
 - name: expanded-nested-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t ysxy - |
+      bin/ysc -t yscy - |
         ys -e "say: IN:read:yaml/load.parent:keys:joins"
     '
   stdi: |
@@ -68,7 +68,7 @@ test::
 - name: canonical-directive-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t ysxy - |
+      bin/ysc -t yscy - |
         ys -e "say: IN:read:yaml/load.rich:keys:joins"
     '
   stdi: |
@@ -89,7 +89,7 @@ test::
 - name: json-schema-definition-and-property-order
   cmnd: |
     sh -c '
-      bin/ysc -f jsc -t ysxy - |
+      bin/ysc -f jsc -t yscy - |
         ys -e "say: IN:read:yaml/load:keys:joins" |
         tr " " "\n"
     '

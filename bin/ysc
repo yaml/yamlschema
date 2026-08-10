@@ -26,8 +26,8 @@ HELP =: |
     INPUT                 Input schema path. Defaults to stdin.
 
   Options:
-    -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
-    -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
+    -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+    -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -F, --fmt             Format JSON Schema to stdout.
     -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
@@ -53,7 +53,7 @@ defn main(*args):
 
 defn convert-to(target text opts):
   case target:
-    'ysc.yaml':
+    'ysd.yaml':
       schema =: text:yaml/load
       validate-json-schema-document: schema
       validate-json-schema-dialect: schema
@@ -62,11 +62,11 @@ defn convert-to(target text opts):
       data =: text:yaml/load
       schema =: ysc-to-schema(expand-ysc(data))
       json-output: schema opts
-    'ysx.json':
-      data =: ysx-input(text opts)
-      ysx-json-output: expand-ysc(data) opts
-    'ysx.yaml':
-      data =: ysx-input(text opts)
+    'ysc.json':
+      data =: canonical-input(text opts)
+      canonical-json-output: expand-ysc(data) opts
+    'ysc.yaml':
+      data =: canonical-input(text opts)
       post-process: yaml/dump(expand-ysc(data))
     else:
       usage: "unsupported output format: $target"
@@ -138,20 +138,23 @@ defn handle-input(state arg):
 
 defn output-format(opts):
   fmt =: normalize-format(opts.to) || infer-output-format(opts.output)
-  fmt ||: 'ysc.yaml'
+  fmt ||: 'ysd.yaml'
 
 defn normalize-format(fmt):
   case fmt:
-    'ysc': 'ysc.yaml'
+    'ysd': 'ysd.yaml'
+    'yscy': 'ysc.yaml'
+    'yscj': 'ysc.json'
     'jsc': 'schema.json'
-    'ysxj': 'ysx.json'
-    'ysxy': 'ysx.yaml'
-    'yscj': old-format('yscj' 'ysxj')
-    'ysc.json': old-format('ysc.json' 'ysx.json')
+    'ysc': unsupported-format(fmt)
+    'ysxy': unsupported-format(fmt)
+    'ysxj': unsupported-format(fmt)
+    'ysx.yaml': unsupported-format(fmt)
+    'ysx.json': unsupported-format(fmt)
     else: fmt
 
-defn old-format(old new):
-  usage: "unsupported format: $old; use $new"
+defn unsupported-format(format):
+  usage: "unsupported format: $format"
 
 defn validate-format-options(opts):
   when opts.to.?: normalize-format(opts.to)
@@ -160,10 +163,12 @@ defn validate-format-options(opts):
   reject-old-file-extension: opts.output
 
 defn reject-old-file-extension(path):
-  when path.? && path.ends?('.ysc.json'):
-    usage: 'unsupported file extension: .ysc.json; use .ysx.json'
+  when path.? && path.ends?('.ysx.yaml'):
+    usage: 'unsupported file extension: .ysx.yaml'
+  when path.? && path.ends?('.ysx.json'):
+    usage: 'unsupported file extension: .ysx.json'
 
-defn ysx-input(text opts):
+defn canonical-input(text opts):
   source =: normalize-format(opts.from)
   source ||=: infer-input-format(opts.input)
   if source == 'schema.json':
@@ -179,11 +184,11 @@ defn infer-input-format(path):
     path:nil?: nil
     path == '-': nil
     path =~ /\.schema\.json$/: 'schema.json'
-    path =~ /\.ysx\.json$/: 'ysx.json'
-    path =~ /\.ysx\.yaml$/: 'ysx.yaml'
+    path =~ /\.ysc\.json$/: 'ysc.json'
     path =~ /\.ysc\.yaml$/: 'ysc.yaml'
+    path =~ /\.ysd\.yaml$/: 'ysd.yaml'
 
-defn ysx-json-output(value opts):
+defn canonical-json-output(value opts):
   if opts.compact:
     json/dump(value)
     pretty-json(value)
@@ -194,8 +199,8 @@ defn infer-output-format(output):
     output == '-': nil
     output =~ /\.schema\.json$/: 'schema.json'
     output =~ /\.ysc\.yaml$/: 'ysc.yaml'
-    output =~ /\.ysx\.json$/: 'ysx.json'
-    output =~ /\.ysx\.yaml$/: 'ysx.yaml'
+    output =~ /\.ysc\.json$/: 'ysc.json'
+    output =~ /\.ysd\.yaml$/: 'ysd.yaml'
 
 defn emit-output(text output):
   when output.?:

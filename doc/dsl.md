@@ -2,7 +2,7 @@ yamlschema DSL
 ==============
 
 This page specifies the human-authored yamlschema DSL and its expansion to the
-canonical `ysx` model, serialized as `.ysx.yaml` or `.ysx.json`. A schema
+canonical `ysc` model, serialized as `.ysc.yaml` or `.ysc.json`. A schema
 defines types: sets of constraints for a scalar, mapping, or list of another
 type.
 
@@ -279,14 +279,14 @@ value:
 Compile human-authored YAML to canonical JSON with:
 
 ```sh
-ysc -t ysxj contact.ysc.yaml
-ysc -t ysxj -C contact.ysc.yaml
-ysc -t ysxj values.schema.json
+ysc -t yscj contact.ysd.yaml
+ysc -t yscj -C contact.ysd.yaml
+ysc -t yscj values.schema.json
 ```
 
-Use `ysxy` instead of `ysxj` for canonical YAML. Use `-f/--from ysc`, `ysxj`,
-`ysxy`, or `jsc` when a filename or stdin does not make the source format
-clear. File suffixes `.ysc.yaml`, `.ysx.json`, `.ysx.yaml`, and `.schema.json`
+Use `yscy` instead of `yscj` for canonical YAML. Use `-f/--from ysd`, `yscj`,
+`yscy`, or `jsc` when a filename or stdin does not make the source format
+clear. File suffixes `.ysd.yaml`, `.ysc.json`, `.ysc.yaml`, and `.schema.json`
 are inferred automatically.
 
 Canonical directives are emitted in this order:

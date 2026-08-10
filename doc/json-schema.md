@@ -5,8 +5,8 @@ JSON Schema Roundtrip
 
 ```text
 contact.schema.json
-  -> contact.ysc.yaml
-  -> contact.ysx.yaml or contact.ysx.json
+  -> contact.ysd.yaml
+  -> contact.ysc.yaml or contact.ysc.json
   -> contact.schema.json
 ```
 
@@ -24,12 +24,12 @@ and JSON serializations:
 
 ```text
 contact.schema.json
-  -> contact.ysc.yaml
-  -> contact.ysx.yaml or contact.ysx.json
+  -> contact.ysd.yaml
+  -> contact.ysc.yaml or contact.ysc.json
   -> contact.schema.json
 ```
 
-The `.ysc.yaml` succinct form is optimized for humans:
+The `.ysd.yaml` succinct form is optimized for humans:
 
 ```yaml
 name: +Str
@@ -37,7 +37,7 @@ email?: +Str =~"\S+@\S+"
 tags[!+]: +Str
 ```
 
-The `.ysx.json` explicit form is one serialization of the canonical internal
+The `.ysc.json` explicit form is one serialization of the canonical internal
 shape:
 
 ```json
@@ -72,8 +72,8 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 }
 ```
 
-Use `.schema.json` for JSON Schema files and `.ysc.yaml` for human-maintained
-yamlschema DSL files. Use `.ysx.yaml` or `.ysx.json` for the same non-human,
+Use `.schema.json` for JSON Schema files and `.ysd.yaml` for human-maintained
+yamlschema DSL files. Use `.ysc.yaml` or `.ysc.json` for the same non-human,
 fully expanded yamlschema model.
 
 
@@ -82,17 +82,17 @@ fully expanded yamlschema model.
 `bin/ysc` implements all four direct conversion targets:
 
 ```text
-contact.schema.json -> contact.ysc.yaml
-contact.ysc.yaml -> contact.ysx.yaml
-contact.ysc.yaml -> contact.ysx.json
-contact.ysc.yaml -> contact.schema.json
+contact.schema.json -> contact.ysd.yaml
+contact.ysd.yaml -> contact.ysc.yaml
+contact.ysd.yaml -> contact.ysc.json
+contact.ysd.yaml -> contact.schema.json
 ```
 
 The explicit form is the shared expansion boundary:
 
 ```text
-contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
-contact.ysc.yaml -> contact.schema.json
+contact.ysd.yaml -> contact.ysc.yaml or contact.ysc.json
+contact.ysd.yaml -> contact.schema.json
 ```
 
 The compiler targets the explicit form because succinct syntax is sugar.

@@ -63,7 +63,7 @@ test::
     }
 
 - name: schema.json-to-succinct-description
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {

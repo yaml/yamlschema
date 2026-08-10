@@ -19,17 +19,17 @@ yamlschema uses separate extensions for human-authored source, compiled
 yamlschema, and JSON Schema interchange.
 
 ```text
-contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
-contact.ysc.yaml -> contact.schema.json
+contact.ysd.yaml -> contact.ysc.yaml or contact.ysc.json
+contact.ysd.yaml -> contact.schema.json
 ```
 
-- `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysx.yaml` is the expanded yamlschema form serialized as YAML.
-- `.ysx.json` is the expanded yamlschema form serialized as JSON.
+- `.ysd.yaml` is the human-maintained yamlschema DSL form.
+- `.ysc.yaml` is the expanded yamlschema form serialized as YAML.
+- `.ysc.json` is the expanded yamlschema form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
-The `.ysc.yaml` form is ordinary YAML and should be pleasant to edit by hand.
-The `ysx` forms contain the same non-human, fully expanded data and are
+The `.ysd.yaml` form is ordinary YAML and should be pleasant to edit by hand.
+The `ysc` forms contain the same non-human, fully expanded data and are
 intended for validators, caches, publication, and generated artifacts.
 The `.schema.json` form is the JSON Schema representation used for interop with
 the JSON Schema ecosystem.
@@ -651,7 +651,7 @@ name: Alice
 Relative and application-local names are also possible:
 
 ```yaml
---- !yaml:./contact.ysc.yaml
+--- !yaml:./contact.ysd.yaml
 name: Alice
 
 --- !yaml:contact/v1
@@ -729,10 +729,10 @@ The `bin/ysc` converter is a bootstrap path from JSON Schema into
 yamlschema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
-Generated human-facing yamlschema output should use `.ysc.yaml`.
-Expanded yamlschema should use `.ysx.yaml` or `.ysx.json`; both contain the
+Generated human-facing yamlschema output should use `.ysd.yaml`.
+Expanded yamlschema should use `.ysc.yaml` or `.ysc.json`; both contain the
 same canonical model.
-The converter can also generate `.schema.json` from `.ysc.yaml` for the
+The converter can also generate `.schema.json` from `.ysd.yaml` for the
 same direct mapping subset.
 The `.schema.json` target currently uses JSON Schema Draft 2020-12 only.
 The `$schema` keyword is implied by the target and is not encoded in
@@ -807,8 +807,9 @@ tags[!+]: +Str
 1. Read JSON Schema from the required input path, or from stdin when the input
    is `-`.
 2. Require either `-t` / `--to` or `-o` / `--output`.
-3. Use `-t ysc` to parse Draft 2020-12 JSON Schema and emit yamlschema.
-4. Use `-t ysxy` or `-t ysxj` to emit fully expanded yamlschema as YAML or
+3. Use `-t ysd` to parse Draft 2020-12 JSON Schema and emit succinct
+   yamlschema.
+4. Use `-t yscy` or `-t yscj` to emit fully expanded yamlschema as YAML or
    JSON.
 5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON
    Schema.
@@ -816,7 +817,7 @@ tags[!+]: +Str
 7. Prefer succinct scalar forms where possible.
 8. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-9. Dump `ysc.yaml` and `ysx.yaml` results as YAML. Dump `ysx.json` and
+9. Dump `ysd.yaml` and `ysc.yaml` results as YAML. Dump `ysc.json` and
    `schema.json` results as canonical, two-space-indented JSON.
    Use `-C` / `--compact` for compact JSON output.
 10. Post-process generated TODO sentinel keys into `# TODO: <keyword>`

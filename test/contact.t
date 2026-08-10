@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: contact
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "$defs": {

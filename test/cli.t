@@ -17,8 +17,8 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
-      -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
+      -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+      -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
@@ -39,8 +39,8 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysc, jsc, ysxj, or ysxy.
-      -f, --from FORMAT     Input format: ysc, jsc, ysxj, or ysxy.
+      -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+      -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -F, --fmt             Format JSON Schema to stdout.
       -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
@@ -108,7 +108,7 @@ test::
     }
 
 - name: stdin-default-with-to
-  cmnd: bin/ysc -t ysc
+  cmnd: bin/ysc -t ysd
   stdi: |
     {
       "type": "object",
@@ -121,7 +121,7 @@ test::
     name: +Str
 
 - name: json-schema-def-order-to-ysc
-  cmnd: bin/ysc -t ysc
+  cmnd: bin/ysc -t ysd
   stdi: |
     {
       "definitions": {

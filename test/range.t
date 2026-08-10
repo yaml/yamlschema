@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: range
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -23,7 +23,7 @@ test::
     debt: +Int ..-1
 
 - name: range-expansion
-  cmnd: bin/ysc -t ysxj -
+  cmnd: bin/ysc -t yscj -
   stdi: |
     port: +Int 1..65535
     age: range:0..

@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: any-of
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -25,7 +25,7 @@ test::
       - api_key?: +Str
 
 - name: closed-object
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "type": "object",
@@ -35,7 +35,7 @@ test::
     {}
 
 - name: open-object
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "type": "object",
@@ -45,7 +45,7 @@ test::
     +Str: +Any
 
 - name: typed-wildcard
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "type": "object",

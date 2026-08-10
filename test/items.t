@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: items
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -31,7 +31,7 @@ test::
     subset[1-3]: +Str
 
 - name: described-array-of-one-of-items
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -61,7 +61,7 @@ test::
       .desc: List of image pull secrets
 
 - name: described-array-of-any-items
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {

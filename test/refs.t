@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: refs
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "$defs": {
@@ -28,7 +28,7 @@ test::
     admin?: +email
 
 - name: draft-07-definitions-refs
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "$schema": "http://json-schema.org/draft-07/schema#",

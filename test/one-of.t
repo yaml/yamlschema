@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: one-of-to-oneof
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "properties": {

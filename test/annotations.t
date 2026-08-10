@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: annotations-to-ysc-yaml
-  cmnd: bin/ysc -t ysc.yaml -
+  cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
       "$id": "https://example.com/arrays.schema.json",
@@ -35,7 +35,7 @@ test::
   cmnd: |
     sh -c 'printf "%s\n" \
       "{\"\$schema\":\"https://example.com/unsupported-draft\"}" |
-      bin/ysc -t ysc.yaml - >/dev/null 2>&1; test $? -eq 2 && echo ok'
+      bin/ysc -t ysd.yaml - >/dev/null 2>&1; test $? -eq 2 && echo ok'
   want: |
     ok
 

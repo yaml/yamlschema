@@ -53,20 +53,24 @@ This schema describes a mapping where:
 
 yamlschema uses these file extensions:
 
-- `.ysc.yaml` is the human-maintained yamlschema DSL form.
-- `.ysx.yaml` is the expanded yamlschema form serialized as YAML.
-- `.ysx.json` is the expanded yamlschema form serialized as JSON.
+- `.ysd.yaml` is the human-maintained yamlschema DSL form.
+- `.ysc.yaml` is the expanded yamlschema form serialized as YAML.
+- `.ysc.json` is the expanded yamlschema form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
 Typical flow:
 
 ```text
-contact.ysc.yaml -> contact.ysx.yaml or contact.ysx.json
-contact.ysc.yaml -> contact.schema.json
+contact.ysd.yaml -> contact.ysc.yaml or contact.ysc.json
+contact.ysd.yaml -> contact.schema.json
 ```
 
-The expanded targets are `ysxy` / `ysx.yaml` for YAML and `ysxj` /
-`ysx.json` for JSON.
+The format targets and explicit `--from` values are:
+
+- `ysd` / `ysd.yaml` for succinct DSL YAML.
+- `yscy` / `ysc.yaml` for canonical YAML.
+- `yscj` / `ysc.json` for canonical JSON.
+- `jsc` / `schema.json` for JSON Schema.
 
 ## Installation
 
@@ -79,11 +83,11 @@ For local development, source the repo `.rc` file to put `bin/` on your `PATH`:
 After that, the converter can be run as `ysc`:
 
 ```sh
-ysc -t ysc contact.schema.json
-ysc -t ysxj contact.ysc.yaml
-ysc -t ysxy contact.ysc.yaml
-ysc -t jsc contact.ysc.yaml
-ysc -t jsc -C contact.ysc.yaml
+ysc -t ysd contact.schema.json
+ysc -t yscj contact.ysd.yaml
+ysc -t yscy contact.ysd.yaml
+ysc -t jsc contact.ysd.yaml
+ysc -t jsc -C contact.ysd.yaml
 ysc -F contact.schema.json
 ysc -N legacy.schema.json
 ```
@@ -97,16 +101,16 @@ Input defaults to stdin.
 Use `-` explicitly to read JSON Schema or yamlschema from stdin:
 
 ```sh
-ysc -t ysc - < contact.schema.json
-ysc -t jsc - < contact.ysc.yaml
+ysc -t ysd - < contact.schema.json
+ysc -t jsc - < contact.ysd.yaml
 ysc -FC - < contact.schema.json
 ```
 
 or from a file path:
 
 ```sh
-ysc -t ysc contact.schema.json
-ysc -t jsc contact.ysc.yaml
+ysc -t ysd contact.schema.json
+ysc -t jsc contact.ysd.yaml
 ```
 
 CLI information:
@@ -134,7 +138,7 @@ Example input:
 }
 ```
 
-Expected `.ysc.yaml` output:
+Expected `.ysd.yaml` output:
 
 ```yaml
 name: +Str

@@ -135,7 +135,7 @@ for file do
     index=$(printf '%s\n' "$row" | jq -r '.key')
     desc=$(printf '%s\n' "$row" | jq -r '.value.description // ""')
     schema=$tmpdir/schema.json
-    ysc_yaml=$tmpdir/out.ysc.yaml
+    ysd_yaml=$tmpdir/out.ysd.yaml
     schema_json=$tmpdir/out.schema.json
     before=$tmpdir/before.json
     after=$tmpdir/after.json
@@ -147,14 +147,14 @@ for file do
 
     total=$((total + 1))
 
-    if ! bin/ysc "$schema" -t ysc.yaml > "$ysc_yaml" 2> "$err"; then
+    if ! bin/ysc "$schema" -t ysd.yaml > "$ysd_yaml" 2> "$err"; then
       status=ERROR
       error=$((error + 1))
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$draft" "$rel" "$index" "$status" "$keys" "$desc"
       continue
     fi
-    if ! bin/ysc "$ysc_yaml" -t schema.json > "$schema_json" 2> "$err"; then
+    if ! bin/ysc "$ysd_yaml" -t schema.json > "$schema_json" 2> "$err"; then
       status=ERROR
       error=$((error + 1))
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
