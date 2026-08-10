@@ -12,9 +12,8 @@ test::
       printf "%s\n" "$input" | bin/ysc -t yscy -
     '
   want: |
-    {"foo":{".type":"+Str"}}
-    foo:
-      .type: +Str
+    {"foo":"+Str"}
+    foo: +Str
 
 - name: expanded-long-formats
   cmnd: |
@@ -24,9 +23,27 @@ test::
       printf "%s\n" "$input" | bin/ysc -t ysc.yaml -
     '
   want: |
-    {"foo":{".type":"+Str"}}
-    foo:
+    {"foo":"+Str"}
+    foo: +Str
+
+- name: collapse-sole-type-pairs
+  cmnd: bin/ysc -f yscy -t yscy -
+  stdi: |
+    namespace?:
       .type: +Str
+    labels?:
+      +Str:
+        .type: +Str
+    annotated?:
+      .type: +Str
+      .desc: Kept explicit
+  want: |
+    namespace?: +Str
+    labels?:
+      +Str: +Str
+    annotated?:
+      .type: +Str
+      .desc: Kept explicit
 
 - name: succinct-short-and-long-formats
   cmnd: |
@@ -76,7 +93,7 @@ test::
       for format in jsc schema.json; do
         printf "%s\n" "$json_schema" |
           bin/ysc -f "$format" -t yscj -C - |
-          ys -e "say: IN:read:json/load:vals:first:vals:first"
+          ys -e "say: IN:read:json/load:vals:first"
       done
     '
   want: |
@@ -97,8 +114,7 @@ test::
       "required": ["foo"]
     }
   want: |
-    foo:
-      .type: +Str
+    foo: +Str
 
 - name: expanded-output-extension-inference
   cmnd: |
@@ -111,9 +127,8 @@ test::
       rm -r "$dir"
     '
   want: |
-    {"foo":{".type":"+Str"}}
-    foo:
-      .type: +Str
+    {"foo":"+Str"}
+    foo: +Str
 
 - name: succinct-output-extension-inference
   cmnd: |
@@ -139,8 +154,7 @@ test::
       rm -r "$dir"
     '
   want: |
-    foo?:
-      .type: +Str
+    foo?: +Str
 
 - name: expanded-from-values
   cmnd: |
@@ -158,6 +172,37 @@ test::
     bject","properties":{"foo":{"type":"string"}},"required":["foo"],"additi
     onalProperties":false}
 
+- name: canonical-like-input
+  cmnd: |
+    sh -c '
+      input="foo:\n  .like: /a.*b/"
+      printf "%b\n" "$input" | bin/ysc -f yscy -t yscj -C -
+      printf "%b\n" "$input" | bin/ysc -f yscy -t jsc -C - |
+        ys -e "say: IN:read:json/load.properties.foo.pattern"
+      printf "%s\n" "{\"foo\":{\".like\":\"^x$\"}}" |
+        bin/ysc -f yscj -t jsc -C - |
+        ys -e "say: IN:read:json/load.properties.foo.pattern"
+    '
+  want: |
+    {"foo":{".base":"+Str",".like":"\/a.*b\/"}}
+    /a.*b/
+    ^x$
+
+- name: reject-regex-directives-in-wrong-source-form
+  cmnd: |
+    sh -c '
+      printf "foo:\n  .like: a\n" |
+        bin/ysc -f ysd -t yscj -C - 2>&1 | sed -n 1p
+      for key in .match .find; do
+        printf "foo:\n  %s: a\n" "$key" |
+          bin/ysc -f yscy -t jsc -C - 2>&1 | sed -n 1p
+      done
+    '
+  want: |
+    ysc: unsupported YSD directive: .like; use .match or .find
+    ysc: unsupported YSC directive: .match; use .like
+    ysc: unsupported YSC directive: .find; use .like
+
 - name: expanded-input-extension-inference
   cmnd: |
     sh -c '
@@ -170,9 +215,8 @@ test::
       rm -r "$dir"
     '
   want: |
-    {"foo":{".type":"+Str"}}
-    foo:
-      .type: +Str
+    {"foo":"+Str"}
+    foo: +Str
 
 - name: succinct-input-extension-inference
   cmnd: |

@@ -42,8 +42,8 @@ shape:
 
 ```json
 {
-  "name": {".type": "+Str"},
-  "email": {".base": "+Str", ".match": "\\S+@\\S+"},
+  "name": "+Str",
+  "email": {".base": "+Str", ".like": "^\\S+@\\S+$"},
   "tags": {
     ".base": "+Str",
     ".list": true,
@@ -198,17 +198,19 @@ zip: +Str =~"\d{5}"
 Roundtrip notes:
 
 - JSON Schema regexes are strings.
-- `.match` is a whole-string match; `^` and `$` are implied and restored when
-  exporting JSON Schema.
-- `.find` is an unanchored search and exports its pattern unchanged.
+- YSD `.match` is a whole-string match; canonicalization bookends its value
+  with `^` and `$`.
+- YSD `.find` is an unanchored search and canonicalization preserves its value.
+- Canonical YSC uses `.like` for both and exports its value unchanged as the
+  JSON Schema `pattern`.
 - `/pattern/` is shorthand for `find:"pattern"` only when the body contains
   neither whitespace nor `/`.
 - `=~"..."`, its accepted `match:"..."` alias, and `find:"..."` cannot contain
-  `"`; use an explicit `.match` or `.find` property when needed. Generated
-  yamlschema uses `=~"..."` for `.match`.
+  `"`; use an explicit YSD `.match` or `.find` property when needed. Generated
+  YSD uses `=~"..."` for `.match`.
 - In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
   represents space-hash. Other backslash sequences remain literal.
-- Both regex properties imply string validation.
+- All regex forms imply string validation.
 
 
 ## Enums

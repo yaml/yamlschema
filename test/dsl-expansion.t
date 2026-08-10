@@ -16,7 +16,7 @@ test::
       "succinct": {
         ".base": "+Str",
         ".list": true,
-        ".find": "a.*b",
+        ".like": "a.*b",
         ".size": [
           10,
           20
@@ -25,7 +25,7 @@ test::
       "hybrid": {
         ".base": "+Str",
         ".list": true,
-        ".find": "a.*b",
+        ".like": "a.*b",
         ".size": [
           10,
           20
@@ -48,7 +48,7 @@ test::
     {
       "pattern": {
         ".base": "+Str",
-        ".find": "a.*b"
+        ".like": "a.*b"
       },
       "numbers": {
         ".base": "+Int",
@@ -77,9 +77,7 @@ test::
         ".const": "User"
       },
       "object": {
-        "child?": {
-          ".type": "+Bool"
-        }
+        "child?": "+Bool"
       }
     }
 
@@ -89,20 +87,23 @@ test::
     url: =~"https?://.*" 1+
     spaced: =~"a b" 2-4
     alias: match:"still accepted"
+    anchored: match:"^already$"
     found: find:"a/b c"
     simple: /a.*b/
+    explicit:
+      .find: raw value
   want: |
     {
       "url": {
         ".base": "+Str",
-        ".match": "https?://.*",
+        ".like": "^https?://.*$",
         ".size": [
           1
         ]
       },
       "spaced": {
         ".base": "+Str",
-        ".match": "a b",
+        ".like": "^a b$",
         ".size": [
           2,
           4
@@ -110,15 +111,23 @@ test::
       },
       "alias": {
         ".base": "+Str",
-        ".match": "still accepted"
+        ".like": "^still accepted$"
+      },
+      "anchored": {
+        ".base": "+Str",
+        ".like": "^^already$$"
       },
       "found": {
         ".base": "+Str",
-        ".find": "a/b c"
+        ".like": "a/b c"
       },
       "simple": {
         ".base": "+Str",
-        ".find": "a.*b"
+        ".like": "a.*b"
+      },
+      "explicit": {
+        ".base": "+Str",
+        ".like": "raw value"
       }
     }
 
@@ -160,9 +169,7 @@ test::
           10,
           10
         ],
-        "+Str": {
-          ".type": "+Any"
-        }
+        "+Str": "+Any"
       }
     }
 
@@ -205,7 +212,7 @@ test::
       .list: true
       .base: +Str
   want: |
-    {"foo":{".base":"+Str",".list":true,".match":"a.*b",".size":[10,20]}}
+    {"foo":{".base":"+Str",".list":true,".like":"^a.*b$",".size":[10,20]}}
 
 - name: direct-and-refined-type-directives
   cmnd: bin/ysc -t yscj -
@@ -219,15 +226,9 @@ test::
       .enum: [foo, bar]
   want: |
     {
-      "+named": {
-        ".type": "+Str"
-      },
-      "plain": {
-        ".type": "+Str"
-      },
-      "named": {
-        ".type": "+named"
-      },
+      "+named": "+Str",
+      "plain": "+Str",
+      "named": "+named",
       "annotated": {
         ".type": "+Float",
         ".init": 1.5,
@@ -310,7 +311,7 @@ test::
       .base: +Str /a/
       .find: a
   want: |
-    ysc: duplicate yamlschema directive: .find in directive .find
+    ysc: duplicate yamlschema directive: .like in directive .find
 
 - name: reject-need
   cmnd: |
@@ -435,7 +436,7 @@ test::
     alternate: also:former base:+Str
     choice: enum:[a,b c] base:+Str
   want: |
-    {"string":{".base":"+Str",".match":"a b",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".find":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any",".list":true,".item":{".type":"+Str"},".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
+    {"string":{".base":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".like":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any",".list":true,".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |
@@ -456,7 +457,7 @@ test::
 - name: reject-renamed-explicit-directives
   cmnd: |
     sh -c '
-      for key in .titl .just .only .like .mini .maxi; do
+      for key in .titl .just .only .mini .maxi; do
         printf "foo:\n  %s: Old\n" "$key" |
           bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       done
@@ -465,7 +466,6 @@ test::
     ysc: unsupported yamlschema directive: .titl; use .title
     ysc: unsupported yamlschema directive: .just; use .const
     ysc: unsupported yamlschema directive: .only; use .const
-    ysc: unsupported yamlschema directive: .like; use .match
     ysc: unsupported yamlschema directive: .mini; use .range
     ysc: unsupported yamlschema directive: .maxi; use .range
 

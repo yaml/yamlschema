@@ -16,13 +16,11 @@ test::
     namespaced: +Any[+net/port,+contact/email]
     values[]: +Any[+foo,+bar]
   want: |
-    {"one":{".oneof":[{".type":"+Str"},{".type":"+Int"}]},"any":{".anyof":[{
-    ".type":"+foo"},{".type":"+bar"}]},"all":{".allof":[{".type":"+foo"},{".
-    type":"+bar"}]},"composed":{".base":"+base",".allof":[{".type":"+constra
-    int"},{".type":"+other"}]},"not-one":{".not":{".type":"+foo"}},"not-many
-    ":{".not":{".anyof":[{".type":"+Str"},{".type":"+Int"}]}},"namespaced":{
-    ".anyof":[{".type":"+net\/port"},{".type":"+contact\/email"}]},"values":
-    {".list":true,".anyof":[{".type":"+foo"},{".type":"+bar"}]}}
+    {"one":{".oneof":["+Str","+Int"]},"any":{".anyof":["+foo","+bar"]},"all"
+    :{".allof":["+foo","+bar"]},"composed":{".base":"+base",".allof":["+cons
+    traint","+other"]},"not-one":{".not":"+foo"},"not-many":{".not":{".anyof
+    ":["+Str","+Int"]}},"namespaced":{".anyof":["+net\/port","+contact\/emai
+    l"]},"values":{".list":true,".anyof":["+foo","+bar"]}}
 
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysc -t schema.json -

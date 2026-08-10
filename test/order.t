@@ -82,9 +82,10 @@ test::
       .size: [1, 3]
       .item: +Str
       .list: true
+      .match: word
       .base: +Str
   want: |
-    .base .list .item .size .solo .uniq .null .init .title .desc
+    .base .list .item .like .size .solo .uniq .null .init .title .desc
 
 - name: json-schema-definition-and-property-order
   cmnd: |

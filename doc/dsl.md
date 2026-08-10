@@ -93,7 +93,7 @@ These expand to explicit directives. Refined bases are always materialized:
 ```yaml
 foo:
   .base: +Str
-  .find: a.*b
+  .like: a.*b
 port:
   .base: +Int
   .range: [1, 65535]
@@ -106,9 +106,24 @@ mode:
 anchors are implied. `match:"pattern"` is an accepted alias. `find:"pattern"`
 searches within the string. The `/pattern/` form is shorthand for
 `find:"pattern"` and is available only when the pattern contains neither
-whitespace nor `/`. The quoted bodies cannot contain `"`. Use explicit `.match`
-or `.find` when no tight form can represent the pattern. Both directives imply
-`+Str`. Generated yamlschema uses the canonical `=~"pattern"` spelling.
+whitespace nor `/`. The quoted bodies cannot contain `"`. In YSD, use explicit
+`.match` or `.find` when no tight form can represent the pattern. Both imply
+`+Str`. Generated YSD uses the canonical `=~"pattern"` spelling.
+
+Canonical YSC stores both forms as `.like`, containing the exact JSON Schema
+pattern. A match is bookended with `^` and `$`; a find is stored unchanged:
+
+```yaml
+whole:
+  .base: +Str
+  .like: ^pattern$
+search:
+  .base: +Str
+  .like: pattern
+```
+
+`.like` is accepted only in `.ysc.yaml` and `.ysc.json`. Conversely, `.match`
+and `.find` are YSD directives and are rejected in YSC input.
 
 Compact enums require an explicit base reference and comma-separated members:
 
@@ -240,8 +255,8 @@ This is equivalent to:
 foo:
   .base: +Str
   .list: true
-  .find: a.*b
-  .size: 10-20
+  .like: a.*b
+  .size: [10, 20]
   .title: The "Good" Parts
 ```
 
@@ -301,14 +316,16 @@ are inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .base .list .item .oneof .anyof .allof .not .match .find
+.type .base .list .item .oneof .anyof .allof .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
 
-An unrefined built-in or named reference uses `.type`. A reference combined
-with validation or structural constraints uses `.base`. `.init`, `.title`,
-and `.desc` are annotations, so they do not turn `.type` into `.base`.
+An unrefined built-in or named reference is emitted directly as a `+Type`
+scalar. This is the compact form of a mapping whose only pair would be
+`.type: +Type`. When annotations share the mapping, the reference remains
+under `.type`. Validation or structural constraints use `.base`; `.init`,
+`.title`, and `.desc` alone do not turn `.type` into `.base`.
 
 Unknown directives are errors. `.need` is reserved while requiredness is
 represented by the property key. `.also`, `.with`, and `.when` may be retained
@@ -316,6 +333,6 @@ in explicit yamlschema, but an export that cannot represent one fails rather
 than silently discarding it. `.pick` is rejected with guidance to use
 `.oneof`.
 
-The former names `.titl`, `.just`, `.only`, `.like`, `.mini`, and `.maxi` are
-rejected with replacement diagnostics. Their replacements are `.title`,
-`.const`, `.match`, and `.range`.
+The former names `.titl`, `.just`, `.only`, `.mini`, and `.maxi` are rejected
+with replacement diagnostics. Their replacements are `.title`, `.const`, and
+`.range`.

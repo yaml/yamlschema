@@ -89,8 +89,8 @@ port: 1..65535           # numeric range
 tags[1+]: +Str          # list of one or more strings
 ```
 
-The corresponding explicit form uses directives such as `.type`, `.base`,
-`.match`, `.enum`, `.size`, and `.list`.
+The corresponding canonical form uses directives such as `.type`, `.base`,
+`.like`, `.enum`, `.size`, and `.list`.
 
 
 ## Symbols and Definitions
@@ -158,8 +158,9 @@ The design keeps directive names short and regular.
 | `.need` | Reserved; currently rejected in favor of key-side `?` |
 | `.type` | Complete built-in or named type reference |
 | `.base` | Type reference refined by additional constraints |
-| `.match` | Whole-string regex pattern; `^` and `$` are implied |
-| `.find` | Regex search pattern; implies string |
+| `.like` | Canonical raw regex pattern; implies string |
+| `.match` | YSD whole-string regex; canonicalization adds `^` and `$` |
+| `.find` | YSD regex search; canonicalization preserves the pattern |
 | `.enum` | Enumeration of allowed values |
 | `.const` | The one exact allowed value; JSON Schema `const` |
 | `.range` | Inclusive numeric range, with either bound optional |
@@ -206,8 +207,9 @@ foo: desc:"Words" size:1-3 =~"a b" title:"Title" base:+Str
 ```
 
 The canonical explicit form uses the period-prefixed directive names. The old
-names `titl`, `just`, `only`, and `like`, including their period-prefixed
-forms, are errors with diagnostics naming `title`, `const`, and `match`.
+names `titl`, `just`, and `only` are errors with diagnostics naming `title`
+and `const`. The tight `like:` label is also rejected in favor of YSD
+`match:` or `find:`; canonical YSC `.like` stores the resulting raw pattern.
 
 ### Descriptions
 
@@ -278,14 +280,15 @@ email: +Str =~"\S+@\S+"
 zip: +Str =~"\d{5}(-\d{4})?"
 ```
 
-Equivalent explicit form:
+Equivalent canonical YSC form:
 
 ```yaml
 email:
   .base: +Str
-  .match: \S+@\S+
+  .like: ^\S+@\S+$
 zip:
-  .match: \d{5}(-\d{4})?
+  .base: +Str
+  .like: ^\d{5}(-\d{4})?$
 ```
 
 Use `find:"..."` for an unanchored search. `/pattern/` is its compact form
@@ -466,7 +469,7 @@ form is reserved for future YAML key schemas but is not implemented yet.
 
 ## Explicit Form
 
-The explicit form represents all constraints with directives:
+The canonical explicit form represents all constraints with directives:
 
 ```yaml
 port:
@@ -475,7 +478,7 @@ port:
 
 email:
   .base: +Str
-  .match: \S+@\S+
+  .like: ^\S+@\S+$
 
 tags:
   .base: +Str
@@ -487,8 +490,7 @@ tags:
 Optional fields retain `?` on the key:
 
 ```yaml
-port?:
-  .type: +port
+port?: +port
 ```
 
 
@@ -508,13 +510,15 @@ Custom definitions can inherit from other definitions:
 
 Implicit typing applies where possible:
 
-- `.match` and `.find` imply `+Str`.
+- `.like` implies `+Str` in canonical YSC; YSD `.match` and `.find` normalize
+  to `.like`.
 - `.enum` implies the common value type.
 - A mapping shape implies the mapping type without emitting a base marker.
 - Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
 
-Use `.type` for an unrefined built-in or named reference. Use `.base` when
-additional validation or structural constraints refine that reference.
+Emit an unrefined built-in or named reference as a `+Type` scalar when it is
+the type's entire value. Use `.type` when annotations share the mapping, and
+use `.base` when validation or structural constraints refine the reference.
 `.init`, `.title`, and `.desc` are annotations and do not require `.base`.
 
 
@@ -715,12 +719,12 @@ Example compiled shape:
   },
   "+auth": {
     ".oneof": [
-      {"api_key": {".type": "+Str"}},
-      {"token": {".type": "+Str"}}
+      {"api_key": "+Str"},
+      {"token": "+Str"}
     ]
   },
-  "host": {".type": "+Str"},
-  "port": {".type": "+port"}
+  "host": "+Str",
+  "port": "+port"
 }
 ```
 

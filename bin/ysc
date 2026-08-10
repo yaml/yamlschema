@@ -60,14 +60,16 @@ defn convert-to(target text opts):
       convert: schema
     'schema.json':
       data =: text:yaml/load
-      schema =: ysc-to-schema(expand-ysc(data))
+      schema =: ysc-to-schema(expand-ysc(data expansion-source(opts)))
       json-output: schema opts
     'ysc.json':
       data =: canonical-input(text opts)
-      canonical-json-output: expand-ysc(data) opts
+      expanded =: expand-ysc(data expansion-source(opts))
+      canonical-json-output: collapse-direct-types(expanded) opts
     'ysc.yaml':
       data =: canonical-input(text opts)
-      post-process: yaml/dump(expand-ysc(data))
+      expanded =: expand-ysc(data expansion-source(opts))
+      post-process: yaml/dump(collapse-direct-types(expanded))
     else:
       usage: "unsupported output format: $target"
 
@@ -178,6 +180,27 @@ defn canonical-input(text opts):
       validate-json-schema-dialect: schema
       yaml/load: convert(schema)
     else: text:yaml/load
+
+defn expansion-source(opts):
+  source =: normalize-format(opts.from) || infer-input-format(opts.input)
+  if source.in?(['ysc.yaml', 'ysc.json']):
+    then: 'ysc'
+    else: 'ysd'
+
+defn collapse-direct-types(value):
+  cond:
+    map?(value):
+      if (value.# == 1) && value.has?('.type'):
+        then: value.'.type'
+        else:
+          reduce collapse-direct-type-entry: omap() value
+    sequential?(value):
+      collapsed =: value.map(collapse-direct-types)
+      if collapsed == value: value vec(collapsed)
+    else: value
+
+defn collapse-direct-type-entry(result entry):
+  result +: +{entry.0 collapse-direct-types(entry.1)}
 
 defn infer-input-format(path):
   cond:
@@ -372,10 +395,25 @@ defn indent(width):
 # Expand succinct yamlschema into canonical explicit yamlschema.
 # --------------------------------------------------------------------
 
-defn expand-ysc(doc):
+defn expand-ysc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
+  validate-regex-directives: doc source
   reduce expand-doc-entry: omap() doc
+
+defn validate-regex-directives(value source):
+  cond:
+    map?(value):
+      each entry value:
+        key =: entry.0:S
+        when (source == 'ysd') && (key == '.like'):
+          usage: 'unsupported YSD directive: .like; use .match or .find'
+        when (source == 'ysc') && key.in?(['.match', '.find']):
+          usage: "unsupported YSC directive: $key; use .like"
+        validate-regex-directives: entry.1 source
+    sequential?(value):
+      each item value:
+        validate-regex-directives: item source
 
 defn expand-doc-entry(result entry):
   key value =: entry
@@ -484,7 +522,8 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.type', '.match', '.find', '.enum', '.const', '.range', '.size',
+    +['.type', '.like', '.match', '.find', '.enum', '.const',
+     '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
      '.oneof', '.anyof', '.allof', '.not',
      '.title', '.desc', '.also', '.with', '.when']
@@ -503,7 +542,8 @@ defn expand-explicit-directive(result key value):
 
 defn add-implied-directive-base(normalized key value result):
   missing =: result.has?('.base').! && normalized.has?('.base').!
-  bases =: +{'.match' '+Str', '.find' '+Str', '.list' '+Any'}
+  bases =:
+    +{'.like' '+Str', '.match' '+Str', '.find' '+Str', '.list' '+Any'}
   base =: missing.when(bases.$key)
   if base:
     then: normalized + {'.base' base}
@@ -511,8 +551,9 @@ defn add-implied-directive-base(normalized key value result):
 
 defn normalize-directive(key value):
   case key:
-    '.match': +{key regex-pattern(value)}
-    '.find': +{key regex-pattern(value)}
+    '.like': +{key value:S}
+    '.match': +{'.like' anchored-pattern(regex-pattern(value))}
+    '.find': +{'.like' regex-pattern(value)}
     '.size': +{key normalize-size(value)}
     '.item': +{key expand-type(value)}
     '.oneof': +{key expand-combinator-sequence(key value)}
@@ -546,7 +587,7 @@ defn ordered-directives(value):
   order =:
     +['.type', '.base', '.list', '.item',
      '.oneof', '.anyof', '.allof', '.not',
-     '.match', '.find', '.enum', '.const',
+     '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
      '.init', '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
@@ -745,12 +786,13 @@ defn primary-block(token):
   cond:
     token.starts?('base:'): labeled-base-block(token)
     token.starts?('=~'):
-      +{'.base' '+Str', '.match'
-        tight-string-value(token.replace(/^=~/))}
+      +{'.base' '+Str', '.like'
+        anchored-pattern(tight-string-value(token.replace(/^=~/)))}
     token.starts?('match:'):
-      +{'.base' '+Str', '.match' tight-label-string(token)}
+      +{'.base' '+Str', '.like'
+        anchored-pattern(tight-label-string(token))}
     token.starts?('find:'):
-      +{'.base' '+Str', '.find' tight-label-string(token)}
+      +{'.base' '+Str', '.like' tight-label-string(token)}
     token.starts?('range:'):
       range-block(tight-label-raw(token) nil)
     token.starts?('const:') || token.starts?('=='):
@@ -759,7 +801,7 @@ defn primary-block(token):
     token == '+Map': reject-bare-map()
     type-symbol?(token): +{'.base' token}
     regex-literal-token?(token):
-      +{'.base' '+Str', '.find' regex-pattern(token)}
+      +{'.base' '+Str', '.like' regex-pattern(token)}
     slash-delimited-token?(token):
       usage: 'regex literals cannot contain /; use find:"..."'
     compact-enum-token?(token):
@@ -774,11 +816,13 @@ defn expand-tight-token(result token):
     type-symbol?(token): append-allof-reference(result token)
     token.starts?('=~'):
       merge-directives:
-        result {'.match' tight-string-value(token.replace(/^=~/))}
+        result
+        {'.like' anchored-pattern(
+          tight-string-value(token.replace(/^=~/)))}
         'match clause'
     regex-literal-token?(token):
       merge-directives:
-        result {'.find' regex-pattern(token)} 'pattern clause'
+        result {'.like' regex-pattern(token)} 'pattern clause'
     slash-delimited-token?(token):
       usage: 'regex literals cannot contain /; use find:"..."'
     range-literal?(token):
@@ -896,8 +940,8 @@ defn labeled-tight-block(token result):
   key =: ".$name"
   case name:
     'base': labeled-base-block(token)
-    'match': +{key tight-string-value(raw)}
-    'find': +{key tight-string-value(raw)}
+    'match': +{'.like' anchored-pattern(tight-string-value(raw))}
+    'find': +{'.like' tight-string-value(raw)}
     'const': const-block(raw result.'.base')
     'enum': usage('enum requires a bracketed value list')
     'range': range-block(raw result.'.base')
@@ -1167,13 +1211,13 @@ defn reject-title-directive(key):
   usage: "unsupported yamlschema directive: $key; use .title"
 
 defn renamed-directive?(key):
-  key.in?(['.titl', '.just', '.only', '.like', '.mini', '.maxi',
+  key.in?(['.titl', '.just', '.only', '.mini', '.maxi',
            '.pick'])
 
 defn reject-renamed-directive(key):
   replacements =:
     +{'.titl' '.title', '.just' '.const',
-      '.only' '.const', '.like' '.match',
+      '.only' '.const',
       '.mini' '.range', '.maxi' '.range', '.pick' '.oneof'}
   usage: "unsupported yamlschema directive: $key; use $(replacements.$key)"
 
@@ -1265,10 +1309,8 @@ defn canonical-item-schema(value):
     if contains?(value '.item'):
       ysc-value-to-schema: value.'.item'
       else: result
-  result =: map-put-if(result contains?(value '.match')
-    'pattern' anchored-pattern(value.'.match'))
-  result =: map-put-if(result contains?(value '.find')
-    'pattern' value.'.find')
+  result =: map-put-if(result contains?(value '.like')
+    'pattern' value.'.like')
   result =: map-put-if(result contains?(value '.enum')
     'enum' value.'.enum')
   result =:
@@ -1370,13 +1412,9 @@ defn ysc-block-step(state entry):
       state.add-base-schema(val)
     '.base':
       state.add-base-schema(val)
-    '.match':
+    '.like':
       result +=: +{'type' 'string'}
-      result +=: +{'pattern' anchored-pattern(val)}
-      state +: +{'result' result}
-    '.find':
-      result +=: +{'type' 'string'}
-      result +=: +{'pattern' regex-pattern(val)}
+      result +=: +{'pattern' val:S}
       state +: +{'result' result}
     '.enum':
       state + {'result' (result + {'enum' val})}
