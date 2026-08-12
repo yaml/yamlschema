@@ -84,13 +84,13 @@ already implies it:
 
 ```yaml
 email: +Str =~"\S+@\S+"  # whole-string regex match
-role: +Str [admin,user,guest]  # enum with explicit base
+role: +Str [admin,user,guest]  # enum with explicit type
 port: 1..65535           # numeric range
 tags: +Str[1+]          # list of one or more strings
 ```
 
 The corresponding canonical form uses type references and directives such as
-`.type`, `.base`, `.like`, `.enum`, and `.size`.
+`.type`, `.like`, `.enum`, and `.size`.
 
 
 ## Symbols and Definitions
@@ -156,8 +156,7 @@ The design keeps directive names short and regular.
 | Directive | Meaning |
 | --- | --- |
 | `.need` | Reserved; currently rejected in favor of key-side `?` |
-| `.type` | Complete built-in or named type reference |
-| `.base` | Type reference refined by additional constraints |
+| `.type` | Complete built-in or named type expression |
 | `.like` | Canonical raw regex pattern; implies string |
 | `.match` | YSD whole-string regex; canonicalization adds `^` and `$` |
 | `.find` | YSD regex search; canonicalization preserves the pattern |
@@ -194,15 +193,15 @@ Meta directives are top-level schema metadata:
 
 ## Succinct Values
 
-A succinct value is a YAML plain scalar. A base reference is conventionally
+A succinct value is a YAML plain scalar. A type reference is conventionally
 first, and labeled clauses can occur in any order. The scalar labels are
-`base`, `match`, `find`, `const`, `range`, `size`, `list`, `item`,
+`type`, `match`, `find`, `const`, `range`, `size`, `list`, `item`,
 `solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
 `enum:[...]` uses the compact enum grammar. Structural `.one`, `.any`,
 `.all`, `.not`, `.with`, and `.when` values remain explicit.
 
 ```yaml
-foo: desc:"Words" size:1-3 =~"a b" title:"Title" base:+Str
+foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
 ```
 
 The canonical explicit form uses the period-prefixed directive names. The old
@@ -282,10 +281,10 @@ Equivalent canonical YSC form:
 
 ```yaml
 email:
-  .base: +Str
+  .type: +Str
   .like: ^\S+@\S+$
 zip:
-  .base: +Str
+  .type: +Str
   .like: ^\d{5}(-\d{4})?$
 ```
 
@@ -300,7 +299,7 @@ path: find:"usr/local"
 
 ### Enums
 
-Simple enum values use an explicit base and a compact list:
+Simple enum values use an explicit type and a compact list:
 
 ```yaml
 role: +Str [admin,user,guest]
@@ -312,10 +311,10 @@ Equivalent explicit form:
 
 ```yaml
 role:
-  .base: +Str
+  .type: +Str
   .enum: [admin, user, guest]
 level:
-  .base: +Str
+  .type: +Str
   .enum: [LOW, MED, HIGH]
 ```
 
@@ -327,7 +326,7 @@ or otherwise punctuated values use explicit `.enum`:
 ```yaml
 label: +Str [has space,ok]
 symbol:
-  .base: +Str
+  .type: +Str
   .enum: [ok, bad/value]
 ```
 
@@ -344,20 +343,20 @@ Equivalent explicit form:
 
 ```yaml
 port:
-  .base: +Int
+  .type: +Int
   .range: [1, 65535]
 age:
-  .base: +Int
+  .type: +Int
   .range: [0]
 ratio:
-  .base: +Float
+  .type: +Float
   .range: [0, 1]
 ```
 
 
 ### Literal Constants
 
-A base-qualified `==` clause is a constant constraint:
+A type-qualified `==` clause is a constant constraint:
 
 ```yaml
 version: +Str ==v1
@@ -369,10 +368,10 @@ Equivalent explicit form:
 
 ```yaml
 version:
-  .base: +Str
+  .type: +Str
   .const: v1
 kind:
-  .base: +Str
+  .type: +Str
   .const: User
 ```
 
@@ -502,7 +501,7 @@ schemas but is not implemented yet.
 
 ```yaml
 extraEnv?:
-  .base: +Map[1-10,$!]
+  .type: +Map[1-10,$!]
   name: +Str
   value?: +Str
   valueFrom?: +Map{+Any}
@@ -520,15 +519,15 @@ The canonical explicit form represents all constraints with directives:
 
 ```yaml
 port:
-  .base: +Int
+  .type: +Int
   .range: [1, 65535]
 
 email:
-  .base: +Str
+  .type: +Str
   .like: ^\S+@\S+$
 
 tags:
-  .base: +Str[]
+  .type: +Str[]
   .size: [1]
   .uniq: true
 ```
@@ -546,11 +545,11 @@ Custom definitions can inherit from other definitions:
 
 ```yaml
 +port:
-  .base: +Int
+  .type: +Int
   .range: [1, 65535]
 
 +secure-port:
-  .base: +port
+  .type: +port
   .range: [443, 443]
 ```
 
@@ -560,12 +559,11 @@ Implicit typing applies where possible:
   to `.like`.
 - `.enum` implies the common value type.
 - A mapping shape implies the mapping type without emitting a base marker.
-- Numeric range syntax implies `+Int` or `+Float` when no explicit base exists.
+- Numeric range syntax implies `+Int` or `+Float` when no explicit type exists.
 
 Emit an unrefined built-in or named reference as a `+Type` scalar when it is
-the type's entire value. Use `.type` when annotations share the mapping, and
-use `.base` when validation or structural constraints refine the reference.
-`.init`, `.title`, and `.desc` are annotations and do not require `.base`.
+the type's entire value. Use `.type` when the reference or complete tight type
+expression shares a mapping with annotations, constraints, or shape entries.
 
 
 ## Schema Combinators
@@ -592,7 +590,7 @@ explicit form:
     password: +Str
 ```
 
-Multiple unbracketed references are conjunctive. The first becomes `.base` and
+Multiple unbracketed references are conjunctive. The first becomes `.type` and
 the remaining references become `.all` branches.
 
 
@@ -657,7 +655,7 @@ Public symbols use `+name`; private symbols use `:+name`.
 :+max: 65535
 
 +port:
-  .base: +Int
+  .type: +Int
   .size: [1, +max]
 
 +email: /^\S+@\S+$/
@@ -760,7 +758,7 @@ Example compiled shape:
 ```json
 {
   "+port": {
-    ".base": "+Int",
+    ".type": "+Int",
     ".range": [1, 65535]
   },
   "+auth": {
@@ -902,7 +900,7 @@ Implemented or directly represented by the design:
 - Nested object properties.
 - Closed shaped mappings and typed wildcard keys.
 - Regex patterns.
-- Compact base-qualified enums and explicit enums.
+- Compact type-qualified enums and explicit enums.
 - Numeric ranges.
 - String/list/map sizes.
 - Array item schemas for simple homogeneous arrays.

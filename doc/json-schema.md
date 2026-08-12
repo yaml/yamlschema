@@ -43,9 +43,9 @@ shape:
 ```json
 {
   "name": "+Str",
-  "email": {".base": "+Str", ".like": "^\\S+@\\S+$"},
+  "email": {".type": "+Str", ".like": "^\\S+@\\S+$"},
   "tags": {
-    ".base": "+Str[]",
+    ".type": "+Str[]",
     ".uniq": true,
     ".size": [1]
   }
@@ -214,7 +214,7 @@ Roundtrip notes:
 
 ## Enums
 
-Simple token enums roundtrip through a base-qualified compact list:
+Simple token enums roundtrip through a type-qualified compact list:
 
 ```json
 {
@@ -254,7 +254,7 @@ than `.`, `-`, `_`, and `+` use explicit `.enum`:
 
 ```yaml
 symbol:
-  .base: +Str
+  .type: +Str
   .enum:
   - ok
   - bad/value
@@ -351,12 +351,12 @@ String lengths use `.size`:
 
 ```yaml
 bio:
-  .base: +Str
+  .type: +Str
   .size:
   - 1
   - 500
 code:
-  .base: +Str
+  .type: +Str
   .size:
   - 3
   - '*'

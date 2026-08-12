@@ -17,10 +17,10 @@ test::
     values: +Any[+foo,+bar][]
   want: |
     {"one":{".one":["+Str","+Int"]},"any":{".any":["+foo","+bar"]},"all":{".
-    all":["+foo","+bar"]},"composed":{".base":"+base",".all":["+constraint",
+    all":["+foo","+bar"]},"composed":{".type":"+base",".all":["+constraint",
     "+other"]},"not-one":{".not":"+foo"},"not-many":{".not":{".any":["+Str",
     "+Int"]}},"namespaced":{".any":["+net\/port","+contact\/email"]},"values
-    ":{".base":"+Any[]",".any":["+foo","+bar"]}}
+    ":{".type":"+Any[]",".any":["+foo","+bar"]}}
 
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysc -t schema.json -
@@ -204,7 +204,7 @@ test::
     any: +Any[]
     exact: +Any[2]
   want: |
-    {"any":"+Any[]","exact":{".base":"+Any[]",".size":[2,2]}}
+    {"any":"+Any[]","exact":{".type":"+Any[]",".size":[2,2]}}
 
 - name: base-plus-one-all-roundtrip
   cmnd: |

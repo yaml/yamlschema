@@ -12,11 +12,11 @@ test::
     custom: +Map{+types/value}
     many: +Map{+Str}[]
     hybrid:
-      .base: +Map{+Str}
+      .type: +Map{+Str}
       fixed?: +Str
   want: |
     {"any":{"+Str":"+Any"},"strings":{".null":true,"+Str":"+Str"},"custom":{
-    "+Str":"+types\/value"},"many":{".base":"+Map[]","+Str":"+Str"},"hybrid"
+    "+Str":"+types\/value"},"many":{".type":"+Map[]","+Str":"+Str"},"hybrid"
     :{"+Str":"+Str","fixed?":"+Str"}}
 
 - name: typed-map-to-json-schema
@@ -119,22 +119,22 @@ test::
   cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
   stdi: |
     extraEnv?:
-      .base: +Map[1-10,$!]
+      .type: +Map[1-10,$!]
       name: +Str
       value?: +Str
       valueFrom?: +Map{+Any}
   want: |
-    {"extraEnv?":{".base":"+Map[]",".size":[1,10],".solo":true,".uniq":true,
+    {"extraEnv?":{".type":"+Map[]",".size":[1,10],".solo":true,".uniq":true,
     "name":"+Str","value?":"+Str","valueFrom?":{"+Str":"+Any"}}}
 
 - name: old-shaped-map-marker-normalizes-away
   cmnd: bin/ysc -t yscj -
   stdi: |
     closed:
-      .base: +Map
+      .type: +Map
       fixed?: +Str
     open:
-      .base: +Map
+      .type: +Map
       fixed?: +Str
       +Str: +Any
   want: |
@@ -153,7 +153,7 @@ test::
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
-      .base: +Map
+      .type: +Map
       .desc: Old marker
   want: |
     ysc: incomplete +Map type requires key/value pairs

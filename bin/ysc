@@ -469,8 +469,7 @@ defn expand-type(value):
   =>: block
 
 defn validate-complete-map-type(value):
-  key =: value.has?('.type').if('.type' '.base')
-  reference =: key.when(value.$key)
+  reference =: value.'.type'
   incomplete =: reference.in?(['+Map', '+Map[]'])
   shaped =: value:keys.some(\(_ !~ /^\./))
   when incomplete && shaped.!:
@@ -493,16 +492,11 @@ defn expand-shape-entry(result entry):
     else: add-expanded-field(result key entry.1)
 
 defn expand-explicit-type(value):
-  when value.has?('.type') && value.has?('.base'):
-    usage: 'yamlschema type cannot contain both .type and .base'
   shaped =: value:keys.some(\(_ !~ /^\./))
-  old-map-marker =: shaped && value.'.base'.eq('+Map')
-  reference-key =: value.has?('.type').if('.type' '.base')
-  reference =: value.$reference-key
-  when value.has?('.type') && direct-type-symbol?(reference:S).!:
-    usage: 'yamlschema .type requires an unconstrained type reference'
+  old-map-marker =: shaped && value.'.type'.eq('+Map')
+  reference =: value.'.type'
   base =:
-    if value.has?(reference-key) && old-map-marker.!:
+    if value.has?('.type') && old-map-marker.!:
       expand-tight: reference
       omap:
   result =: reduce(expand-explicit-entry base value)
@@ -512,7 +506,7 @@ defn expand-explicit-entry(result entry):
   key val =: entry
   key =: key:S
   cond:
-    key.in?(['.type', '.base']): result
+    key == '.type': result
     key == '.list': reject-list-directive()
     key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
@@ -541,19 +535,19 @@ defn expand-explicit-directive(result key value):
     reject-unknown-directive: key
   normalized =:
     cond:
-      key == '.range': range-block(value result.'.base')
-      result.has?('.base') && key.in?(['.enum', '.const']): +{key value}
+      key == '.range': range-block(value result.'.type')
+      result.has?('.type') && key.in?(['.enum', '.const']): +{key value}
       else: normalize-directive(key value)
   normalized =: add-implied-directive-base(normalized key value result)
   merge-directives: result normalized "directive $key"
 
 defn add-implied-directive-base(normalized key value result):
-  missing =: result.has?('.base').! && normalized.has?('.base').!
+  missing =: result.has?('.type').! && normalized.has?('.type').!
   bases =:
     +{'.like' '+Str', '.match' '+Str', '.find' '+Str', '.list' '+Any'}
   base =: missing.when(bases.$key)
   if base:
-    then: normalized + {'.base' base}
+    then: normalized + {'.type' base}
     else: normalized
 
 defn normalize-directive(key value):
@@ -581,7 +575,7 @@ defn expand-combinator-sequence(key value):
 
 defn inferred-directive(key value):
   result =: +{key value}
-  result +: +{'.base' infer-base(key.eq('.enum').if(value [value]))}
+  result +: +{'.type' infer-base(key.eq('.enum').if(value [value]))}
 
 defn merge-directives(left right context):
   duplicates =: right:keys.filter(\(left.has?(_)))
@@ -592,7 +586,7 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.type', '.base', '.list', '.item',
+    +['.type', '.list', '.item',
      '.one', '.any', '.all', '.not',
      '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
@@ -602,36 +596,19 @@ defn ordered-directives(value):
 
 defn canonicalize-type-reference(value):
   value =: fold-list-type(value)
-  when value.has?('.type') && value.has?('.base'):
-    usage: 'yamlschema type cannot contain both .type and .base'
-  key =:
-    cond:
-      value.has?('.type'): '.type'
-      value.has?('.base'): '.base'
-  if key:
-    then:
-      target =: refined-type?(value).if('.base' '.type')
-      reference =: value.$key
-      ordered-directives: dissoc(value key) + {target reference}
-    else: value
+  ordered-directives: value
 
 defn fold-list-type(value):
   if value.'.list':
     then:
-      key =: value.has?('.type').if('.type' '.base')
       shaped =: value:keys.some(\(_ !~ /^\./))
       inferred =: shaped.if('+Map' '+Any')
-      reference =: value.get(key inferred)
+      reference =: value.get('.type' inferred)
       reference =: reference.ends?('[]').if(reference "$reference[]")
       result =: dissoc(value '.list')
-      key ||=: '.base'
-      result =: dissoc(result key)
-      result +: +{key reference}
+      result =: dissoc(result '.type')
+      result +: +{'.type' reference}
     else: value
-
-defn refined-type?(value):
-  annotations =: +['.type', '.base', '.init', '.title', '.desc']
-  some: \(_:S.in?(annotations).!) value:keys
 
 defn put-present(result key value):
   if contains?(value key):
@@ -714,14 +691,14 @@ defn base-primary-token?(token):
     token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\{[^\}]*\})?(?:\[[^\]]*\])?~?$/
   primary =: compact-combinator-token?(token) ||
     typed-map-primary-token?(token) || normal
-  primary ||: token.starts?('base:')
+  primary ||: token.starts?('type:')
 
 defn typed-map-primary-token?(token):
-  token =~ /^(?:base:)?\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}(?:\[[^\]]*\])?~?$/
+  token =~ /^(?:type:)?\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}(?:\[[^\]]*\])?~?$/
 
 defn expand-primary-token(token):
   when compact-enum-token?(token):
-    usage: 'compact enum requires a preceding base reference'
+    usage: 'compact enum requires a preceding type reference'
   primary =: parse-primary(token)
   result =: primary.block
   result =:
@@ -741,7 +718,7 @@ defn parse-primary(token):
   null =: token.ends?('~')
   token =: null.if(token.replace(/~$/) token)
   pattern =:
-    /^(?:base:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
+    /^(?:type:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
   map-match =: re-matches(pattern token)
   cond:
     old-map-parameter-token?(token): reject-old-map-parameters(token)
@@ -755,7 +732,7 @@ defn old-map-parameter-token?(token):
   pattern =:
     re-pattern:
       str: +
-        '^(?:base:)?\+Map\[\+'
+        '^(?:type:)?\+Map\[\+'
         '[A-Za-z_][A-Za-z0-9_\/-]*(?:,[^\]]+)?\]'
         '(?:\[[^\]]*\])?$'
   token =~: pattern
@@ -764,10 +741,10 @@ defn reject-old-map-parameters(token):
   usage: "unsupported map parameter syntax: $token; use +Map{+Type}"
 
 defn map-parameter-token?(token):
-  token =~ /^(?:base:)?\+Map\{[^\}]*\}(?:\[[^\]]*\])?$/
+  token =~ /^(?:type:)?\+Map\{[^\}]*\}(?:\[[^\]]*\])?$/
 
 defn reject-map-parameters(token):
-  body =: token.replace(/^(?:base:)?\+Map\{/).replace(/\}.*$/)
+  body =: token.replace(/^(?:type:)?\+Map\{/).replace(/\}.*$/)
   if ','.in?(body):
     usage: '+Map{+Key,+Value} is reserved but not supported yet'
     usage: '+Map requires exactly one value type reference'
@@ -832,28 +809,28 @@ defn typed-map-block(value-type):
 
 defn primary-block(token):
   cond:
-    token.starts?('base:'): labeled-base-block(token)
+    token.starts?('type:'): labeled-type-block(token)
     token.starts?('=~'):
-      +{'.base' '+Str', '.like'
+      +{'.type' '+Str', '.like'
         anchored-pattern(tight-string-value(token.replace(/^=~/)))}
     token.starts?('match:'):
-      +{'.base' '+Str', '.like'
+      +{'.type' '+Str', '.like'
         anchored-pattern(tight-label-string(token))}
     token.starts?('find:'):
-      +{'.base' '+Str', '.like' tight-label-string(token)}
+      +{'.type' '+Str', '.like' tight-label-string(token)}
     token.starts?('range:'):
       range-block(tight-label-raw(token) nil)
     token.starts?('const:') || token.starts?('=='):
-      usage: 'const requires a preceding base reference'
+      usage: 'const requires a preceding type reference'
     old-tight-keyword?(token): reject-old-tight-keyword(token)
-    token == '+Map': +{'.base' '+Map'}
-    type-symbol?(token): +{'.base' token}
+    token == '+Map': +{'.type' '+Map'}
+    type-symbol?(token): +{'.type' token}
     regex-literal-token?(token):
-      +{'.base' '+Str', '.like' regex-pattern(token)}
+      +{'.type' '+Str', '.like' regex-pattern(token)}
     slash-delimited-token?(token):
       usage: 'regex literals cannot contain /; use find:"..."'
     compact-enum-token?(token):
-      usage: 'compact enum requires a preceding base reference'
+      usage: 'compact enum requires a preceding type reference'
     token =~ /\|/:
       usage: 'pipe enums are unsupported; use +Base [a,b]'
     range-literal?(token): range-block(token nil)
@@ -874,14 +851,14 @@ defn expand-tight-token(result token):
     slash-delimited-token?(token):
       usage: 'regex literals cannot contain /; use find:"..."'
     range-literal?(token):
-      merge-directives: result range-block(token result.'.base') 'range clause'
+      merge-directives: result range-block(token result.'.type') 'range clause'
     compact-enum-token?(token):
       merge-directives:
-        result compact-enum-block(token result.'.base') 'enum clause'
+        result compact-enum-block(token result.'.type') 'enum clause'
     token.starts?('=='):
       raw =: token.replace(/^=/).replace(/^=/)
       merge-directives:
-        result const-block(raw result.'.base') 'const clause'
+        result const-block(raw result.'.type') 'const clause'
     token.starts?('='):
       merge-directives:
         result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
@@ -924,11 +901,11 @@ defn direct-type-symbol?(token):
     (token =~ /^\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}$/)
   =>: result
 
-defn labeled-base-block(token):
-  base =: tight-label-string(token)
-  when-not type-symbol?(base):
-    usage: "invalid yamlschema base reference: $base"
-  =>: +{'.base' base}
+defn labeled-type-block(token):
+  type =: tight-label-string(token)
+  when-not type-symbol?(type):
+    usage: "invalid yamlschema type reference: $type"
+  =>: +{'.type' type}
 
 defn reject-bare-map():
   usage: 'incomplete +Map type requires key/value pairs'
@@ -980,11 +957,11 @@ defn tight-label-string(token):
 defn old-tight-keyword?(token):
   labeled-tight-token?(token) &&
   tight-label(token).in?(
-    qw(titl just only like mini maxi pick oneof anyof allof))
+    qw(base titl just only like mini maxi pick oneof anyof allof))
 
 defn reject-old-tight-keyword(token):
   key =: tight-label(token)
-  replacements =: +{'titl' 'title', 'just' 'const',
+  replacements =: +{'base' 'type', 'titl' 'title', 'just' 'const',
                     'only' 'const', 'like' 'match',
                     'mini' 'range', 'maxi' 'range',
                     'pick' 'one', 'oneof' 'one',
@@ -998,12 +975,12 @@ defn labeled-tight-block(token result):
   raw =: tight-label-raw(token)
   key =: ".$name"
   case name:
-    'base': labeled-base-block(token)
+    'type': labeled-type-block(token)
     'match': +{'.like' anchored-pattern(tight-string-value(raw))}
     'find': +{'.like' tight-string-value(raw)}
-    'const': const-block(raw result.'.base')
+    'const': const-block(raw result.'.type')
     'enum': usage('enum requires a bracketed value list')
-    'range': range-block(raw result.'.base')
+    'range': range-block(raw result.'.type')
     'size': +{key normalize-size(tight-string-value(raw))}
     'list': reject-list-keyword()
     'item': +{key expand-type(tight-string-value(raw))}
@@ -1033,7 +1010,7 @@ defn structural-tight-label-error(name):
 
 defn const-block(raw base):
   when-not base:
-    usage: 'const requires a preceding base reference'
+    usage: 'const requires a preceding type reference'
   when raw.empty?:
     usage: 'const requires a value'
   text =: tight-string-value(raw)
@@ -1043,11 +1020,11 @@ defn const-block(raw base):
   =>: +{'.const' value}
 
 defn literal-block(value):
-  +{'.base' infer-base([value]), '.const' value}
+  +{'.type' infer-base([value]), '.const' value}
 
 defn compact-enum-block(token base):
   when-not base:
-    usage: 'compact enum requires a preceding base reference'
+    usage: 'compact enum requires a preceding type reference'
   body =: token.replace(/^enum:/).replace(/^\[/).replace(/\]$/)
   when body:trim:empty?:
     usage: 'compact enum must contain at least one value'
@@ -1084,7 +1061,7 @@ defn infer-base(values):
     bases == \{'+Int' '+Float'}: '+Float'
     bases.# == 1: bases:first
     else:
-      usage: 'cannot infer a common enum base; add an explicit base'
+      usage: 'cannot infer a common enum type; add an explicit type reference'
 
 defn base-for-value(value):
   cond:
@@ -1103,7 +1080,7 @@ defn range-block(value base):
   result =:
     if base:
       then: +{}
-      else: +{'.base' inferred}
+      else: +{'.type' inferred}
   result +: +{'.range' range}
 
 defn normalize-range(value):
@@ -1281,7 +1258,10 @@ defn legacy-directive?(key):
 defn reject-legacy-directive(key):
   when key == '-additionalProperties':
     reject-additional-properties: key
-  replacement =: key.replace(/^-/ '.')
+  replacement =:
+    if key == '-base':
+      then: '.type'
+      else: key.replace(/^-/ '.')
   usage: "unsupported yamlschema directive: $key; use $replacement"
 
 defn reject-additional-properties(key):
@@ -1294,12 +1274,12 @@ defn reject-title-directive(key):
   usage: "unsupported yamlschema directive: $key; use .title"
 
 defn renamed-directive?(key):
-  key.in?(['.titl', '.just', '.only', '.mini', '.maxi',
+  key.in?(['.base', '.titl', '.just', '.only', '.mini', '.maxi',
            '.pick', '.oneof', '.anyof', '.allof'])
 
 defn reject-renamed-directive(key):
   replacements =:
-    +{'.titl' '.title', '.just' '.const',
+    +{'.base' '.type', '.titl' '.title', '.just' '.const',
       '.only' '.const',
       '.mini' '.range', '.maxi' '.range', '.pick' '.one',
       '.oneof' '.one', '.anyof' '.any', '.allof' '.all'}
@@ -1376,14 +1356,12 @@ defn ysc-block-to-schema(value):
   add-null-schema: result value.'.null'
 
 defn canonical-list-type?(value):
-  key =: value.has?('.type').if('.type' '.base')
-  reference =: key.when(value.$key)
+  reference =: value.'.type'
   string?(reference) &&: reference.ends?('[]')
 
 defn canonical-list-item(value):
-  key =: value.has?('.type').if('.type' '.base')
-  reference =: value.$key.replace(/\[\]$/)
-  value +: +{key reference}
+  reference =: value.'.type'.replace(/\[\]$/)
+  value +: +{'.type' reference}
 
 defn reject-unexportable-directives(value):
   unsupported =: +['.also', '.with', '.when']
@@ -1392,10 +1370,9 @@ defn reject-unexportable-directives(value):
       usage: "cannot export yamlschema directive to JSON Schema: $key"
 
 defn canonical-item-schema(value):
-  reference-key =: value.has?('.type').if('.type' '.base')
   result =:
-    if value.has?(reference-key):
-      ysc-bare-scalar-to-schema: value.$reference-key
+    if value.has?('.type'):
+      ysc-bare-scalar-to-schema: value.'.type'
       else: +{}
   result =:
     if contains?(value '.item'):
@@ -1502,8 +1479,6 @@ defn ysc-block-step(state entry):
   case key:
     '.type':
       state.add-base-schema(val)
-    '.base':
-      state.add-base-schema(val)
     '.like':
       result +=: +{'type' 'string'}
       result +=: +{'pattern' val:S}
@@ -1574,7 +1549,7 @@ defn add-bounds(result lo hi min-key max-key):
 
 defn ysc-scalar-to-schema(value):
   annotated =: split-scalar-description(value)
-  result =: ysc-bare-scalar-to-schema(annotated.base)
+  result =: ysc-bare-scalar-to-schema(annotated.type)
   has-desc =: annotated.has?('desc')
   map-put-if: result has-desc 'description' annotated.desc
 
@@ -1765,7 +1740,7 @@ defn add-list-description(value description):
     else:
       value =:
         if string?(value):
-          then: +{'.base' value}
+          then: +{'.type' value}
           else: value
       ordered-directives: value + {'.desc' description}
 
@@ -1851,7 +1826,7 @@ defn build-properties-map(schema):
 defn build-block-map(schema):
   add-block(omap() schema)
 
-# Add the directive entries for an expanded schema-block (.base, .size,
+# Add the directive entries for an expanded schema-block (.type, .size,
 # .enum, .init, etc.) into the result map. Also walks nested items /
 # properties when present.
 defn add-block(result schema):
@@ -1862,12 +1837,12 @@ defn add-block(result schema):
   is-array =: t.eq('array')
   pure-map =: t.eq('object') && object-with-props?(schema).!
   map-base =: pure-map.when(open-map-base(schema))
-  result =: map-put-if(result map-base '.base' map-base)
+  result =: map-put-if(result map-base '.type' map-base)
   result =:
     if schema.'$ref'.?:
-      then: result + {'.base' ref-sym(schema.'$ref')}
+      then: result + {'.type' ref-sym(schema.'$ref')}
       else: result
-  result =: map-put-if(result has-type '.base' ts)
+  result =: map-put-if(result has-type '.type' ts)
   result =: map-put-if(result is-array '.list' true)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
@@ -1878,18 +1853,18 @@ defn add-block(result schema):
     if schema.enum.?:
       then:
         result =:
-          if result.has?('.base'):
+          if result.has?('.type'):
             then: result
-            else: result + {'.base' infer-base(schema.enum)}
+            else: result + {'.type' infer-base(schema.enum)}
         result +: +{'.enum' enum-block-list(schema.enum)}
       else: result
   result =:
     if schema.const.?:
       then:
         result =:
-          if result.has?('.base'):
+          if result.has?('.type'):
             then: result
-            else: result + {'.base' base-for-value(schema.const)}
+            else: result + {'.type' base-for-value(schema.const)}
         result +: +{'.const' literal-value(schema.const)}
       else: result
   result =: map-put-if(result schema.uniqueItems '.uniq' true)
@@ -1938,7 +1913,7 @@ defn add-array-items(result is-array schema):
       item-scalar =: succinct-scalar(items)
       result +:
         if item-scalar: +
-          {'.base' item-scalar}
+          {'.type' item-scalar}
           {'.item' build-block-map(items)}
     else: result
 

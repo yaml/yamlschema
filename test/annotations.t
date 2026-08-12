@@ -25,7 +25,7 @@ test::
     .title: Arrays
     .desc: Arrays of strings and objects
     name:
-      .base: +Str
+      .type: +Str
       .title: Full name
       .desc: Display name.
     .json:

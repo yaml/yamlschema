@@ -55,7 +55,7 @@ test::
     }
   want: |
     imagePullSecrets?:
-      .base: +Any[]
+      .type: +Any[]
       .one:
       - +Str 1+
       - name: +Str 1+

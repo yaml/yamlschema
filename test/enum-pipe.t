@@ -52,7 +52,7 @@ test::
   want: |
     {
       "logLevel?": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".enum": [
           "debug",
           "info",
@@ -64,7 +64,7 @@ test::
         ".desc": "Log level for all components"
       },
       "count?": {
-        ".base": "+Int",
+        ".type": "+Int",
         ".enum": [
           1,
           2,

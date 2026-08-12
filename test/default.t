@@ -38,7 +38,7 @@ test::
     booleanWord: +Str ="true"
     label: +Str ="hello world"
     quoted:
-      .base: +Str
+      .type: +Str
       .init: say "hi"
     logLevel: +Str [debug,=info,warning,error,fatal] "Component log level"
 

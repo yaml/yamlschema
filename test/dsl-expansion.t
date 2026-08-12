@@ -9,12 +9,12 @@ test::
   stdi: |
     succinct: +Str[] /a.*b/ 10-20
     hybrid:
-      .base: +Str[] /a.*b/ 10-20
+      .type: +Str[] /a.*b/ 10-20
       .title: The "Good" Parts
   want: |
     {
       "succinct": {
-        ".base": "+Str[]",
+        ".type": "+Str[]",
         ".like": "a.*b",
         ".size": [
           10,
@@ -22,7 +22,7 @@ test::
         ]
       },
       "hybrid": {
-        ".base": "+Str[]",
+        ".type": "+Str[]",
         ".like": "a.*b",
         ".size": [
           10,
@@ -45,11 +45,11 @@ test::
   want: |
     {
       "pattern": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "a.*b"
       },
       "numbers": {
-        ".base": "+Int",
+        ".type": "+Int",
         ".enum": [
           1,
           2,
@@ -57,21 +57,21 @@ test::
         ]
       },
       "forced": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".enum": [
           "1",
           "2"
         ]
       },
       "ratio": {
-        ".base": "+Float",
+        ".type": "+Float",
         ".range": [
           0.5,
           1
         ]
       },
       "constant": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".const": "User"
       },
       "object": {
@@ -93,14 +93,14 @@ test::
   want: |
     {
       "url": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "^https?://.*$",
         ".size": [
           1
         ]
       },
       "spaced": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "^a b$",
         ".size": [
           2,
@@ -108,23 +108,23 @@ test::
         ]
       },
       "alias": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "^still accepted$"
       },
       "anchored": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "^^already$$"
       },
       "found": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "a/b c"
       },
       "simple": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "a.*b"
       },
       "explicit": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".like": "raw value"
       }
     }
@@ -139,14 +139,14 @@ test::
   want: |
     {
       "key?": {
-        ".base": "+Str[]",
+        ".type": "+Str[]",
         ".size": [
           1
         ],
         ".uniq": true
       },
       "value?": {
-        ".base": "+Str[]",
+        ".type": "+Str[]",
         ".size": [
           0,
           3
@@ -154,7 +154,7 @@ test::
         ".solo": true
       },
       "alias?": {
-        ".base": "+Str[]",
+        ".type": "+Str[]",
         ".size": [
           1
         ]
@@ -176,10 +176,10 @@ test::
     spaced: +Str[1-10 $ !]
     compact: +Str[1-10$!]
   want: |
-    {"canonical":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true}
-    ,"split":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"sp
-    aced":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"compa
-    ct":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true}}
+    {"canonical":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true}
+    ,"split":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"sp
+    aced":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"compa
+    ct":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true}}
 
 - name: reject-invalid-list-properties
   cmnd: |
@@ -201,11 +201,11 @@ test::
   stdi: |
     flag?: +Bool~ =false title:"Flag" "Whether it is enabled"
     label?: +Str ="pretty good"
-    level?: base:+Str enum:[debug,info] init:info desc:"Log level"
+    level?: type:+Str enum:[debug,info] init:info desc:"Log level"
   want: |
     {
       "flag?": {
-        ".base": "+Bool",
+        ".type": "+Bool",
         ".null": true,
         ".init": false,
         ".title": "Flag",
@@ -216,7 +216,7 @@ test::
         ".init": "pretty good"
       },
       "level?": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".enum": [
           "debug",
           "info"
@@ -232,9 +232,9 @@ test::
     foo:
       .size: 10-20
       .match: a.*b
-      .base: +Str[]
+      .type: +Str[]
   want: |
-    {"foo":{".base":"+Str[]",".like":"^a.*b$",".size":[10,20]}}
+    {"foo":{".type":"+Str[]",".like":"^a.*b$",".size":[10,20]}}
 
 - name: direct-and-refined-type-directives
   cmnd: bin/ysc -t yscj -
@@ -258,7 +258,7 @@ test::
         ".desc": "A number"
       },
       "refined": {
-        ".base": "+Str",
+        ".type": "+Str",
         ".enum": ["foo","bar"]
       }
     }
@@ -279,7 +279,7 @@ test::
         ".init": false
       },
       "flag?": {
-        ".base": "+Bool",
+        ".type": "+Bool",
         ".null": true
       }
     }
@@ -330,7 +330,7 @@ test::
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
     foo:
-      .base: +Str /a/
+      .type: +Str /a/
       .find: a
   want: |
     ysc: duplicate yamlschema directive: .like in directive .find
@@ -341,14 +341,14 @@ test::
   stdi: |
     foo:
       .need: true
-      .base: +Str
+      .type: +Str
   want: |
     ysc: unsupported yamlschema directive: .need; use ? on optional keys
 
 - name: reject-list-directive
   cmnd: |
     sh -c '
-      printf "foo:\n  .base: +Any\n  .list: true\n" |
+      printf "foo:\n  .type: +Any\n  .list: true\n" |
         bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       printf "foo: +Any list:true\n" |
         bin/ysc -t yscj -C - 2>&1 | sed -n 1p
@@ -409,7 +409,7 @@ test::
   stdi: |
     foo: enum:[debug,info]
   want: |
-    ysc: compact enum requires a preceding base reference
+    ysc: compact enum requires a preceding type reference
 
 - name: reject-compact-enum-punctuation
   cmnd: |
@@ -440,7 +440,7 @@ test::
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
     foo:
-      .base: +Str
+      .type: +Str
       .size: [1, '*']
   want: |
     ysc: unsupported .size "*" bound; use 1+ or [1]
@@ -451,7 +451,7 @@ test::
     tight: +Str [foo,bar,foo bar,bar foo]
     padded: +Str [ foo, bar, foo bar, bar foo ]
   want: |
-    {"tight":{".base":"+Str",".enum":["foo","bar","foo bar","bar foo"]},"padded":{".base":"+Str",".enum":["foo","bar","foo bar","bar foo"]}}
+    {"tight":{".type":"+Str",".enum":["foo","bar","foo bar","bar foo"]},"padded":{".type":"+Str",".enum":["foo","bar","foo bar","bar foo"]}}
 
 - name: reject-quoted-compact-enum-value
   cmnd: |
@@ -466,35 +466,36 @@ test::
   stdi: |
     short: +Str ==User
     quoted: +Str =="foo bar"
-    labeled: const:"foo bar" base:+Str
+    labeled: const:"foo bar" type:+Str
     default: +Str =User
     enum-marked: +Str [=User]
     enum-default: +Str [User] =User
   want: |
-    {"short":{".base":"+Str",".const":"User"},"quoted":{".base":"+Str",".const":"foo bar"},"labeled":{".base":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".base":"+Str",".enum":["User"],".init":"User"},"enum-default":{".base":"+Str",".enum":["User"],".init":"User"}}
+    {"short":{".type":"+Str",".const":"User"},"quoted":{".type":"+Str",".const":"foo bar"},"labeled":{".type":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".type":"+Str",".enum":["User"],".init":"User"},"enum-default":{".type":"+Str",".enum":["User"],".init":"User"}}
 
 - name: labeled-clauses-in-arbitrary-order
   cmnd: bin/ysc -t yscj -C -
   stdi: |
-    string: desc:"Words" size:1-3 =~"a b" title:"Title" init:x base:+Str
-    search: find:"a/b c" base:+Str
-    number: range:1..10 base:+Int
+    string: desc:"Words" size:1-3 =~"a b" title:"Title" init:x type:+Str
+    search: find:"a/b c" type:+Str
+    number: range:1..10 type:+Int
     sequence: null:true uniq:true solo:true size:1+ item:+Str
-      base:+Any[]
-    alternate: also:former base:+Str
-    choice: enum:[a,b c] base:+Str
+      type:+Any[]
+    alternate: also:former type:+Str
+    choice: enum:[a,b c] type:+Str
   want: |
-    {"string":{".base":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".like":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
+    {"string":{".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".type":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |
     sh -c '
-      for value in titl:Old just:Old only:Old like:Old mini:1 maxi:10; do
+      for value in base:+Str titl:Old just:Old only:Old like:Old mini:1 maxi:10; do
         printf "foo: +Str %s\n" "$value" |
           bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       done
     '
   want: |
+    ysc: unsupported yamlschema keyword: base; use type
     ysc: unsupported yamlschema keyword: titl; use title
     ysc: unsupported yamlschema keyword: just; use const
     ysc: unsupported yamlschema keyword: only; use const
@@ -517,16 +518,19 @@ test::
     ysc: unsupported yamlschema directive: .mini; use .range
     ysc: unsupported yamlschema directive: .maxi; use .range
 
-- name: reject-invalid-type-directives
+- name: type-directive-accepts-complete-dsl
   cmnd: |
     sh -c '
-      printf "foo:\n  .type: +Str\n  .base: +Str\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       printf "foo:\n  .type: +Str[1+]\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysc -t yscj -C -
+      for format in ysd yscy; do
+        printf "foo:\n  .base: +Str\n" |
+          bin/ysc -f "$format" -t yscj -C - 2>&1 | sed -n 1p
+      done
     '
   want: |
-    ysc: yamlschema type cannot contain both .type and .base
-    ysc: yamlschema .type requires an unconstrained type reference
+    {"foo":{".type":"+Str[]",".size":[1]}}
+    ysc: unsupported yamlschema directive: .base; use .type
+    ysc: unsupported yamlschema directive: .base; use .type
 
 done:

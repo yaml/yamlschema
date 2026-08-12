@@ -37,7 +37,7 @@ same slug:
 resources?: +resources
 ```
 
-Anonymous mapping shapes need no `.base` marker. Shaped mappings are closed;
+Anonymous mapping shapes need no `.type` marker. Shaped mappings are closed;
 key-side `+Str` admits otherwise unmatched string keys:
 
 ```yaml
@@ -72,7 +72,7 @@ It is not implemented yet. The current one-reference form is shorthand for
 
 ## Tight Type Expressions
 
-A tight type expression is a YAML plain scalar. A base reference is normally
+A tight type expression is a YAML plain scalar. A type reference is normally
 first, but labeled clauses may appear in any order:
 
 ```text
@@ -89,17 +89,17 @@ port: +Int 1..65535
 mode: +Str [debug,info,error]
 ```
 
-These expand to explicit directives. Refined bases are always materialized:
+These expand to explicit directives. Refined types are always materialized:
 
 ```yaml
 foo:
-  .base: +Str
+  .type: +Str
   .like: a.*b
 port:
-  .base: +Int
+  .type: +Int
   .range: [1, 65535]
 mode:
-  .base: +Str
+  .type: +Str
   .enum: [debug, info, error]
 ```
 
@@ -116,17 +116,17 @@ pattern. A match is bookended with `^` and `$`; a find is stored unchanged:
 
 ```yaml
 whole:
-  .base: +Str
+  .type: +Str
   .like: ^pattern$
 search:
-  .base: +Str
+  .type: +Str
   .like: pattern
 ```
 
 `.like` is accepted only in `.ysc.yaml` and `.ysc.json`. Conversely, `.match`
 and `.find` are YSD directives and are rejected in YSC input.
 
-Compact enums require an explicit base reference and comma-separated members:
+Compact enums require an explicit type reference and comma-separated members:
 
 ```yaml
 mode: +Str [debug,info,error]
@@ -146,7 +146,7 @@ value. At most one member may be marked.
 `+Str ==User` becomes `.const: User`, the exact-value constraint corresponding
 to JSON Schema `const`. `+Str =="foo bar"` is the quoted form, and
 `const:User` is the labeled alternative. A bare literal remains an accepted
-inferred-base shorthand. It also means a constant, while `=value` means only a
+inferred-type shorthand. It also means a constant, while `=value` means only a
 default.
 
 
@@ -158,7 +158,7 @@ List suffixes are part of the value-side type expression:
 names?: +Str[1+]
 ```
 
-This expands to `.base: +Str[]` and `.size: [1]`. The `[]` is part of the
+This expands to `.type: +Str[]` and `.size: [1]`. The `[]` is part of the
 list type; `.size` carries its bounds. Key-side list suffixes are rejected.
 
 | Suffix | Meaning |
@@ -219,14 +219,14 @@ Tight annotations follow all constraints:
 ```yaml
 enabled?: +Bool~ =false title:"Enabled" "Enable the service"
 label?: +Str ="pretty good"
-mode?: base:+Str enum:[debug,info] init:info desc:"Log level"
+mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 ```
 
 - `=value` is a single YAML scalar default.
 - `="..."` is a string default that may contain spaces.
 - `title:"..."` is `.title`.
 - A final `"..."` is `.desc`.
-- Labeled scalar clauses may occur in any order. They are `base`, `match`,
+- Labeled scalar clauses may occur in any order. They are `type`, `match`,
   `find`, `const`, `range`, `size`, `list`, `item`, `solo`, `uniq`,
   `null`, `init`, `title`, `desc`, and scalar `also`.
 - `enum:[...]` is the compact enum form. Structural `.one`, `.any`, `.all`,
@@ -243,12 +243,12 @@ obsolete trailing single-quoted description form is an error.
 
 ## Hybrid Explicit Types
 
-When one constraint is clearer explicitly, `.base` may contain the complete
+When one constraint is clearer explicitly, `.type` may contain the complete
 tight expression and sibling directives add the exceptional parts:
 
 ```yaml
 foo:
-  .base: +Str[] /a.*b/ 10-20
+  .type: +Str[] /a.*b/ 10-20
   .title: The "Good" Parts
 ```
 
@@ -256,14 +256,14 @@ This is equivalent to:
 
 ```yaml
 foo:
-  .base: +Str[]
+  .type: +Str[]
   .like: a.*b
   .size: [10, 20]
   .title: The "Good" Parts
 ```
 
 Directive order is insignificant. Expansion normalizes `.size` and emits a
-stable directive order. A directive supplied by both the `.base` expression
+stable directive order. A directive supplied by both the `.type` expression
 and a sibling is an error, even when the values agree.
 
 
@@ -318,20 +318,20 @@ are inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .base .item .one .any .all .not .like
+.type .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
 
 An unrefined built-in or named reference is emitted directly as a `+Type`
 scalar. This is the compact form of a mapping whose only pair would be
-`.type: +Type`. When annotations share the mapping, the reference remains
-under `.type`. Validation or structural constraints use `.base`; `.init`,
-`.title`, and `.desc` alone do not turn `.type` into `.base`.
+`.type: +Type`. When annotations, validation constraints, or shape entries
+share the mapping, the reference or complete tight expression remains under
+`.type`.
 
 List types append `[]` to the reference. An unconstrained list is therefore
 emitted as a scalar such as `+Any[]`; constrained lists use forms such as
-`.base: +Str[]` with `.size` or `.uniq`. `.list` is currently rejected and
+`.type: +Str[]` with `.size` or `.uniq`. `.list` is currently rejected and
 reserved for a possible future list-constraint model; it does not mean
 "convert this type into a list."
 

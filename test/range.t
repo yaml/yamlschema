@@ -28,33 +28,33 @@ test::
     port: +Int 1..65535
     age: range:0..
     ratio:
-      .base: +Float
+      .type: +Float
       .range: 0..1
     debt: +Int range:..-1
   want: |
     {
       "port": {
-        ".base": "+Int",
+        ".type": "+Int",
         ".range": [
           1,
           65535
         ]
       },
       "age": {
-        ".base": "+Int",
+        ".type": "+Int",
         ".range": [
           0
         ]
       },
       "ratio": {
-        ".base": "+Float",
+        ".type": "+Float",
         ".range": [
           0,
           1
         ]
       },
       "debt": {
-        ".base": "+Int",
+        ".type": "+Int",
         ".range": [
           null,
           -1
@@ -66,13 +66,13 @@ test::
   cmnd: bin/ysc -f yscy -t jsc -
   stdi: |
     lower:
-      .base: +Int
+      .type: +Int
       .range: [0]
     upper:
-      .base: +Int
+      .type: +Int
       .range: [null, -1]
     bounded:
-      .base: +Float
+      .type: +Float
       .range: [0.5, 1]
   want: |
     {

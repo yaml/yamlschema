@@ -59,7 +59,7 @@ test::
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
     port:
-      .base: +Int
+      .type: +Int
       .range: 1..65535
       .init: 8080
   want: |
@@ -80,7 +80,7 @@ test::
     .title: Arrays
     .desc: Arrays of strings and objects
     name:
-      .base: +Str
+      .type: +Str
       .title: Full name
       .desc: Display name.
     .json:
@@ -120,7 +120,7 @@ test::
     labels:
       fixed?: +Str
       +Str:
-        .base: +Str
+        .type: +Str
         .size: 1-20
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object","additionalProperties":{}},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
@@ -147,7 +147,7 @@ test::
       printf "%s\n" "$output" | sed -n 1p
     '
   want: |
-    ysc: unsupported yamlschema directive: -base; use .base
+    ysc: unsupported yamlschema directive: -base; use .type
 
 - name: reject-uppercase-title-directive
   cmnd: |

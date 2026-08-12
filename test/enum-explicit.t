@@ -17,7 +17,7 @@ test::
   want: |
     label: +Str [has space,ok]
     symbol:
-      .base: +Str
+      .type: +Str
       .enum:
       - ok
       - bad/value

@@ -187,7 +187,7 @@ test::
         ys -e "say: IN:read:json/load.properties.foo.pattern"
     '
   want: |
-    {"foo":{".base":"+Str",".like":"\/a.*b\/"}}
+    {"foo":{".type":"+Str",".like":"\/a.*b\/"}}
     /a.*b/
     ^x$
 

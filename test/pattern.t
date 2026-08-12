@@ -35,13 +35,13 @@ test::
     externalURL: +Str =~"https?://.*" 1+ "External URL for Harbor"
     spaced: +Str =~"a b"
     quoted:
-      .base: +Str
+      .type: +Str
       .match: a "b
     simpleFind: +Str /foo.*bar/
     slashFind: +Str find:"foo/bar"
     spacedFind: +Str find:"foo bar"
     quotedFind:
-      .base: +Str
+      .type: +Str
       .find: foo "bar
 
 done:
