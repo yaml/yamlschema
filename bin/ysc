@@ -4,12 +4,9 @@
 #
 # Reads a JSON Schema document from an explicit input path. Use "-" to read
 # from stdin. Builds the equivalent YAML Schema as a YS data structure, dumps
-# it via yaml/dump, and post-processes the result for canonical YSC layout,
-# `# TODO` comments, and the separator between `$defs` and the document body.
-#
-# Features requiring further design (if/then/else, patternProperties,
-# etc.) are emitted as a `# TODO: <keyword>` comment so the user can spot
-# them.
+# it via yaml/dump, and post-processes the result for canonical layout.
+# Unsupported JSON Schema keywords are preserved as dotted passthrough
+# directives and reported as warnings.
 
 VERSION =: '0.1.0'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
@@ -54,20 +51,21 @@ defn main(*args):
 defn convert-to(target text opts):
   case target:
     'ysd.yaml':
-      schema =: text:yaml/load
-      validate-json-schema-document: schema
-      validate-json-schema-dialect: schema
+      schema =: load-json-schema(text)
       convert: schema
     'schema.json':
       data =: text:yaml/load
+      warn-yamlschema-passthrough: data
       schema =: ysc-to-schema(expand-ysc(data expansion-source(opts)))
       json-output: schema opts
     'ysc.json':
       data =: canonical-input(text opts)
+      warn-canonical-input-passthrough: data opts
       expanded =: expand-ysc(data expansion-source(opts))
       canonical-json-output: collapse-direct-types(expanded) opts
     'ysc.yaml':
       data =: canonical-input(text opts)
+      warn-canonical-input-passthrough: data opts
       expanded =: expand-ysc(data expansion-source(opts))
       post-process yaml/dump(collapse-direct-types(expanded)): true
     else:
@@ -171,15 +169,19 @@ defn reject-old-file-extension(path):
     usage: 'unsupported file extension: .ysx.json'
 
 defn canonical-input(text opts):
-  source =: normalize-format(opts.from)
-  source ||=: infer-input-format(opts.input)
+  source =: input-format(opts)
   if source == 'schema.json':
     then:
-      schema =: text:yaml/load
-      validate-json-schema-document: schema
-      validate-json-schema-dialect: schema
-      yaml/load: convert(schema)
+      schema =: load-json-schema(text)
+      build-doc: schema
     else: text:yaml/load
+
+defn input-format(opts):
+  normalize-format(opts.from) || infer-input-format(opts.input)
+
+defn warn-canonical-input-passthrough(data opts):
+  when input-format(opts) != 'schema.json':
+    warn-yamlschema-passthrough: data
 
 defn expansion-source(opts):
   source =: normalize-format(opts.from) || infer-input-format(opts.input)
@@ -200,7 +202,12 @@ defn collapse-direct-types(value):
     else: value
 
 defn collapse-direct-type-entry(result entry):
-  result +: +{entry.0 collapse-direct-types(entry.1)}
+  key =: entry.0:S
+  value =:
+    if passthrough-directive?(key):
+      then: entry.1
+      else: collapse-direct-types(entry.1)
+  result +: +{entry.0 value}
 
 defn infer-input-format(path):
   cond:
@@ -410,7 +417,8 @@ defn validate-regex-directives(value source):
           usage: 'unsupported YSD directive: .like; use .match or .find'
         when (source == 'ysc') && key.in?(['.match', '.find']):
           usage: "unsupported YSC directive: $key; use .like"
-        validate-regex-directives: entry.1 source
+        when passthrough-directive?(key).!:
+          validate-regex-directives: entry.1 source
     sequential?(value):
       each item value:
         validate-regex-directives: item source
@@ -425,6 +433,8 @@ defn expand-doc-entry(result entry):
     key == '.additionalProperties': reject-additional-properties(key)
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
+    passthrough-directive?(key):
+      result +: +{key value}
     key =~ /^\./:
       expand-top-directive: result key value
     key == WILDCARD-KEY:
@@ -514,6 +524,8 @@ defn expand-explicit-entry(result entry):
     key == '.additionalProperties': reject-additional-properties(key)
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
+    passthrough-directive?(key):
+      result +: +{key val}
     key =~ /^\./:
       expand-explicit-directive: result key val
     key == WILDCARD-KEY:
@@ -618,7 +630,10 @@ defn put-present(result key value):
 defn put-non-directive(result entry):
   key =: entry.0:S
   if key =~ /^\./:
-    then: result
+    then:
+      if passthrough-directive?(key):
+        then: result + {key entry.1}
+        else: result
     else: result + {key entry.1}
 
 defn reject-unknown-directive(key):
@@ -1250,7 +1265,10 @@ defn add-schema-meta(result key value):
     '.desc': result + {'description' value}
     '.additionalProperties':
       reject-additional-properties: key
-    else: result
+    else:
+      if passthrough-directive?(key):
+        then: add-passthrough-schema-keyword(result key value)
+        else: result
 
 defn legacy-directive?(key):
   key =~ /^-/
@@ -1344,7 +1362,8 @@ defn ysc-object-step(state entry):
 defn ysc-block-to-schema(value):
   reject-unexportable-directives: value
   list =: canonical-list-type?(value)
-  item-value =: list.if(canonical-list-item(value) value)
+  native-value =: without-passthrough-directives(value)
+  item-value =: list.if(canonical-list-item(native-value) native-value)
   item =: canonical-item-schema(item-value)
   shape =: canonical-shape-schema(item-value)
   item =: shape || item
@@ -1352,8 +1371,17 @@ defn ysc-block-to-schema(value):
     if list:
       then: canonical-list-schema(item value)
       else: canonical-sized-schema(item value.'.size')
+  result =: add-passthrough-schema-keywords(result value)
   result =: add-canonical-annotations(result value)
   add-null-schema: result value.'.null'
+
+defn without-passthrough-directives(value):
+  reduce remove-passthrough-directive: omap() value
+
+defn remove-passthrough-directive(result entry):
+  if passthrough-directive?(entry.0:S):
+    then: result
+    else: result + {entry.0 entry.1}
 
 defn canonical-list-type?(value):
   reference =: value.'.type'
@@ -1391,6 +1419,21 @@ defn canonical-item-schema(value):
       then: result + dissoc(range-to-schema(value.'.range') 'type')
       else: result
   add-canonical-combinators: result value
+
+defn add-passthrough-schema-keywords(result value):
+  reduce add-passthrough-schema-entry: result value
+
+defn add-passthrough-schema-entry(result entry):
+  key =: entry.0:S
+  if passthrough-directive?(key):
+    then: add-passthrough-schema-keyword(result key entry.1)
+    else: result
+
+defn add-passthrough-schema-keyword(result directive value):
+  keyword =: passthrough-keyword(directive)
+  when contains?(result keyword):
+    usage: "duplicate JSON Schema keyword from yamlschema directive: $directive"
+  result +: +{keyword value}
 
 defn add-canonical-combinators(result value):
   result =: add-canonical-combinator(result value '.one' 'oneOf')
@@ -1630,6 +1673,119 @@ defn scalar-number(s):
 defn wrap-array-schema(item suffix):
   canonical-list-schema: item list-directives(suffix)
 
+defn unsupported-json-schema-keywords():
+  +[
+    '$anchor', '$dynamicRef', '$dynamicAnchor', '$vocabulary', '$comment',
+    'prefixItems', 'contains', 'patternProperties', 'dependentSchemas',
+    'propertyNames', 'if', 'then', 'else',
+    'unevaluatedItems', 'unevaluatedProperties',
+    'multipleOf', 'exclusiveMaximum', 'exclusiveMinimum',
+    'maxContains', 'minContains', 'dependentRequired',
+    'deprecated', 'readOnly', 'writeOnly', 'examples',
+    'format', 'contentEncoding', 'contentMediaType', 'contentSchema']
+
+defn unsupported-json-schema-keyword?(key):
+  key:S.in?(unsupported-json-schema-keywords())
+
+defn passthrough-directive?(key):
+  text =: key:S
+  (text =~ /^\./) &&:
+    unsupported-json-schema-keyword?(passthrough-keyword(text))
+
+defn passthrough-keyword(directive):
+  directive:S.replace(/^\./)
+
+defn load-json-schema(text):
+  schema =: text:yaml/load
+  validate-json-schema-document: schema
+  validate-json-schema-dialect: schema
+  warn-unsupported-json-schema: schema
+  =>: schema
+
+defn warn-unsupported-json-schema(value path=''):
+  when map?(value):
+    each entry value:
+      key child =: entry
+      key =: key:S
+      child-path =: json-pointer-child(path key)
+      when unsupported-json-schema-keyword?(key):
+        warn-unsupported-json-schema-keyword: key child-path
+      warn-json-schema-children: key child child-path
+
+defn warn-json-schema-children(key value path):
+  cond:
+    single-schema-json-keyword?(key):
+      warn-unsupported-json-schema: value path
+    sequence-schema-json-keyword?(key) && sequential?(value):
+      ignored =:
+        map-indexed(\(warn-unsupported-json-schema(_2 "$path/$_1")) value):vec
+    mapping-schema-json-keyword?(key) && map?(value):
+      each entry value:
+        name child =: entry
+        warn-unsupported-json-schema:
+          child json-pointer-child(path name:S)
+
+defn single-schema-json-keyword?(key):
+  key.in?([
+    'additionalProperties', 'unevaluatedProperties', 'propertyNames',
+    'items', 'contains', 'unevaluatedItems', 'not',
+    'if', 'then', 'else', 'contentSchema'])
+
+defn sequence-schema-json-keyword?(key):
+  key.in?(['allOf', 'anyOf', 'oneOf', 'prefixItems'])
+
+defn mapping-schema-json-keyword?(key):
+  key.in?(['properties', 'patternProperties', 'dependentSchemas',
+           '$defs', 'definitions'])
+
+defn warn-yamlschema-passthrough(value path='' root=true):
+  when map?(value):
+    each entry value:
+      key child =: entry
+      key =: key:S
+      if passthrough-directive?(key):
+        then:
+          keyword =: passthrough-keyword(key)
+          child-path =: json-pointer-child(path keyword)
+          warn-unsupported-json-schema-keyword: keyword child-path
+          warn-json-schema-children: keyword child child-path
+        else:
+          warn-yamlschema-child: key child path root
+
+defn warn-yamlschema-child(key value path root):
+  cond:
+    key.in?(['.one', '.any', '.all']) && sequential?(value):
+      keyword =: +{'.one' 'oneOf', '.any' 'anyOf', '.all' 'allOf'}.$key
+      child-path =: json-pointer-child(path keyword)
+      ignored =:
+        map-indexed(\(warn-yamlschema-passthrough(_2 "$child-path/$_1" false)) value):vec
+    key.in?(['.item', '.not']):
+      keyword =: key.eq('.item').if('items' 'not')
+      warn-yamlschema-passthrough:
+        value json-pointer-child(path keyword) false
+    key =~ /^\./: nil
+    else:
+      child-path =: yamlschema-schema-child-path(path key root)
+      warn-yamlschema-passthrough: value child-path false
+
+defn yamlschema-schema-child-path(path key root):
+  cond:
+    key == WILDCARD-KEY:
+      json-pointer-child: path 'additionalProperties'
+    root && key.starts?('+'):
+      name =: key.replace(/^\+/)
+      =>: json-pointer-child(json-pointer-child(path '$defs') name)
+    else:
+      name =: key.replace(/\?$/)
+      =>: json-pointer-child(json-pointer-child(path 'properties') name)
+
+defn warn-unsupported-json-schema-keyword(keyword path):
+  err: "ysc: warning: unsupported JSON Schema keyword \"$keyword\" at $path\n"
+
+defn json-pointer-child(path key):
+  token =: key:S.replace(/~/ '~0').replace(/\// '~1')
+  =>: "$path/$token"
+
 defn convert(schema):
   doc =: build-doc(schema)
   text =: yaml/dump(doc)
@@ -1830,7 +1986,6 @@ defn build-block-map(schema):
 # .enum, .init, etc.) into the result map. Also walks nested items /
 # properties when present.
 defn add-block(result schema):
-  result .=: add-todos(schema)
   t =: json-type(schema)
   ts =: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
@@ -1843,7 +1998,7 @@ defn add-block(result schema):
       then: result + {'.type' ref-sym(schema.'$ref')}
       else: result
   result =: map-put-if(result has-type '.type' ts)
-  result =: map-put-if(result is-array '.list' true)
+  result =: map-put-if(result is-array '.type' '+Any[]')
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
     if schema.has?('pattern'):
@@ -1887,14 +2042,16 @@ defn add-block(result schema):
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
     .add-array-items(is-array schema)
-  if t == 'object':
-    then:
-      if object-with-props?(schema):
-        then:
-          result =: result.add-properties(schema)
-          add-wildcard-entry: result schema
-        else: map-base.if(result add-wildcard-entry(result schema))
-    else: result
+  result =:
+    if t == 'object':
+      then:
+        if object-with-props?(schema):
+          then:
+            result =: result.add-properties(schema)
+            add-wildcard-entry: result schema
+          else: map-base.if(result add-wildcard-entry(result schema))
+      else: result
+  add-passthrough-directives: result schema
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
@@ -1913,7 +2070,7 @@ defn add-array-items(result is-array schema):
       item-scalar =: succinct-scalar(items)
       result +:
         if item-scalar: +
-          {'.type' item-scalar}
+          {'.type' "$item-scalar[]"}
           {'.item' build-block-map(items)}
     else: result
 
@@ -1957,19 +2114,17 @@ defn add-combinator-directive(result schema keyword directive):
     then: result + {directive vec(schema.$keyword.map(build-value))}
     else: result
 
-# Insert sentinel keys for unsupported keywords. Post-processing turns
-# them into `# TODO: <keyword>` comments.
-defn add-todos(result schema):
-  todos =: qw(if then else dependentRequired dependentSchemas
-              patternProperties propertyNames
-              prefixItems contains unevaluatedItems unevaluatedProperties
-              exclusiveMinimum exclusiveMaximum format)
-  reduce \(add-todo(_1 _2 schema)): result todos
+# Preserve unsupported JSON Schema keywords verbatim as dotted directives.
+# Their values remain opaque JSON Schema data until a native yamlschema
+# representation is implemented.
+defn add-passthrough-directives(result schema):
+  reduce add-passthrough-directive-entry: result schema
 
-defn add-todo(result k schema):
-  if schema.has?(k):
-    (result + {"__TODO_$k" ''})
-    result
+defn add-passthrough-directive-entry(result entry):
+  key =: entry.0:S
+  if unsupported-json-schema-keyword?(key):
+    then: result + {".$key" entry.1}
+    else: result
 
 # --------------------------------------------------------------------
 # Succinct-form helpers (unchanged from the original by-hand emitter).
@@ -2332,7 +2487,6 @@ defn literal-value(v): v
 defn post-process(text format-flow=false):
   lines =: text:lines
   lines =: format-flow.if(format-flow-sequences(lines) lines)
-  lines =: lines.map(replace-todo)
   lines =: insert-blank-after-defs(lines)
   join "\n": lines
 
@@ -2438,11 +2592,6 @@ defn append-flow-sequence-token(state token):
     then: state + {'line' candidate, 'has-item' true}
     else: state + {'lines' (state.lines + state.line),
       'line' "$(state.continuation)$token", 'has-item' true}
-
-defn replace-todo(line):
-  pat =: /^(\s*)__TODO_(\S+):\ ''$/
-  rep =: '$1# TODO: $2'
-  replace line: pat rep
 
 # Insert one blank line between the trailing `+...` $defs entries and
 # the first body entry, if any $defs were emitted.
