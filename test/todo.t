@@ -20,7 +20,7 @@ test::
     }
   want: |
     auth:
-      .anyof:
+      .any:
       - token?: +Str
       - api_key?: +Str
 

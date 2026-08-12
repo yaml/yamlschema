@@ -51,7 +51,7 @@ test::
 - name: list-suffix-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |
-    tags[!+]: +Str
+    tags: +Str[1+,!]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"tags":{"type":"array","items":{"type":"string"},"uniqueItems":true,"minItems":1}},"required":["tags"],"additionalProperties":false}
 
@@ -116,7 +116,7 @@ test::
   stdi: |
     server:
       port: +Int
-    data: +Map[+Any]
+    data: +Map{+Any}
     labels:
       fixed?: +Str
       +Str:

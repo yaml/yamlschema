@@ -86,11 +86,11 @@ already implies it:
 email: +Str =~"\S+@\S+"  # whole-string regex match
 role: +Str [admin,user,guest]  # enum with explicit base
 port: 1..65535           # numeric range
-tags[1+]: +Str          # list of one or more strings
+tags: +Str[1+]          # list of one or more strings
 ```
 
-The corresponding canonical form uses directives such as `.type`, `.base`,
-`.like`, `.enum`, `.size`, and `.list`.
+The corresponding canonical form uses type references and directives such as
+`.type`, `.base`, `.like`, `.enum`, and `.size`.
 
 
 ## Symbols and Definitions
@@ -114,7 +114,7 @@ Built-in symbols are uppercase:
 +Float
 +Bool
 +Null
-+Map[+Type]
++Map{+Type}
 ```
 
 User-defined symbols are normally lowercase:
@@ -165,11 +165,10 @@ The design keeps directive names short and regular.
 | `.const` | The one exact allowed value; JSON Schema `const` |
 | `.range` | Inclusive numeric range, with either bound optional |
 | `.size` | Number, string, list, or map size |
-| `.list` | Value is a sequence |
 | `.item` | Explicit sequence item type |
-| `.oneof` | Exactly one alternative must match |
-| `.anyof` | One or more alternatives must match |
-| `.allof` | Every alternative must match |
+| `.one` | Exactly one alternative must match |
+| `.any` | One or more alternatives must match |
+| `.all` | Every alternative must match |
 | `.not` | The nested type must not match |
 | `.solo` | A scalar is also accepted where a list is declared |
 | `.uniq` | List items must be unique |
@@ -199,8 +198,8 @@ A succinct value is a YAML plain scalar. A base reference is conventionally
 first, and labeled clauses can occur in any order. The scalar labels are
 `base`, `match`, `find`, `const`, `range`, `size`, `list`, `item`,
 `solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
-`enum:[...]` uses the compact enum grammar. Structural `.oneof`, `.anyof`,
-`.allof`, `.not`, `.with`, and `.when` values remain explicit.
+`enum:[...]` uses the compact enum grammar. Structural `.one`, `.any`,
+`.all`, `.not`, `.with`, and `.when` values remain explicit.
 
 ```yaml
 foo: desc:"Words" size:1-3 =~"a b" title:"Title" base:+Str
@@ -231,8 +230,7 @@ right:
   .type: +Str
   .desc: This isn't wrong
 dbRepository?:
-  .base: +Str
-  .list: true
+  .type: +Str[]
   .desc: Repositories for the vulnerability DB
 ```
 
@@ -266,7 +264,7 @@ name: +Str
 age: +Int
 ratio: +Float
 enabled: +Bool
-metadata: +Map[+Any]
+metadata: +Map{+Any}
 anything: +Any
 ```
 
@@ -382,50 +380,84 @@ kind:
 so `+Str ==User =User` exports both `const` and `default`.
 
 
-## Key Suffixes
+## Property Keys
 
-Suffixes are attached to field names:
+The property key syntax carries only pair-level optionality:
 
 ```text
-name ? [list-or-size] :
+name ? :
 ```
 
-| Suffix | Meaning |
+| Form | Meaning |
 | --- | --- |
 | `key:` | Required key |
 | `key?:` | Optional key |
-| `key[]:` | Required list |
-| `key?[]:` | Optional list |
-| `key[3]:` | List with exactly 3 items |
-| `key[1-3]:` | List with 1 to 3 items |
-| `key[1+]:` | List with 1 or more items |
-| `key[5+]:` | List with 5 or more items |
-| `key[$]:` | Scalar or list |
-| `key[$|1+]:` | Scalar or list with 1 or more items |
-| `key[$|1-3]:` | Scalar or list with 1 to 3 items |
-| `key[!]:` | Unique list |
-| `key[!1+]:` | Unique list with 1 or more items |
-| `key[!3]:` | Unique list with exactly 3 items |
-| `key[!1-3]:` | Unique list with 1 to 3 items |
-| `key|alias:` | Key with an alias |
 
-Examples:
+Lists, sizes, uniqueness, and scalar-or-list constraints belong to the value
+type:
 
 ```yaml
-tags[]: +Str
-names[1+]: +Str
-triple[3]: +Int
-subset[1-3]: +Str
-unique_tags[!1+]: +Str
+tags: +Str[]
+names: +Str[1+]
+triple: +Int[3]
+subset: +Str[1-3]
+unique_tags: +Str[1+,!]
 ```
 
-Key suffix grammar:
+The complete property-key grammar is:
 
 ```text
-key_expr = name "?"? bracket? ":"
-bracket  = "[" "!"? (quantity | "$" ("|" quantity)?) "]"
-quantity = n | n "-" m | n "+" | empty
+key_expr = name "?"? ":"
 ```
+
+Key-side list syntax such as `key[]` and `key?[1+]` is rejected.
+
+
+## Key/Value Pair Constraints
+
+Optionality belongs to one key/value pair, but some mapping constraints relate
+several pairs. The properties remain ordinary sibling entries so their order
+is preserved. A planned `.keys` sequence holds ordered relationship rules:
+
+```yaml
+aaa: +Bool
+foo?: +Str
+fool?: +Int
+bar?: +Str
+baz?: +Int
+bbb: +bar
+
+.keys:
+- .one: [foo, fool]
+- .one: [bar, baz]
+```
+
+Each `.one` rule requires exactly one named property. Repeating `.one` is
+valid because every rule is a separate mapping in the sequence; YAML duplicate
+keys are not required.
+
+Other presence relationships fit the same ordered rule model:
+
+```yaml
+.keys:
+- .any: [host, socket, url]
+- .excl: [debug, quiet]
+- .with:
+    user: [password]
+- .when: key1
+  .then: [key2]
+  .else: [key3]
+```
+
+`.any` requires at least one property, `.excl` permits at most one, and
+`.with` declares dependent required properties. `.when` tests whether its
+property is present; `.then` and `.else` select additional required
+properties. For example, the last rule corresponds to JSON Schema `if` with
+`required: [key1]`, followed by `then` and `else` schemas requiring `key2` or
+`key3`.
+
+This `.keys` rule system is design-only for now. It is not accepted by the
+converter yet.
 
 
 ## Wildcard Keys
@@ -444,15 +476,15 @@ config:
 
 The first mapping accepts any string key with a string value.
 The second accepts `known` plus any other string key with any value.
-Pure arbitrary mappings use `+Map[+Any]`.
+Pure arbitrary mappings use `+Map{+Any}`.
 
 The succinct typed-map form constrains values for otherwise-unmatched string
 keys:
 
 ```yaml
-config: +Map[+Any]
-labels: +Map[+Str]
-custom: +Map[+value]
+config: +Map{+Any}
+labels: +Map{+Str}
+custom: +Map{+value}
 ```
 
 It expands to the existing canonical wildcard model:
@@ -462,9 +494,24 @@ labels:
   +Str: +Str
 ```
 
-Bare `+Map` and `+Map[]` are errors; the value type is required. The supported
-form `+Map[+Value]` is shorthand for `+Map[+Str,+Value]`. The two-reference
-form is reserved for future YAML key schemas but is not implemented yet.
+`+Map` is an incomplete mapping type that requires sibling key/value pairs.
+`+Map[]` is therefore a list of shaped mappings whose item properties follow
+as siblings. The complete open form `+Map{+Value}` is shorthand for
+`+Map{+Str,+Value}`. The two-reference form is reserved for future YAML key
+schemas but is not implemented yet.
+
+```yaml
+extraEnv?:
+  .base: +Map[1-10,$!]
+  name: +Str
+  value?: +Str
+  valueFrom?: +Map{+Any}
+```
+
+This is a scalar or unique list of one through ten closed mapping values. The
+sibling pairs complete the list item shape. In list brackets, size, `$`, and
+`!` are independent properties. Commas, whitespace, and adjacency are
+accepted separators, while generated YSD uses canonical `[size,$!]` order.
 
 
 ## Explicit Form
@@ -481,8 +528,7 @@ email:
   .like: ^\S+@\S+$
 
 tags:
-  .base: +Str
-  .list: true
+  .base: +Str[]
   .size: [1]
   .uniq: true
 ```
@@ -539,7 +585,7 @@ explicit form:
 
 ```yaml
 +auth:
-  .oneof:
+  .one:
   - api_key: +Str
   - token: +Str
   - username: +Str
@@ -547,7 +593,7 @@ explicit form:
 ```
 
 Multiple unbracketed references are conjunctive. The first becomes `.base` and
-the remaining references become `.allof` branches.
+the remaining references become `.all` branches.
 
 
 ## Regex Composition
@@ -718,7 +764,7 @@ Example compiled shape:
     ".range": [1, 65535]
   },
   "+auth": {
-    ".oneof": [
+    ".one": [
       {"api_key": "+Str"},
       {"token": "+Str"}
     ]
@@ -751,11 +797,11 @@ yamlschema.
 | `type: "number"` | `+Float` |
 | `type: "boolean"` | `+Bool` |
 | `type: "null"` | `+Null` |
-| `type: "object"` | `+Map[+Any]` or a nested mapping shape |
+| `type: "object"` | `+Map{+Any}` or a nested mapping shape |
 | `properties` | Bare mapping keys |
 | `required` | Default required keys; omitted names get `?` |
-| `additionalProperties: true` | `+Map[+Any]` |
-| simple schema-valued `additionalProperties` | `+Map[+Type]` |
+| `additionalProperties: true` | `+Map{+Any}` |
+| simple schema-valued `additionalProperties` | `+Map{+Type}` |
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | Closed mapping; no wildcard |
 | `enum` | Compact enum or `.enum` list |
@@ -802,7 +848,7 @@ Converts to:
 
 name: +Str
 email?: +email
-tags[!+]: +Str
+tags: +Str[1+,!]
 ```
 
 

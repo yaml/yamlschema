@@ -7,27 +7,27 @@ test::
 - name: typed-map-expansion
   cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
   stdi: |
-    any: +Map[+Any]
-    strings: +Map[+Str]~
-    custom: +Map[+types/value]
-    many: +Map[+Str][]
+    any: +Map{+Any}
+    strings: +Map{+Str}~
+    custom: +Map{+types/value}
+    many: +Map{+Str}[]
     hybrid:
-      .base: +Map[+Str]
+      .base: +Map{+Str}
       fixed?: +Str
   want: |
     {"any":{"+Str":"+Any"},"strings":{".null":true,"+Str":"+Str"},"custom":{
-    "+Str":"+types\/value"},"many":{".list":true,"+Str":"+Str"},"hybrid":{"+
-    Str":"+Str","fixed?":"+Str"}}
+    "+Str":"+types\/value"},"many":{".base":"+Map[]","+Str":"+Str"},"hybrid"
+    :{"+Str":"+Str","fixed?":"+Str"}}
 
 - name: typed-map-to-json-schema
   cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
   stdi: |
     +flag: +Bool
 
-    any: +Map[+Any]
-    strings: +Map[+Str]
-    custom: +Map[+flag]
-    many[]: +Map[+Str]
+    any: +Map{+Any}
+    strings: +Map{+Str}
+    custom: +Map{+flag}
+    many: +Map{+Str}[]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
     bject","properties":{"any":{"type":"object","additionalProperties":{}},"
@@ -70,9 +70,9 @@ test::
   want: |
     +flag: +Bool
 
-    config?: +Map[+Any] "Primary component config."
-    labels?: +Map[+Str]
-    custom?: +Map[+flag]
+    config?: +Map{+Any} "Primary component config."
+    labels?: +Map{+Str}
+    custom?: +Map{+flag}
     hybrid?:
       fixed?: +Str
       +Str: +Str
@@ -85,27 +85,47 @@ test::
   stdi: |
     data: +Map
   want: |
-    ysc: bare +Map is unsupported; use +Map[+Any]
+    ysc: incomplete +Map type requires key/value pairs
 
 - name: reject-invalid-map-value-type
   cmnd: |
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
-    bad: +Map[Str]
+    bad: +Map{Str}
   want: |
     ysc: +Map requires exactly one value type reference
 
 - name: map-parameter-errors
   cmnd: |
     sh -c '
-      for value in "+Map[]" "+Map[+Any,+Any]"; do
+      for value in "+Map{}" "+Map{+Any,+Any}"; do
         printf "bad: %s\n" "$value" |
           bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       done
     '
   want: |
     ysc: +Map requires exactly one value type reference
-    ysc: +Map[+Key,+Value] is reserved but not supported yet
+    ysc: +Map{+Key,+Value} is reserved but not supported yet
+
+- name: reject-old-map-parameter-delimiters
+  cmnd: |
+    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+  stdi: |
+    bad: +Map[+Any]
+  want: |
+    ysc: unsupported map parameter syntax: +Map[+Any]; use +Map{+Type}
+
+- name: shaped-map-list-base
+  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  stdi: |
+    extraEnv?:
+      .base: +Map[1-10,$!]
+      name: +Str
+      value?: +Str
+      valueFrom?: +Map{+Any}
+  want: |
+    {"extraEnv?":{".base":"+Map[]",".size":[1,10],".solo":true,".uniq":true,
+    "name":"+Str","value?":"+Str","valueFrom?":{"+Str":"+Any"}}}
 
 - name: old-shaped-map-marker-normalizes-away
   cmnd: bin/ysc -t yscj -
@@ -136,7 +156,7 @@ test::
       .base: +Map
       .desc: Old marker
   want: |
-    ysc: bare +Map is unsupported; use +Map[+Any]
+    ysc: incomplete +Map type requires key/value pairs
 
 - name: legacy-wildcard-is-rejected
   cmnd: |
@@ -158,8 +178,8 @@ test::
       }
     }
   want: |
-    implicit?: +Map[+Any]
-    explicit?: +Map[+Any]
+    implicit?: +Map{+Any}
+    explicit?: +Map{+Any}
     closed?: {}
 
 - name: reserved-str-definition-collision

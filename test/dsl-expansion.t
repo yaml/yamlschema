@@ -14,8 +14,7 @@ test::
   want: |
     {
       "succinct": {
-        ".base": "+Str",
-        ".list": true,
+        ".base": "+Str[]",
         ".like": "a.*b",
         ".size": [
           10,
@@ -23,8 +22,7 @@ test::
         ]
       },
       "hybrid": {
-        ".base": "+Str",
-        ".list": true,
+        ".base": "+Str[]",
         ".like": "a.*b",
         ".size": [
           10,
@@ -134,23 +132,21 @@ test::
 - name: list-size-forms
   cmnd: bin/ysc -t yscj -
   stdi: |
-    key?[!1+]: +Str
-    value?: +Str[$|0-3]
+    key?: +Str[1+,!]
+    value?: +Str[0-3,$]
     alias?: +Str[+]
-    exact?: +Map[+Any] 10
+    exact?: +Map{+Any} 10
   want: |
     {
       "key?": {
-        ".base": "+Str",
-        ".list": true,
+        ".base": "+Str[]",
         ".size": [
           1
         ],
         ".uniq": true
       },
       "value?": {
-        ".base": "+Str",
-        ".list": true,
+        ".base": "+Str[]",
         ".size": [
           0,
           3
@@ -158,8 +154,7 @@ test::
         ".solo": true
       },
       "alias?": {
-        ".base": "+Str",
-        ".list": true,
+        ".base": "+Str[]",
         ".size": [
           1
         ]
@@ -172,6 +167,34 @@ test::
         "+Str": "+Any"
       }
     }
+
+- name: composable-list-property-spellings
+  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  stdi: |
+    canonical: +Str[1-10,$!]
+    split: +Str[1-10,$,!]
+    spaced: +Str[1-10 $ !]
+    compact: +Str[1-10$!]
+  want: |
+    {"canonical":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true}
+    ,"split":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"sp
+    aced":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"compa
+    ct":{".base":"+Str[]",".size":[1,10],".solo":true,".uniq":true}}
+
+- name: reject-invalid-list-properties
+  cmnd: |
+    sh -c '
+      for value in "+Str[1-10,3]" "+Str[$,$]" "+Str[!,!]" \
+                   "+Str[1-10|$!]"; do
+        printf "x: %s\n" "$value" |
+          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      done
+    '
+  want: |
+    ysc: list suffix contains multiple size constraints
+    ysc: list suffix contains duplicate $ flag
+    ysc: list suffix contains duplicate ! flag
+    ysc: unsupported | in list suffix; use comma
 
 - name: nullable-default-title-description
   cmnd: bin/ysc -t yscj -
@@ -209,10 +232,9 @@ test::
     foo:
       .size: 10-20
       .match: a.*b
-      .list: true
-      .base: +Str
+      .base: +Str[]
   want: |
-    {"foo":{".base":"+Str",".list":true,".like":"^a.*b$",".size":[10,20]}}
+    {"foo":{".base":"+Str[]",".like":"^a.*b$",".size":[10,20]}}
 
 - name: direct-and-refined-type-directives
   cmnd: bin/ysc -t yscj -
@@ -267,7 +289,7 @@ test::
   stdi: |
     version: +Str ==User
     flag?: +Bool~
-    tags?: +Str[$|1+]
+    tags?: +Str[1+,$]
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -322,6 +344,32 @@ test::
       .base: +Str
   want: |
     ysc: unsupported yamlschema directive: .need; use ? on optional keys
+
+- name: reject-list-directive
+  cmnd: |
+    sh -c '
+      printf "foo:\n  .base: +Any\n  .list: true\n" |
+        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      printf "foo: +Any list:true\n" |
+        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+    '
+  want: |
+    ysc: unsupported yamlschema directive: .list; use [] on the type
+    ysc: unsupported yamlschema keyword: list; use [] on the type
+
+- name: reject-key-side-list-syntax
+  cmnd: |
+    sh -c '
+      for key in "foo[]" "foo?[]" "foo[1-3]" "foo[]?"; do
+        printf "%s: +Str\n" "$key" |
+          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      done
+    '
+  want: |
+    ysc: unsupported list syntax on key foo[]; put it on the value type
+    ysc: unsupported list syntax on key foo?[]; put it on the value type
+    ysc: unsupported list syntax on key foo[1-3]; put it on the value type
+    ysc: unsupported list syntax on key foo[]?; put it on the value type
 
 - name: reject-old-description
   cmnd: |
@@ -432,11 +480,11 @@ test::
     search: find:"a/b c" base:+Str
     number: range:1..10 base:+Int
     sequence: null:true uniq:true solo:true size:1+ item:+Str
-      list:true base:+Any
+      base:+Any[]
     alternate: also:former base:+Str
     choice: enum:[a,b c] base:+Str
   want: |
-    {"string":{".base":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".like":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any",".list":true,".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
+    {"string":{".base":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".base":"+Str",".like":"a\/b c"},"number":{".base":"+Int",".range":[1,10]},"sequence":{".base":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".base":"+Str",".also":"former"},"choice":{".base":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |
@@ -474,11 +522,11 @@ test::
     sh -c '
       printf "foo:\n  .type: +Str\n  .base: +Str\n" |
         bin/ysc -t yscj -C - 2>&1 | sed -n 1p
-      printf "foo:\n  .type: +Str[]\n" |
+      printf "foo:\n  .type: +Str[1+]\n" |
         bin/ysc -t yscj -C - 2>&1 | sed -n 1p
     '
   want: |
     ysc: yamlschema type cannot contain both .type and .base
-    ysc: yamlschema .type requires a bare type reference
+    ysc: yamlschema .type requires an unconstrained type reference
 
 done:

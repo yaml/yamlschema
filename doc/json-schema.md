@@ -34,7 +34,7 @@ The `.ysd.yaml` succinct form is optimized for humans:
 ```yaml
 name: +Str
 email?: +Str =~"\S+@\S+"
-tags[!+]: +Str
+tags: +Str[1+,!]
 ```
 
 The `.ysc.json` explicit form is one serialization of the canonical internal
@@ -45,8 +45,7 @@ shape:
   "name": "+Str",
   "email": {".base": "+Str", ".like": "^\\S+@\\S+$"},
   "tags": {
-    ".base": "+Str",
-    ".list": true,
+    ".base": "+Str[]",
     ".uniq": true,
     ".size": [1]
   }
@@ -147,8 +146,8 @@ If no keys are required, the `required` array can be omitted.
 | `{"type": "number"}` | `+Float` |
 | `{"type": "boolean"}` | `+Bool` |
 | `{"type": "null"}` | `+Null` |
-| `{"type": "object"}` | `+Map[+Any]` or a mapping shape |
-| `{"type": "array"}` | `.list: true` or a list key suffix |
+| `{"type": "object"}` | `+Map{+Any}` or a mapping shape |
+| `{"type": "array"}` | `+Any[]`, another `+Type[]`, or a list key suffix |
 
 Example:
 
@@ -404,10 +403,10 @@ Homogeneous arrays use key suffixes when possible:
 ```
 
 ```yaml
-tags[]: +Str
-names[1+]: +Str
-triple[3]: +Int
-subset[1-3]: +Str
+tags: +Str[]
+names: +Str[1+]
+triple: +Int[3]
+subset: +Str[1-3]
 ```
 
 Unique arrays add `!`:
@@ -422,19 +421,19 @@ Unique arrays add `!`:
 ```
 
 ```yaml
-names[!+]: +Str
+names: +Str[1+,!]
 ```
 
 Roundtrip mapping:
 
 | yamlschema | JSON Schema |
 | --- | --- |
-| `key[]: +Str` | `type: array`, `items: {type: string}` |
-| `key[1+]: +Str` | plus `minItems: 1` |
-| `key[3]: +Int` | plus `minItems: 3`, `maxItems: 3` |
-| `key[1-3]: +Str` | plus `minItems: 1`, `maxItems: 3` |
-| `key[!]: +Str` | plus `uniqueItems: true` |
-| `key[!+]: +Str` | plus `uniqueItems: true`, `minItems: 1` |
+| `key: +Str[]` | `type: array`, `items: {type: string}` |
+| `key: +Str[1+]` | plus `minItems: 1` |
+| `key: +Int[3]` | plus `minItems: 3`, `maxItems: 3` |
+| `key: +Str[1-3]` | plus `minItems: 1`, `maxItems: 3` |
+| `key: +Str[!]` | plus `uniqueItems: true` |
+| `key: +Str[1+,!]` | plus `uniqueItems: true`, `minItems: 1` |
 
 
 ## Defaults
@@ -586,19 +585,20 @@ Explicit JSON Schema values import as follows:
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `additionalProperties: true` | `+Map[+Any]` |
-| `additionalProperties: {"type":"string"}` | `+Map[+Str]` |
-| `additionalProperties: {"$ref":"..."}` | `+Map[+name]` |
+| `additionalProperties: true` | `+Map{+Any}` |
+| `additionalProperties: {"type":"string"}` | `+Map{+Str}` |
+| `additionalProperties: {"$ref":"..."}` | `+Map{+name}` |
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | No wildcard |
 
 On a shaped mapping, omitted `additionalProperties` imports without a
 wildcard. This intentionally adopts yamlschema's stricter closed default for
 shapes. A pure object with no declared properties remains open and imports as
-`+Map[+Any]`.
+`+Map{+Any}`.
 On export, shaped mappings without `+Str` receive
 `additionalProperties: false`.
-Bare `+Map` is invalid; pure open objects use `+Map[+Any]`.
+An incomplete `+Map` requires sibling properties. Pure open objects use
+`+Map{+Any}`.
 
 When named properties coexist with `additionalProperties`, the importer emits
 an explicit wildcard after the named properties:
@@ -609,8 +609,8 @@ labels:
   +Str: +Str
 ```
 
-`+Map[+Type]` accepts one built-in, user-defined, or namespaced reference.
-It is shorthand for the future `+Map[+Str,+Type]` form. Two-reference maps are
+`+Map{+Type}` accepts one built-in, user-defined, or namespaced reference.
+It is shorthand for the future `+Map{+Str,+Type}` form. Two-reference maps are
 reserved for YAML key schemas but are not implemented. More complex value
 constraints continue to use explicit `+Str` syntax.
 
@@ -621,9 +621,9 @@ JSON Schema combinators round-trip through explicit directives:
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `oneOf` | `.oneof` or `+One[...]` |
-| `anyOf` | `.anyof` or `+Any[...]` |
-| `allOf` | `.allof` or `+All[...]` |
+| `oneOf` | `.one` or `+One[...]` |
+| `anyOf` | `.any` or `+Any[...]` |
+| `allOf` | `.all` or `+All[...]` |
 | `not` | `.not` or `+Not[...]` |
 
 The compact forms contain type references only. `One`, `Any`, and `All`

@@ -4,8 +4,8 @@
 #
 # Reads a JSON Schema document from an explicit input path. Use "-" to read
 # from stdin. Builds the equivalent YAML Schema as a YS data structure, dumps
-# it via yaml/dump, and post-processes the result for `# TODO` comments and
-# the blank line separator between `$defs` and the document body.
+# it via yaml/dump, and post-processes the result for canonical YSC layout,
+# `# TODO` comments, and the separator between `$defs` and the document body.
 #
 # Features requiring further design (if/then/else, patternProperties,
 # etc.) are emitted as a `# TODO: <keyword>` comment so the user can spot
@@ -69,7 +69,7 @@ defn convert-to(target text opts):
     'ysc.yaml':
       data =: canonical-input(text opts)
       expanded =: expand-ysc(data expansion-source(opts))
-      post-process: yaml/dump(collapse-direct-types(expanded))
+      post-process yaml/dump(collapse-direct-types(expanded)): true
     else:
       usage: "unsupported output format: $target"
 
@@ -445,30 +445,36 @@ defn expand-top-directive(result key value):
 defn add-expanded-field(result key value):
   info =: parse-expanded-key(key)
   block =: expand-type(value)
-  block =:
-    if info.suffix:
-      then:
-        suffix-block =: list-directives(info.suffix)
-        merge-directives: block suffix-block "field $key"
-      else: block
   block =: canonicalize-type-reference(block)
   result +: +{info.key block}
 
 defn parse-expanded-key(key):
-  match =: re-matches(/^(.+?)(\?)?(\[[^\]]*\])$/ key)
-  if match:
-    then:
-      name =: match.1
-      optional =: match.2 || ''
-      =>: +{'key' "$name$optional", 'suffix' match.3}
-    else: +{'key' key}
+  when key-list-suffix?(key):
+    reject-key-list-suffix: key
+  =>: +{'key' key}
+
+defn key-list-suffix?(key):
+  key =~ /\[[^\]]*\]\??$/
+
+defn reject-key-list-suffix(key):
+  usage: "unsupported list syntax on key $key; put it on the value type"
 
 defn expand-type(value):
   block =:
     if map?(value):
       expand-type-map: value
       expand-tight: value
-  canonicalize-type-reference: block
+  block =: canonicalize-type-reference(block)
+  validate-complete-map-type: block
+  =>: block
+
+defn validate-complete-map-type(value):
+  key =: value.has?('.type').if('.type' '.base')
+  reference =: key.when(value.$key)
+  incomplete =: reference.in?(['+Map', '+Map[]'])
+  shaped =: value:keys.some(\(_ !~ /^\./))
+  when incomplete && shaped.!:
+    usage: 'incomplete +Map type requires key/value pairs'
 
 defn expand-type-map(value):
   explicit =: value:keys.some(\(_:S =~ /^\./))
@@ -493,8 +499,8 @@ defn expand-explicit-type(value):
   old-map-marker =: shaped && value.'.base'.eq('+Map')
   reference-key =: value.has?('.type').if('.type' '.base')
   reference =: value.$reference-key
-  when value.has?('.type') && type-symbol?(reference:S).!:
-    usage: 'yamlschema .type requires a bare type reference'
+  when value.has?('.type') && direct-type-symbol?(reference:S).!:
+    usage: 'yamlschema .type requires an unconstrained type reference'
   base =:
     if value.has?(reference-key) && old-map-marker.!:
       expand-tight: reference
@@ -507,6 +513,7 @@ defn expand-explicit-entry(result entry):
   key =: key:S
   cond:
     key.in?(['.type', '.base']): result
+    key == '.list': reject-list-directive()
     key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
@@ -525,7 +532,7 @@ defn type-directive?(key):
     +['.type', '.like', '.match', '.find', '.enum', '.const',
      '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
-     '.oneof', '.anyof', '.allof', '.not',
+     '.one', '.any', '.all', '.not',
      '.title', '.desc', '.also', '.with', '.when']
   key: .in?(directives)
 
@@ -556,9 +563,9 @@ defn normalize-directive(key value):
     '.find': +{'.like' regex-pattern(value)}
     '.size': +{key normalize-size(value)}
     '.item': +{key expand-type(value)}
-    '.oneof': +{key expand-combinator-sequence(key value)}
-    '.anyof': +{key expand-combinator-sequence(key value)}
-    '.allof': +{key expand-combinator-sequence(key value)}
+    '.one': +{key expand-combinator-sequence(key value)}
+    '.any': +{key expand-combinator-sequence(key value)}
+    '.all': +{key expand-combinator-sequence(key value)}
     '.not': +{key expand-type(value)}
     '.enum': inferred-directive(key value)
     '.const': inferred-directive(key value)
@@ -586,7 +593,7 @@ defn merge-directives(left right context):
 defn ordered-directives(value):
   order =:
     +['.type', '.base', '.list', '.item',
-     '.oneof', '.anyof', '.allof', '.not',
+     '.one', '.any', '.all', '.not',
      '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
      '.init', '.title', '.desc', '.also', '.with', '.when']
@@ -594,6 +601,7 @@ defn ordered-directives(value):
   reduce put-non-directive: result value
 
 defn canonicalize-type-reference(value):
+  value =: fold-list-type(value)
   when value.has?('.type') && value.has?('.base'):
     usage: 'yamlschema type cannot contain both .type and .base'
   key =:
@@ -605,6 +613,20 @@ defn canonicalize-type-reference(value):
       target =: refined-type?(value).if('.base' '.type')
       reference =: value.$key
       ordered-directives: dissoc(value key) + {target reference}
+    else: value
+
+defn fold-list-type(value):
+  if value.'.list':
+    then:
+      key =: value.has?('.type').if('.type' '.base')
+      shaped =: value:keys.some(\(_ !~ /^\./))
+      inferred =: shaped.if('+Map' '+Any')
+      reference =: value.get(key inferred)
+      reference =: reference.ends?('[]').if(reference "$reference[]")
+      result =: dissoc(value '.list')
+      key ||=: '.base'
+      result =: dissoc(result key)
+      result +: +{key reference}
     else: value
 
 defn refined-type?(value):
@@ -627,6 +649,12 @@ defn reject-unknown-directive(key):
 
 defn reject-need-directive():
   usage: 'unsupported yamlschema directive: .need; use ? on optional keys'
+
+defn reject-list-directive():
+  usage: 'unsupported yamlschema directive: .list; use [] on the type'
+
+defn reject-list-keyword():
+  usage: 'unsupported yamlschema keyword: list; use [] on the type'
 
 defn expand-tight(value):
   if string?(value):
@@ -666,7 +694,9 @@ defn tight-tokens(value):
   pattern =:
     re-pattern:
       str: +
-        '\+(?:One|Any|All|Not)\[[^\]]*\]'
+        '\+(?:One|Any|All|Not)\[[^\]]*\](?:\[[^\]]*\])?~?'
+        '|\+Map\{[^\}]*\}(?:\[[^\]]*\])?~?'
+        '|\+[A-Za-z_][A-Za-z0-9_\/-]*\[[^\]]*\]~?'
         '|(?:[A-Za-z]+:|=~|==|=)?"[^"]*"'
         '|(?:enum:)?\[[^\]]*\]|\S+'
   tokens =: vec(re-seq(pattern value))
@@ -680,13 +710,14 @@ defn tight-tokens(value):
   =>: tokens
 
 defn base-primary-token?(token):
-  normal =: token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\[[^\]]*\])?~?$/
+  normal =:
+    token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\{[^\}]*\})?(?:\[[^\]]*\])?~?$/
   primary =: compact-combinator-token?(token) ||
     typed-map-primary-token?(token) || normal
   primary ||: token.starts?('base:')
 
 defn typed-map-primary-token?(token):
-  token =~ /^(?:base:)?\+Map\[\+[A-Za-z_][A-Za-z0-9_\/-]*\](?:\[[^\]]*\])?~?$/
+  token =~ /^(?:base:)?\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}(?:\[[^\]]*\])?~?$/
 
 defn expand-primary-token(token):
   when compact-enum-token?(token):
@@ -710,26 +741,41 @@ defn parse-primary(token):
   null =: token.ends?('~')
   token =: null.if(token.replace(/~$/) token)
   pattern =:
-    /^(?:base:)?\+Map\[(\+[A-Za-z_][A-Za-z0-9_\/-]*)\](\[[^\]]*\])?$/
+    /^(?:base:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
   map-match =: re-matches(pattern token)
   cond:
+    old-map-parameter-token?(token): reject-old-map-parameters(token)
     compact-combinator-token?(token):
       compact-combinator-primary(token null)
     map-match: typed-map-primary(map-match null)
     map-parameter-token?(token): reject-map-parameters(token)
     else: normal-primary(token null)
 
+defn old-map-parameter-token?(token):
+  pattern =:
+    re-pattern:
+      str: +
+        '^(?:base:)?\+Map\[\+'
+        '[A-Za-z_][A-Za-z0-9_\/-]*(?:,[^\]]+)?\]'
+        '(?:\[[^\]]*\])?$'
+  token =~: pattern
+
+defn reject-old-map-parameters(token):
+  usage: "unsupported map parameter syntax: $token; use +Map{+Type}"
+
 defn map-parameter-token?(token):
-  token =~ /^(?:base:)?\+Map\[[^\]]*\](?:\[[^\]]*\])?$/
+  token =~ /^(?:base:)?\+Map\{[^\}]*\}(?:\[[^\]]*\])?$/
 
 defn reject-map-parameters(token):
-  body =: token.replace(/^(?:base:)?\+Map\[/).replace(/\].*$/)
+  body =: token.replace(/^(?:base:)?\+Map\{/).replace(/\}.*$/)
   if ','.in?(body):
-    usage: '+Map[+Key,+Value] is reserved but not supported yet'
+    usage: '+Map{+Key,+Value} is reserved but not supported yet'
     usage: '+Map requires exactly one value type reference'
 
 defn compact-combinator-token?(token):
-  match =: re-matches(/^\+(One|Any|All|Not)\[(.*)\]~?$/ token)
+  pattern =:
+    /^\+(One|Any|All|Not)\[([^\]]*)\](?:\[[^\]]*\])?~?$/
+  match =: re-matches(pattern token)
   when match:
     name =: match.1
     body =: match.2:trim
@@ -738,11 +784,13 @@ defn compact-combinator-token?(token):
       true
 
 defn compact-combinator-primary(token null):
-  match =: re-matches(/^\+(One|Any|All|Not)\[(.*)\]$/ token)
+  pattern =:
+    /^\+(One|Any|All|Not)\[([^\]]*)\](\[[^\]]*\])?$/
+  match =: re-matches(pattern token)
   name =: match.1
   members =: compact-combinator-members(name match.2)
-  directive =: +{'One' '.oneof', 'Any' '.anyof',
-                  'All' '.allof', 'Not' '.not'}.$name
+  directive =: +{'One' '.one', 'Any' '.any',
+                  'All' '.all', 'Not' '.not'}.$name
   branches =: vec(members.map(expand-type))
   block =:
     if name == 'Not':
@@ -750,10 +798,10 @@ defn compact-combinator-primary(token null):
         negated =:
           if members.# == 1:
             then: branches.0
-            else: +{'.anyof' branches}
+            else: +{'.any' branches}
         =>: +{directive negated}
       else: +{directive branches}
-  =>: +{'block' block, 'suffix' nil, 'null' null}
+  =>: +{'block' block, 'suffix' match.3, 'null' null}
 
 defn compact-combinator-members(name body):
   members =: body.split(',').map(trim):vec
@@ -798,7 +846,7 @@ defn primary-block(token):
     token.starts?('const:') || token.starts?('=='):
       usage: 'const requires a preceding base reference'
     old-tight-keyword?(token): reject-old-tight-keyword(token)
-    token == '+Map': reject-bare-map()
+    token == '+Map': +{'.base' '+Map'}
     type-symbol?(token): +{'.base' token}
     regex-literal-token?(token):
       +{'.base' '+Str', '.like' regex-pattern(token)}
@@ -813,7 +861,7 @@ defn primary-block(token):
 
 defn expand-tight-token(result token):
   cond:
-    type-symbol?(token): append-allof-reference(result token)
+    type-symbol?(token): append-all-reference(result token)
     token.starts?('=~'):
       merge-directives:
         result
@@ -851,10 +899,10 @@ defn expand-tight-token(result token):
     else:
       usage: "invalid or out-of-order yamlschema clause: $token"
 
-defn append-allof-reference(result token):
-  branches =: result.'.allof' || []
+defn append-all-reference(result token):
+  branches =: result.'.all' || []
   ordered-directives:
-    result + {'.allof' vec(branches + expand-type(token))}
+    result + {'.all' vec(branches + expand-type(token))}
 
 defn regex-literal-token?(token):
   token =~ /^\/[^\/\s]*\/$/
@@ -865,16 +913,25 @@ defn slash-delimited-token?(token):
 defn type-symbol?(token):
   token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
 
+defn direct-type-symbol?(token):
+  list-pattern =:
+    re-pattern:
+      str: +
+        '^\+[A-Za-z_][A-Za-z0-9_\/-]*'
+        '(?:\{\+[A-Za-z_][A-Za-z0-9_\/-]*\})?\[\]$'
+  result =: type-symbol?(token) ||
+    (token =~ list-pattern) ||
+    (token =~ /^\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}$/)
+  =>: result
+
 defn labeled-base-block(token):
   base =: tight-label-string(token)
-  when base == '+Map':
-    reject-bare-map:
   when-not type-symbol?(base):
     usage: "invalid yamlschema base reference: $base"
   =>: +{'.base' base}
 
 defn reject-bare-map():
-  usage: 'bare +Map is unsupported; use +Map[+Any]'
+  usage: 'incomplete +Map type requires key/value pairs'
 
 defn compact-enum-token?(token):
   token =~ /^(?:enum:)?\[[^\]]*\]$/
@@ -922,14 +979,16 @@ defn tight-label-string(token):
 
 defn old-tight-keyword?(token):
   labeled-tight-token?(token) &&
-  tight-label(token).in?(qw(titl just only like mini maxi pick))
+  tight-label(token).in?(
+    qw(titl just only like mini maxi pick oneof anyof allof))
 
 defn reject-old-tight-keyword(token):
   key =: tight-label(token)
   replacements =: +{'titl' 'title', 'just' 'const',
                     'only' 'const', 'like' 'match',
                     'mini' 'range', 'maxi' 'range',
-                    'pick' 'oneof'}
+                    'pick' 'one', 'oneof' 'one',
+                    'anyof' 'any', 'allof' 'all'}
   usage: "unsupported yamlschema keyword: $key; use $(replacements.$key)"
 
 defn labeled-tight-block(token result):
@@ -946,7 +1005,7 @@ defn labeled-tight-block(token result):
     'enum': usage('enum requires a bracketed value list')
     'range': range-block(raw result.'.base')
     'size': +{key normalize-size(tight-string-value(raw))}
-    'list': boolean-label-block(key raw)
+    'list': reject-list-keyword()
     'item': +{key expand-type(tight-string-value(raw))}
     'solo': boolean-label-block(key raw)
     'uniq': boolean-label-block(key raw)
@@ -955,9 +1014,9 @@ defn labeled-tight-block(token result):
     'title': +{key tight-string-value(raw)}
     'desc': +{key tight-string-value(raw)}
     'also': +{key tight-string-value(raw)}
-    'oneof': structural-tight-label-error(name)
-    'anyof': structural-tight-label-error(name)
-    'allof': structural-tight-label-error(name)
+    'one': structural-tight-label-error(name)
+    'any': structural-tight-label-error(name)
+    'all': structural-tight-label-error(name)
     'not': structural-tight-label-error(name)
     'with': structural-tight-label-error(name)
     'when': structural-tight-label-error(name)
@@ -1086,18 +1145,43 @@ defn range-number-type(range):
     'number'
 
 defn list-directives(suffix):
-  body =: suffix.replace(/^\[/).replace(/\]$/)
-  unique =: body.starts?('!')
-  body =: unique.if(body.replace(/^!/) body)
-  solo =: body.starts?('$')
-  body =: solo.if(body.replace(/^\$\|?/) body)
-  body =: body.eq('+').if('1+' body)
+  props =: parse-list-suffix(suffix)
   result =: +{'.list' true}
-  result =: unique.if((result + {'.uniq' true}) result)
-  result =: solo.if((result + {'.solo' true}) result)
-  if body:empty?:
-    ordered-directives(result)
-    ordered-directives(result + {'.size' normalize-size(body)})
+  result =: map-put-if(result props.uniq '.uniq' true)
+  result =: map-put-if(result props.solo '.solo' true)
+  if props.size.?:
+    then:
+      ordered-directives: result + {'.size' normalize-size(props.size)}
+    else: ordered-directives(result)
+
+defn parse-list-suffix(suffix):
+  body =: suffix.replace(/^\[/).replace(/\]$/):trim
+  when '|'.in?(body):
+    usage: 'unsupported | in list suffix; use comma'
+  size-pattern =: /[0-9]+(?:-[0-9]+|\+)?|\+/
+  sizes =: vec(re-seq(size-pattern body))
+  when sizes.# > 1:
+    usage: 'list suffix contains multiple size constraints'
+  solos =: count(re-seq(/\$/ body))
+  uniques =: count(re-seq(/!/ body))
+  when solos > 1:
+    usage: 'list suffix contains duplicate $ flag'
+  when uniques > 1:
+    usage: 'list suffix contains duplicate ! flag'
+  property-count =: sizes.# + solos + uniques
+  when body.? && property-count:zero?:
+    usage: "invalid yamlschema list suffix: $suffix"
+  extra =: body
+    .replace(size-pattern)
+    .replace(/[\$!,\s]/)
+  when extra:empty?.!:
+    usage: "invalid yamlschema list suffix: $suffix"
+  size =: sizes.0
+  size =: size.eq('+').if('1+' size)
+  =>::
+    size:: size
+    solo:: solos == 1
+    uniq:: uniques == 1
 
 defn size-token?(value):
   value:S =~ /^(?:[0-9]+|[0-9]+-[0-9]+|[0-9]+\+)$/
@@ -1176,7 +1260,6 @@ defn update-state(state slot key value):
 defn add-property-schema(state key value):
   info =: parse-property-key(key)
   schema =: ysc-value-to-schema(value)
-  schema =: info.array.if(wrap-array-schema(schema info.suffix) schema)
   state =: update-state(state 'props' info.name schema)
   if info.required:
     state +: +{'required' (state.required + info.name)}
@@ -1212,13 +1295,14 @@ defn reject-title-directive(key):
 
 defn renamed-directive?(key):
   key.in?(['.titl', '.just', '.only', '.mini', '.maxi',
-           '.pick'])
+           '.pick', '.oneof', '.anyof', '.allof'])
 
 defn reject-renamed-directive(key):
   replacements =:
     +{'.titl' '.title', '.just' '.const',
       '.only' '.const',
-      '.mini' '.range', '.maxi' '.range', '.pick' '.oneof'}
+      '.mini' '.range', '.maxi' '.range', '.pick' '.one',
+      '.oneof' '.one', '.anyof' '.any', '.allof' '.all'}
   usage: "unsupported yamlschema directive: $key; use $(replacements.$key)"
 
 defn add-json-meta(result value):
@@ -1227,19 +1311,15 @@ defn add-json-meta(result value):
     else: result
 
 defn parse-property-key(key):
-  optional-before-list =: key =~ /\?\[/
-  k =: key.replace(/\?\[/ '[')
-  optional-after-name =: k =~ /\?$/
+  when key-list-suffix?(key):
+    reject-key-list-suffix: key
+  optional-after-name =: key =~ /\?$/
+  k =: key
   k =: k.replace(/\?$/)
-  has-suffix =: k =~ /\[[^\]]*\]$/
-  suffix =: has-suffix.if(k.replace(/^.*(\[[^\]]*\])$/ '$1'))
-  k =: has-suffix.if(k.replace(/\[[^\]]*\]$/) k)
-  required =: not(optional-before-list || optional-after-name)
+  required =: optional-after-name.!
   =>::
     name:: k
     required:: required
-    array:: suffix.?
-    suffix:: suffix
 
 defn ysc-value-to-schema(value):
   if map?(value):
@@ -1283,15 +1363,27 @@ defn ysc-object-step(state entry):
 
 defn ysc-block-to-schema(value):
   reject-unexportable-directives: value
-  item =: canonical-item-schema(value)
-  shape =: canonical-shape-schema(value)
+  list =: canonical-list-type?(value)
+  item-value =: list.if(canonical-list-item(value) value)
+  item =: canonical-item-schema(item-value)
+  shape =: canonical-shape-schema(item-value)
   item =: shape || item
   result =:
-    if value.'.list':
+    if list:
       then: canonical-list-schema(item value)
       else: canonical-sized-schema(item value.'.size')
   result =: add-canonical-annotations(result value)
   add-null-schema: result value.'.null'
+
+defn canonical-list-type?(value):
+  key =: value.has?('.type').if('.type' '.base')
+  reference =: key.when(value.$key)
+  string?(reference) &&: reference.ends?('[]')
+
+defn canonical-list-item(value):
+  key =: value.has?('.type').if('.type' '.base')
+  reference =: value.$key.replace(/\[\]$/)
+  value +: +{key reference}
 
 defn reject-unexportable-directives(value):
   unsupported =: +['.also', '.with', '.when']
@@ -1324,9 +1416,9 @@ defn canonical-item-schema(value):
   add-canonical-combinators: result value
 
 defn add-canonical-combinators(result value):
-  result =: add-canonical-combinator(result value '.oneof' 'oneOf')
-  result =: add-canonical-combinator(result value '.anyof' 'anyOf')
-  result =: add-canonical-combinator(result value '.allof' 'allOf')
+  result =: add-canonical-combinator(result value '.one' 'oneOf')
+  result =: add-canonical-combinator(result value '.any' 'anyOf')
+  result =: add-canonical-combinator(result value '.all' 'allOf')
   if contains?(value '.not'):
     then: result + {'not' ysc-value-to-schema(value.'.not')}
     else: result
@@ -1420,8 +1512,7 @@ defn ysc-block-step(state entry):
       state + {'result' (result + {'enum' val})}
     '.init':
       state + {'result' (result + {'default' val})}
-    '.list':
-      state + {'result' (result + {'type' 'array'})}
+    '.list': reject-list-directive()
     '.uniq':
       state + {'result' (result + {'uniqueItems' val})}
     '.title':
@@ -1562,29 +1653,7 @@ defn scalar-number(s):
   json/load: s
 
 defn wrap-array-schema(item suffix):
-  base =::
-    type: array
-    items:: item
-  body =: suffix.replace(/^\[/)
-  body .=: replace(/\]$/)
-  uniq =: body =~ /!/
-  body .=: replace(/!/)
-  base =: map-put-if(base uniq 'uniqueItems' true)
-  cond:
-    body == '+':
-      base + {'minItems' 1}
-    body =~ /^[0-9]+$/:
-      n =: scalar-number(body)
-      base +: +{'minItems' n, 'maxItems' n}
-    body =~ /^[0-9]+-$/:
-      n =: scalar-number(body.replace('-'))
-      base +: +{'minItems' n}
-    body =~ /^[0-9]+-[0-9]+$/:
-      lo hi =: body.split('-')
-      base +::
-        minItems:: scalar-number(lo)
-        maxItems:: scalar-number(hi)
-    else: base
+  canonical-list-schema: item list-directives(suffix)
 
 defn convert(schema):
   doc =: build-doc(schema)
@@ -1665,22 +1734,32 @@ defn add-property(result entry required):
   when name:S == WILDCARD-KEY:
     usage: 'JSON Schema property name +Str is reserved for the wildcard'
   is-req =: required.has?(name)
+  key =: key-for(name is-req)
   array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
-  key =: key-for(name sub is-req array?)
   value =:
     if array?:
-      build-array-suffix-value: sub
+      build-list-value: sub
       build-value: sub
   result +: +{key value}
 
-defn build-array-suffix-value(schema):
+defn build-list-value(schema):
   item =: array-item-schema(schema)
-  value =: empty?(item).if('+Any' build-value(item))
+  item-scalar =: empty?(item).if('+Any' succinct-scalar(item))
+  suffix =: list-suffix(schema)
+  value =:
+    if item-scalar:
+      then: append-list-suffix(item-scalar suffix)
+      else:
+        item-value =: build-value(item)
+        list-value =: list-directives(suffix)
+        merged =:
+          merge-directives: item-value list-value 'array item type'
+        canonicalize-type-reference: merged
   if schema.description.?:
-    add-array-description: value schema.description
+    add-list-description: value schema.description
     else: value
 
-defn add-array-description(value description):
+defn add-list-description(value description):
   if string?(value) && plain-description-safe?(description):
     annotated-scalar: value description
     else:
@@ -1689,6 +1768,11 @@ defn add-array-description(value description):
           then: +{'.base' value}
           else: value
       ordered-directives: value + {'.desc' description}
+
+defn append-list-suffix(type suffix):
+  tokens =: tight-tokens(type)
+  tokens =: assoc(tokens 0 "$(tokens.0)$suffix")
+  joins: tokens
 
 # Return the value side of a property (or def) — either a scalar in
 # succinct form, or a nested map (object with properties / expanded
@@ -1700,7 +1784,8 @@ defn build-value(schema):
   cond:
     description-scalar && succinct-description?(schema):
       annotated-scalar: description-scalar schema.description
-    scalar && not(schema-annotations?(schema)): scalar
+    description-scalar && not(schema-annotations?(schema)):
+      description-scalar
     object-with-props?(schema): build-properties-map(schema)
     else: build-block-map(schema)
 
@@ -1814,9 +1899,9 @@ defn add-block(result schema):
       else: result
   result =: map-put-if(result schema.title.? '.title' schema.title)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
-  result =: result.add-combinator-directive(schema 'oneOf' '.oneof')
-  result =: result.add-combinator-directive(schema 'anyOf' '.anyof')
-  result =: result.add-combinator-directive(schema 'allOf' '.allof')
+  result =: result.add-combinator-directive(schema 'oneOf' '.one')
+  result =: result.add-combinator-directive(schema 'anyOf' '.any')
+  result =: result.add-combinator-directive(schema 'allOf' '.all')
   result =:
     if schema.not.?:
       then: result + {'.not' build-value(schema.not)}
@@ -1865,12 +1950,12 @@ defn additional-properties-value(schema):
 
 defn typed-map-base(schema):
   value-type =: map-value-type-ref(schema)
-  value-type: .when("+Map[$value-type]")
+  value-type: .when("+Map{$value-type}")
 
 defn open-map-base(schema):
   if contains?(schema 'additionalProperties'):
     then: typed-map-base(schema)
-    else: '+Map[+Any]'
+    else: '+Map{+Any}'
 
 defn map-value-type-ref(schema):
   when contains?(schema 'additionalProperties'):
@@ -1943,7 +2028,7 @@ defn succinct-nonnull-scalar(schema):
 
 defn type-only-scalar(schema):
   if schema.type == 'object':
-    then: '+Map[+Any]'
+    then: '+Map{+Any}'
     else: type-sym(schema.type)
 
 defn key-set(schema):
@@ -2146,39 +2231,37 @@ defn schema-annotations?(schema):
   schema.has?('description') ||
   schema.has?('title')
 
-# True when the whole array can be expressed as a `[]` key suffix plus
-# its item value and array-level description.
+# True when the whole array can be expressed by a value-side list suffix.
 defn array-as-suffix?(schema):
-  array-suffix-keys?(schema) &&
-  scalar-described-array?(schema).!
+  array-suffix-keys?: schema
 
 defn array-suffix-keys?(schema):
   every? _ key-set(schema):
     \(_.in?(qw(type items minItems maxItems uniqueItems description)))
 
-defn scalar-described-array?(schema):
-  schema.description.? &&
-  succinct-scalar(array-item-schema(schema)).?
-
 defn array-item-schema(schema):
   schema.items || {}
 
-defn key-for(name sub is-required array?):
-  suffix =: array?.if(list-suffix(sub) '')
+defn key-for(name is-required):
   opt =: is-required.if('' '?')
-  str: name opt suffix
+  str: name opt
 
 defn list-suffix(sub):
   mn =: sub.minItems
   mx =: sub.maxItems
-  uq =: sub.uniqueItems.if('!' '')
-  cond:
-    mn:nil? && mx:nil?: "[${uq}]"
-    mn == mx: "[${uq}$mn]"
-    mn:nil? && mx.?: "[${uq}0-$mx]"
-    mn.? && mx:nil?:
-      =>: "[${uq}${mn}+]"
-    else: "[${uq}${mn}-$mx]"
+  size =:
+    cond:
+      mn:nil? && mx:nil?: ''
+      mn == mx: "$mn"
+      mn:nil? && mx.?: "0-$mx"
+      mn.? && mx:nil?: "${mn}+"
+      else: "$mn-$mx"
+  flags =: sub.uniqueItems.if('!' '')
+  body =:
+    if size.? && flags.?:
+      then: "$size,$flags"
+      else: "$size$flags"
+  =>: "[$body]"
 
 defn json-type(schema):
   t =: schema.type
@@ -2271,9 +2354,115 @@ defn literal-value(v): v
 # Post-processing the dumped YAML.
 # --------------------------------------------------------------------
 
-defn post-process(text):
-  join "\n":
-    text:lines.map(replace-todo):insert-blank-after-defs
+defn post-process(text format-flow=false):
+  lines =: text:lines
+  lines =: format-flow.if(format-flow-sequences(lines) lines)
+  lines =: lines.map(replace-todo)
+  lines =: insert-blank-after-defs(lines)
+  join "\n": lines
+
+# Rewrite selected block-style scalar directives as compact flow sequences.
+# Buffer one candidate at a time so nested collection and multiline scalar
+# members can be left exactly as yaml/dump emitted them.
+defn format-flow-sequences(lines):
+  state =: reduce(format-flow-line initial-flow-format-state() lines)
+  =>: finish-flow-candidate(state).result
+
+defn initial-flow-format-state()::
+  result: []
+  indent:
+  directive:
+  items: []
+  original: []
+
+defn format-flow-line(state line):
+  if state.original:seq:
+    then: continue-flow-candidate(state line)
+    else: start-flow-candidate(state line)
+
+defn start-flow-candidate(state line):
+  match =: re-matches(/^([ ]*)(\.(?:enum|range|size)):$/ line)
+  if match:
+    then: state + {
+      'indent' match.1, 'directive' match.2,
+      'items' [], 'original' [line]}
+    else: state + {'result' (state.result + line)}
+
+defn continue-flow-candidate(state line):
+  item =: re-matches(/^([ ]*)- (.*)$/ line)
+  if item && (item.1 == state.indent):
+    then: state + {'items' (state.items + item.2), 'original' (state.original + line)}
+    else:
+      if line-indent(line).# > state.indent.#:
+        then: start-flow-candidate(flush-flow-original(state) line)
+        else: start-flow-candidate(finish-flow-candidate(state) line)
+
+defn line-indent(line):
+  =>: re-matches(/^([ ]*).*$/ line).1
+
+defn flush-flow-original(state):
+  reset-flow-candidate:
+    state + {'result' (state.result + state.original)}
+
+defn finish-flow-candidate(state):
+  cond:
+    state.original:empty?: state
+    inline-scalar-sequence?(state.items):
+      reset-flow-candidate:
+        state + {'result'
+          (state.result + flow-sequence-lines(
+            state.indent state.directive
+            state.items.map(flow-sequence-item)))}
+    else: flush-flow-original(state)
+
+defn reset-flow-candidate(state):
+  =>: state + {
+    'indent' nil, 'directive' nil, 'items' [], 'original' []}
+
+defn inline-scalar-sequence?(items):
+  =>: items:seq && items.every?(inline-yaml-scalar?)
+
+defn inline-yaml-scalar?(text):
+  value =: text:yaml/load
+  =>: map?(value).! && sequential?(value).!
+
+# A block-style plain scalar may contain flow collection punctuation. Quote
+# those strings before moving them between `[` and `]`.
+defn flow-sequence-item(text):
+  value =: text:yaml/load
+  unsafe =: string?(value) && (value =~ /[\[\]\{\},:#]/)
+  quoted =: text.starts?("'") || text.starts?('"')
+  if unsafe && quoted.!:
+    then: single-quoted-yaml(value)
+    else: text
+
+defn single-quoted-yaml(value):
+  escaped =: value.replace(/'/ "''")
+  =>: "'$escaped'"
+
+defn flow-sequence-lines(indent directive items):
+  prefix =: "$indent$directive: ["
+  continuation =: "$indent  "
+  count =: items.#
+  tokens =:
+    map-indexed(\(flow-sequence-token(_1 _2 count)) items):vec
+  state =: +{'lines' [], 'line' prefix,
+    'continuation' continuation, 'has-item' false}
+  state =: reduce(append-flow-sequence-token state tokens)
+  =>: state.lines + state.line
+
+defn flow-sequence-token(index item count):
+  if index == (count - 1):
+    then: "$item]"
+    else: "$item,"
+
+defn append-flow-sequence-token(state token):
+  separator =: state.has-item.if(' ' '')
+  candidate =: "$(state.line)$separator$token"
+  if (candidate.# <= 80) || state.has-item.!:
+    then: state + {'line' candidate, 'has-item' true}
+    else: state + {'lines' (state.lines + state.line),
+      'line' "$(state.continuation)$token", 'has-item' true}
 
 defn replace-todo(line):
   pat =: /^(\s*)__TODO_(\S+):\ ''$/

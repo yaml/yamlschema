@@ -25,10 +25,10 @@ test::
       "required": ["tags", "names", "triple", "subset"]
     }
   want: |
-    tags[]: +Str
-    names[1+]: +Str
-    triple[3]: +Int
-    subset[1-3]: +Str
+    tags: +Str[]
+    names: +Str[1+]
+    triple: +Int[3]
+    subset: +Str[1-3]
 
 - name: described-array-of-one-of-items
   cmnd: bin/ysc -t ysd.yaml -
@@ -54,8 +54,9 @@ test::
       }
     }
   want: |
-    imagePullSecrets?[]:
-      .oneof:
+    imagePullSecrets?:
+      .base: +Any[]
+      .one:
       - +Str 1+
       - name: +Str 1+
       .desc: List of image pull secrets
@@ -76,7 +77,7 @@ test::
       }
     }
   want: |
-    extraManifests?[]: +Any "Extra static manifests to deploy"
-    extraTemplateManifests?[]: +Any "Extra templated manifests to deploy"
+    extraManifests?: +Any[] "Extra static manifests to deploy"
+    extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
 
 done:

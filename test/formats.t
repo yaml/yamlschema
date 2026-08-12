@@ -31,6 +31,8 @@ test::
   stdi: |
     namespace?:
       .type: +Str
+    topologySpreadConstraints?:
+      .type: +Any[]
     labels?:
       +Str:
         .type: +Str
@@ -39,6 +41,7 @@ test::
       .desc: Kept explicit
   want: |
     namespace?: +Str
+    topologySpreadConstraints?: +Any[]
     labels?:
       +Str: +Str
     annotated?:

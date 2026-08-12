@@ -31,8 +31,8 @@ same slug:
 
 ```yaml
 +resources:
-  requests?: +Map[+Any]
-  limits?: +Map[+Any]
+  requests?: +Map{+Any}
+  limits?: +Map{+Any}
 
 resources?: +resources
 ```
@@ -49,24 +49,25 @@ labels:
 String-keyed maps can name their value type directly:
 
 ```yaml
-config: +Map[+Any]
-labels: +Map[+Str]
-flags: +Map[+flag]
+config: +Map{+Any}
+labels: +Map{+Str}
+flags: +Map{+flag}
 ```
 
-`+Map[+Type]` expands to `+Str: +Type`. The value type must be one built-in,
-user-defined, or namespaced reference. Bare `+Map` and `+Map[]` are errors.
+`+Map{+Type}` expands to `+Str: +Type`. The value type must be one built-in,
+user-defined, or namespaced reference. An incomplete `+Map` must be completed
+by sibling key/value pairs.
 
-Lists of maps use key-side list syntax or a suffix after the typed map:
+Lists of maps append the list suffix to the value type:
 
 ```yaml
-maps[]: +Map[+Any]
-other: +Map[+Str][]
+maps: +Map{+Any}[]
+other: +Map{+Str}[]
 ```
 
-The reserved future form `+Map[+Key,+Value]` will support YAML key schemas.
+The reserved future form `+Map{+Key,+Value}` will support YAML key schemas.
 It is not implemented yet. The current one-reference form is shorthand for
-`+Map[+Str,+Value]` and therefore fixes keys to strings.
+`+Map{+Str,+Value}` and therefore fixes keys to strings.
 
 
 ## Tight Type Expressions
@@ -151,15 +152,14 @@ default.
 
 ## Lists and Sizes
 
-List suffixes may be on either side:
+List suffixes are part of the value-side type expression:
 
 ```yaml
-names?[1+]: +Str
 names?: +Str[1+]
 ```
 
-Both expand to `.list: true`, `.base: +Str`, and `.size: [1]`. Do not put a
-list suffix on both sides of one entry.
+This expands to `.base: +Str[]` and `.size: [1]`. The `[]` is part of the
+list type; `.size` carries its bounds. Key-side list suffixes are rejected.
 
 | Suffix | Meaning |
 | --- | --- |
@@ -167,19 +167,22 @@ list suffix on both sides of one entry.
 | `[n]` | Exactly `n` items |
 | `[n-m]` | Between `n` and `m` items |
 | `[n+]` | At least `n` items |
-| `[!...]` | Unique items |
+| `[!]` | Unique items |
 | `[$]` | Scalar or list |
-| `[$|n-m]` | Scalar or a list with the given size |
+| `[n-m,$!]` | Scalar or a unique list with the given size |
 
-`[+]` is accepted as an input alias for `[1+]`; generated DSL uses `[1+]`.
-An optional key-side list is written `foo?[...]`.
+List properties may be comma-separated, whitespace-separated, or adjacent.
+For example, `[1-10,$!]`, `[1-10,$,!]`, `[1-10 $ !]`, and `[1-10$!]` are
+equivalent. Generated DSL uses the canonical `[size,$!]` order. `[+]` is an
+input alias for `[1+]`. The former `|` separator is rejected. Multiple sizes
+or repeated `$` and `!` flags are errors.
 
 A size clause also works after string, list, or mapping constraints:
 
 ```yaml
 code: +Str 8
 names: +Str[] 1+
-labels: +Map[+Any] 1-20
+labels: +Map{+Any} 1-20
 ```
 
 Canonical sizes contain one number for an open upper bound and two for a
@@ -226,8 +229,8 @@ mode?: base:+Str enum:[debug,info] init:info desc:"Log level"
 - Labeled scalar clauses may occur in any order. They are `base`, `match`,
   `find`, `const`, `range`, `size`, `list`, `item`, `solo`, `uniq`,
   `null`, `init`, `title`, `desc`, and scalar `also`.
-- `enum:[...]` is the compact enum form. Structural `.oneof`, `.anyof`,
-  `.allof`, `.not`, `.with`, and `.when` values remain explicit.
+- `enum:[...]` is the compact enum form. Structural `.one`, `.any`, `.all`,
+  `.not`, `.with`, and `.when` values remain explicit.
 
 Two exact triplets protect text that YAML forbids in a plain scalar: `:\ `
 represents colon-space, and ` \#` represents space-hash. No other backslash
@@ -253,8 +256,7 @@ This is equivalent to:
 
 ```yaml
 foo:
-  .base: +Str
-  .list: true
+  .base: +Str[]
   .like: a.*b
   .size: [10, 20]
   .title: The "Good" Parts
@@ -274,12 +276,12 @@ one: +One[+Str,+Int]
 any: +Any[+foo,+bar]
 all: +All[+foo,+bar]
 neither: +Not[+foo,+bar]
-values[]: +Any[+foo,+bar]
+values: +Any[+foo,+bar][]
 ```
 
 `One`, `Any`, and `All` require at least two references. `Not` requires at
 least one; multiple references mean the value must match none of them. A list
-of combinator values uses the key-side `[]` suffix.
+suffix follows the complete combinator type.
 
 Multiple references without brackets are an implicit conjunction. The first
 is the base and the rest are additional constraint groups:
@@ -292,7 +294,7 @@ Branches containing complete type definitions use explicit directives:
 
 ```yaml
 value:
-  .oneof:
+  .one:
   - +Str 1+
   - name: +Str
 ```
@@ -316,7 +318,7 @@ are inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .base .list .item .oneof .anyof .allof .not .like
+.type .base .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
@@ -327,11 +329,17 @@ scalar. This is the compact form of a mapping whose only pair would be
 under `.type`. Validation or structural constraints use `.base`; `.init`,
 `.title`, and `.desc` alone do not turn `.type` into `.base`.
 
+List types append `[]` to the reference. An unconstrained list is therefore
+emitted as a scalar such as `+Any[]`; constrained lists use forms such as
+`.base: +Str[]` with `.size` or `.uniq`. `.list` is currently rejected and
+reserved for a possible future list-constraint model; it does not mean
+"convert this type into a list."
+
 Unknown directives are errors. `.need` is reserved while requiredness is
 represented by the property key. `.also`, `.with`, and `.when` may be retained
 in explicit yamlschema, but an export that cannot represent one fails rather
-than silently discarding it. `.pick` is rejected with guidance to use
-`.oneof`.
+than silently discarding it. `.pick` and the former `.oneof`, `.anyof`, and
+`.allof` names are rejected with guidance to use `.one`, `.any`, and `.all`.
 
 The former names `.titl`, `.just`, `.only`, `.mini`, and `.maxi` are rejected
 with replacement diagnostics. Their replacements are `.title`, `.const`, and

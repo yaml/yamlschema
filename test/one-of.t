@@ -4,7 +4,7 @@ use ys::taptest: :all
 
 test::
 
-- name: one-of-to-oneof
+- name: one-of-to-one
   cmnd: bin/ysc -t ysd.yaml -
   stdi: |
     {
@@ -32,7 +32,7 @@ test::
     }
   want: |
     auth:
-      .oneof:
+      .one:
       - token: +Str
       - api_key: +Str
 

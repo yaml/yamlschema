@@ -38,9 +38,9 @@ test::
       "required": ["tags", "names", "triple", "subset"]
     }
   want: |
-    tags[!]: +Str
-    names[!1+]: +Str
-    triple[!3]: +Int
-    subset[!1-3]: +Str
+    tags: +Str[!]
+    names: +Str[1+,!]
+    triple: +Int[3,!]
+    subset: +Str[1-3,!]
 
 done:

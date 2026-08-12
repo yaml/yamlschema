@@ -14,13 +14,13 @@ test::
     not-one: +Not[+foo]
     not-many: +Not[+Str,+Int]
     namespaced: +Any[+net/port,+contact/email]
-    values[]: +Any[+foo,+bar]
+    values: +Any[+foo,+bar][]
   want: |
-    {"one":{".oneof":["+Str","+Int"]},"any":{".anyof":["+foo","+bar"]},"all"
-    :{".allof":["+foo","+bar"]},"composed":{".base":"+base",".allof":["+cons
-    traint","+other"]},"not-one":{".not":"+foo"},"not-many":{".not":{".anyof
-    ":["+Str","+Int"]}},"namespaced":{".anyof":["+net\/port","+contact\/emai
-    l"]},"values":{".list":true,".anyof":["+foo","+bar"]}}
+    {"one":{".one":["+Str","+Int"]},"any":{".any":["+foo","+bar"]},"all":{".
+    all":["+foo","+bar"]},"composed":{".base":"+base",".all":["+constraint",
+    "+other"]},"not-one":{".not":"+foo"},"not-many":{".not":{".any":["+Str",
+    "+Int"]}},"namespaced":{".any":["+net\/port","+contact\/email"]},"values
+    ":{".base":"+Any[]",".any":["+foo","+bar"]}}
 
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysc -t schema.json -
@@ -30,7 +30,7 @@ test::
     all: +All[+foo,+bar]
     composed: +base +constraint +other
     not: +Not[+Str,+Int]
-    values[]: +Any[+foo,+bar]
+    values: +Any[+foo,+bar][]
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -151,7 +151,7 @@ test::
     }
   want: |
     choice?:
-      .oneof:
+      .one:
       - +Str 1+
       - name: +Str
     negative?:
@@ -161,7 +161,7 @@ test::
   cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
   stdi: |
     choice:
-      .oneof:
+      .one:
       - +Str 1+
       - name: +Str
     negative:
@@ -201,13 +201,12 @@ test::
 - name: list-suffixes-remain-distinct
   cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
   stdi: |
-    any[]: +Any
+    any: +Any[]
     exact: +Any[2]
   want: |
-    {"any":{".base":"+Any",".list":true},"exact":{".base":"+Any",".list":tru
-    e,".size":[2,2]}}
+    {"any":"+Any[]","exact":{".base":"+Any[]",".size":[2,2]}}
 
-- name: base-plus-one-allof-roundtrip
+- name: base-plus-one-all-roundtrip
   cmnd: |
     sh -c '
       bin/ysc -t yscj -C - |
@@ -227,9 +226,9 @@ test::
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
-      .anyof: []
+      .any: []
   want: |
-    ysc: yamlschema .anyof requires at least one type definition
+    ysc: yamlschema .any requires at least one type definition
 
 - name: reject-pick-rename
   cmnd: |
@@ -240,7 +239,29 @@ test::
         bin/ysc -t yscj -C - 2>&1 | sed -n 1p
     '
   want: |
-    ysc: unsupported yamlschema directive: .pick; use .oneof
-    ysc: unsupported yamlschema keyword: pick; use oneof
+    ysc: unsupported yamlschema directive: .pick; use .one
+    ysc: unsupported yamlschema keyword: pick; use one
+
+- name: reject-old-combinator-names
+  cmnd: |
+    sh -c '
+      for pair in ".oneof .one" ".anyof .any" ".allof .all"; do
+        set -- $pair
+        printf "bad:\n  %s: []\n" "$1" |
+          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      done
+      for pair in "oneof one" "anyof any" "allof all"; do
+        set -- $pair
+        printf "bad: %s:x\n" "$1" |
+          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      done
+    '
+  want: |
+    ysc: unsupported yamlschema directive: .oneof; use .one
+    ysc: unsupported yamlschema directive: .anyof; use .any
+    ysc: unsupported yamlschema directive: .allof; use .all
+    ysc: unsupported yamlschema keyword: oneof; use one
+    ysc: unsupported yamlschema keyword: anyof; use any
+    ysc: unsupported yamlschema keyword: allof; use all
 
 done:
