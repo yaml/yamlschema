@@ -35,6 +35,9 @@ test::
       "required": ["name", "phone", "address"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
+
     +phone: +Str =~"\+?[0-9\s\-()]{7,20}"
 
     name: +Str

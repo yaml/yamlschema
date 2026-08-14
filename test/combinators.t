@@ -129,6 +129,8 @@ test::
       }
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     one?: +One[+Str,+Int]
     any?: +Any[+foo,+bar]
     all?: +All[+foo,+bar]
@@ -150,6 +152,8 @@ test::
       }
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     choice?:
       .one:
       - +Str 1+

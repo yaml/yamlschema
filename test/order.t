@@ -124,6 +124,7 @@ test::
     }
   want: |
     .title
+    .open
     +d1
     +d2
     +d3

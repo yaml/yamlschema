@@ -31,6 +31,8 @@ test::
       "required": ["auth"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     auth:
       .one:
       - token: +Str

@@ -15,6 +15,8 @@ test::
       "required": ["bio", "code"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     bio: +Str 1-500
     code: +Str 3+
 

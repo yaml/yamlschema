@@ -17,6 +17,8 @@ test::
       "required": ["port", "age", "ratio", "debt"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     port: +Int 1..65535
     age: +Int 0..
     ratio: +Float 0..1

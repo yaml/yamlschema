@@ -226,7 +226,7 @@ Simple token enums roundtrip through a type-qualified compact list:
 ```
 
 ```yaml
-role: +Str [admin,user,guest]
+role: +Str [admin, user, guest]
 ```
 
 An enum default is marked on its member:
@@ -591,12 +591,23 @@ Explicit JSON Schema values import as follows:
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | No wildcard |
 
-On a shaped mapping, omitted `additionalProperties` imports without a
-wildcard. This intentionally adopts yamlschema's stricter closed default for
-shapes. A pure object with no declared properties remains open and imports as
-`+Map{+Any}`.
-On export, shaped mappings without `+Str` receive
-`additionalProperties: false`.
+Generated YSD starts with `.open: true`, matching JSON Schema's default that
+undeclared object properties are allowed. A shaped mapping with omitted
+`additionalProperties` inherits that setting. A nested
+`additionalProperties: false` becomes `.open: false`; a mapping nested below
+that closed scope is locally reopened when its own JSON Schema omits
+`additionalProperties`.
+
+On export, an open shape omits `additionalProperties`, while a closed shape
+gets `additionalProperties: false`. An explicit `+Str: +Any` emits
+`additionalProperties: true`; other wildcard values emit the corresponding
+schema. The root yamlschema document remains closed without a wildcard:
+top-level `.open` is the lexical default for the types defined beneath it.
+
+Canonical YSC does not depend on surrounding lexical state. Expansion places
+`.open: true` on each inherited open mapping shape and uses the ordinary
+closed default for the rest.
+
 An incomplete `+Map` requires sibling properties. Pure open objects use
 `+Map{+Any}`.
 
@@ -613,6 +624,10 @@ labels:
 It is shorthand for the future `+Map{+Str,+Type}` form. Two-reference maps are
 reserved for YAML key schemas but are not implemented. More complex value
 constraints continue to use explicit `+Str` syntax.
+
+Generated `.ysd.yaml` begins with `# Converted from JSON Schema`. Root
+annotations and `.open` follow, then each top-level `+type` definition is
+preceded by a blank line.
 
 
 ## Schema Combinators

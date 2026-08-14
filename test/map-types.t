@@ -30,12 +30,12 @@ test::
     many: +Map{+Str}[]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"any":{"type":"object","additionalProperties":{}},"
-    custom":{"type":"object","additionalProperties":{"$ref":"#\/$defs\/flag"
-    }},"many":{"type":"array","items":{"type":"object","additionalProperties
-    ":{"type":"string"}}},"strings":{"type":"object","additionalProperties":
-    {"type":"string"}}},"required":["any","strings","custom","many"],"additi
-    onalProperties":false,"$defs":{"flag":{"type":"boolean"}}}
+    bject","properties":{"any":{"type":"object","additionalProperties":true}
+    ,"custom":{"type":"object","additionalProperties":{"$ref":"#\/$defs\/fla
+    g"}},"many":{"type":"array","items":{"type":"object","additionalProperti
+    es":{"type":"string"}}},"strings":{"type":"object","additionalProperties
+    ":{"type":"string"}}},"required":["any","strings","custom","many"],"addi
+    tionalProperties":false,"$defs":{"flag":{"type":"boolean"}}}
 
 - name: json-schema-to-typed-maps
   cmnd: bin/ysc -t ysd.yaml -
@@ -68,6 +68,9 @@ test::
       }
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
+
     +flag: +Bool
 
     config?: +Map{+Any} "Primary component config."
@@ -178,9 +181,12 @@ test::
       }
     }
   want: |
-    implicit?: +Map{+Any}
+    # Converted from JSON Schema
+    .open: true
+    implicit?: {}
     explicit?: +Map{+Any}
-    closed?: {}
+    closed?:
+      .open: false
 
 - name: reserved-str-definition-collision
   cmnd: |

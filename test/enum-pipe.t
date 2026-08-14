@@ -15,8 +15,10 @@ test::
       "required": ["role", "level"]
     }
   want: |
-    role: +Str [admin,user,guest]
-    level: +Str [LOW,MED,HIGH]
+    # Converted from JSON Schema
+    .open: true
+    role: +Str [admin, user, guest]
+    level: +Str [LOW, MED, HIGH]
 
 - name: string-compact-enum
   cmnd: bin/ysc -t ysd.yaml -
@@ -27,7 +29,9 @@ test::
       }
     }
   want: |
-    type?: +Str [8p8c,8p6c,8p4c]
+    # Converted from JSON Schema
+    .open: true
+    type?: +Str [8p8c, 8p6c, 8p4c]
 
 - name: dotted-compact-enum
   cmnd: bin/ysc -t ysd.yaml -
@@ -41,7 +45,9 @@ test::
       }
     }
   want: |
-    type?: +Str [ieee802.11a,1.6tbase-cr8]
+    # Converted from JSON Schema
+    .open: true
+    type?: +Str [ieee802.11a, 1.6tbase-cr8]
 
 - name: compact-enum-default-expansion
   cmnd: bin/ysc -t yscj -

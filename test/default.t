@@ -30,6 +30,8 @@ test::
       ]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     port: +Int =8080
     ratio: +Float =1.5
     create: +Bool =true
@@ -40,6 +42,6 @@ test::
     quoted:
       .type: +Str
       .init: say "hi"
-    logLevel: +Str [debug,=info,warning,error,fatal] "Component log level"
+    logLevel: +Str [debug, =info, warning, error, fatal] "Component log level"
 
 done:

@@ -118,6 +118,8 @@ test::
       "required": ["name"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     name: +Str
 
 - name: json-schema-def-order-to-ysc
@@ -138,15 +140,27 @@ test::
       }
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
+
     +alpha: +Str
+
     +bravo: +Str
+
     +charlie: +Str
+
     +delta: +Str
+
     +echo: +Str
+
     +foxtrot: +Str
+
     +golf: +Str
+
     +hotel: +Str
+
     +india: +Str
+
     +juliet: +Str
 
 - name: compact-schema-json

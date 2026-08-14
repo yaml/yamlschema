@@ -22,8 +22,10 @@ test::
       "required": ["name"]
     }
   want: |
+    # Converted from JSON Schema
     .title: Arrays
     .desc: Arrays of strings and objects
+    .open: true
     name:
       .type: +Str
       .title: Full name

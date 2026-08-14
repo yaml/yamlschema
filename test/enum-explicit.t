@@ -15,7 +15,9 @@ test::
       "required": ["label", "symbol"]
     }
   want: |
-    label: +Str [has space,ok]
+    # Converted from JSON Schema
+    .open: true
+    label: +Str [has space, ok]
     symbol:
       .type: +Str
       .enum:

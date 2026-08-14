@@ -20,7 +20,11 @@ test::
       "required": ["host", "port"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
+
     +port: +Int 1..65535
+
     +email: +Str =~"\S+@\S+"
 
     host: +Str
@@ -44,7 +48,11 @@ test::
       "required": ["host", "port"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
+
     +port: +Int 1..65535
+
     +email: +Str =~"\S+@\S+"
 
     host: +Str

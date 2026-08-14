@@ -175,6 +175,7 @@ The design keeps directive names short and regular.
 | `.init` | Default value |
 | `.title` | Human-facing display title |
 | `.desc` | Description annotation |
+| `.open` | Lexical open-mapping default or local override |
 | `.also` | Alternate key names |
 | `.with` | Co-dependent keys |
 | `.when` | Conditional requirement or constraint |
@@ -189,6 +190,7 @@ Meta directives are top-level schema metadata:
 | `.json` | JSON Schema interop metadata |
 | `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
+| `.open` | Lexical default for mapping types defined in the document |
 
 
 ## Succinct Values
@@ -250,6 +252,19 @@ repository?: +Str
   "Repository path without registry host"
 ```
 
+Generated YSD keeps a tight scalar on one physical line when that line is at
+most 80 columns. When the complete line is longer, its base expression,
+compact enum, and description are placed on separate lines. Long enums wrap
+after commas and long descriptions wrap at safe spaces. Every continuation
+line uses the same indentation, so YAML folding reconstructs the original
+single scalar:
+
+```yaml
+mode?: +Str
+  [debug, info, warning, error, fatal]
+  "The logging mode used by every component in this deployment."
+```
+
 A YAML-quoted scalar such as `"Description"` loses its quote style when loaded
 and therefore is not this shorthand.
 Descriptions that cannot be safely represented in a YAML plain scalar use the
@@ -302,9 +317,9 @@ path: find:"usr/local"
 Simple enum values use an explicit type and a compact list:
 
 ```yaml
-role: +Str [admin,user,guest]
-level: +Str [LOW,MED,HIGH]
-logLevel: +Str [debug,=info,warning,error,fatal]
+role: +Str [admin, user, guest]
+level: +Str [LOW, MED, HIGH]
+logLevel: +Str [debug, =info, warning, error, fatal]
 ```
 
 Equivalent explicit form:
@@ -324,7 +339,7 @@ preserved. A leading `=` marks the one member that is also the default. Quoted
 or otherwise punctuated values use explicit `.enum`:
 
 ```yaml
-label: +Str [has space,ok]
+label: +Str [has space, ok]
 symbol:
   .type: +Str
   .enum: [ok, bad/value]
@@ -872,7 +887,9 @@ tags: +Str[1+,!]
    Use `-C` / `--compact` for compact JSON output.
 10. Post-process generated TODO sentinel keys into `# TODO: <keyword>`
     comments.
-11. Insert a blank line between top-level definitions and the document body.
+11. Prefix generated YSD with `# Converted from JSON Schema`.
+12. Put a blank line before every top-level type definition and between the
+    final definition and the document body.
 
 The converter emits TODO comments for JSON Schema features that still need
 language design or implementation:

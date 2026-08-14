@@ -37,8 +37,8 @@ same slug:
 resources?: +resources
 ```
 
-Anonymous mapping shapes need no `.type` marker. Shaped mappings are closed;
-key-side `+Str` admits otherwise unmatched string keys:
+Anonymous mapping shapes need no `.type` marker. Shaped mappings are closed by
+default; key-side `+Str` admits otherwise unmatched string keys:
 
 ```yaml
 labels:
@@ -68,6 +68,29 @@ other: +Map{+Str}[]
 The reserved future form `+Map{+Key,+Value}` will support YAML key schemas.
 It is not implemented yet. The current one-reference form is shorthand for
 `+Map{+Str,+Value}` and therefore fixes keys to strings.
+
+`.open` changes the lexical default for mapping shapes defined beneath it:
+
+```yaml
+.open: true
+
++person:
+  name: +Str
+
+server:
+  .open: false
+  host: +Str
+```
+
+Here `+person` is open, while `server` and every mapping shape nested beneath
+it are closed unless locally reopened. The document object itself remains
+closed unless it has an explicit `+Str` wildcard; top-level `.open` controls
+the types defined in the document, not the document container.
+
+A nested `.open` must be Boolean and overrides the inherited value. An
+explicit `+Str` wildcard controls the current shape directly. Combining
+`.open: false` with such a wildcard is an error. Canonical YSC materializes
+inherited open shapes with `.open: true`; absence continues to mean closed.
 
 
 ## Tight Type Expressions
@@ -129,9 +152,9 @@ and `.find` are YSD directives and are rejected in YSC input.
 Compact enums require an explicit type reference and comma-separated members:
 
 ```yaml
-mode: +Str [debug,info,error]
-level: +Int [1,2,3]
-logLevel: +Str [debug,=info,warning,error,fatal]
+mode: +Str [debug, info, error]
+level: +Int [1, 2, 3]
+logLevel: +Str [debug, =info, warning, error, fatal]
 ```
 
 Members may contain letters, digits, whitespace, `.`, `-`, `_`, and `+`.
@@ -142,6 +165,7 @@ compact enums; use explicit `.enum` with a YAML sequence for quoted or other
 punctuated values. The base controls scalar parsing, so `+Str [true,1]`
 contains two strings. Prefix one member with `=` to also set `.init` to that
 value. At most one member may be marked.
+Generated YSD uses one space after every compact-enum comma.
 
 `+Str ==User` becomes `.const: User`, the exact-value constraint corresponding
 to JSON Schema `const`. `+Str =="foo bar"` is the quoted form, and

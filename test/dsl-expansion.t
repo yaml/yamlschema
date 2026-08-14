@@ -274,6 +274,7 @@ test::
     }
   want: |
     {
+      ".open": true,
       "enabled?": {
         ".type": "+Bool",
         ".init": false

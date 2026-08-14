@@ -17,6 +17,8 @@ test::
       "required": ["s", "i", "n", "b"]
     }
   want: |
+    # Converted from JSON Schema
+    .open: true
     s: +Str
     i: +Int
     n: +Float

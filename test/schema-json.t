@@ -100,7 +100,7 @@ test::
   stdi: |
     +Str: +Any
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":{}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":true}
 
 - name: wildcard-next-to-definition
   cmnd: bin/ysc -t schema.json -C -
@@ -123,7 +123,7 @@ test::
         .type: +Str
         .size: 1-20
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object","additionalProperties":{}},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object","additionalProperties":true},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
 
 - name: reject-additional-properties-directive
   cmnd: |

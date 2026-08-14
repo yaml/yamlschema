@@ -56,7 +56,11 @@ test::
       printf "%s\n" "$input" | bin/ysc -t ysd.yaml -
     '
   want: |
+    # Converted from JSON Schema
+    .open: true
     foo?: +Str
+    # Converted from JSON Schema
+    .open: true
     foo?: +Str
 
 - name: json-schema-short-and-long-formats
@@ -96,7 +100,7 @@ test::
       for format in jsc schema.json; do
         printf "%s\n" "$json_schema" |
           bin/ysc -f "$format" -t yscj -C - |
-          ys -e "say: IN:read:json/load:vals:first"
+          jq -r ".\"foo?\""
       done
     '
   want: |
@@ -117,6 +121,7 @@ test::
       "required": ["foo"]
     }
   want: |
+    .open: true
     foo: +Str
 
 - name: expanded-output-extension-inference
@@ -144,6 +149,8 @@ test::
       rm -r "$dir"
     '
   want: |
+    # Converted from JSON Schema
+    .open: true
     foo?: +Str
 
 - name: json-schema-input-extension-inference
@@ -157,6 +164,7 @@ test::
       rm -r "$dir"
     '
   want: |
+    .open: true
     foo?: +Str
 
 - name: expanded-from-values
