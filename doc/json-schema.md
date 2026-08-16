@@ -695,6 +695,18 @@ Semantic roundtrip does not preserve every textual detail:
 Lossless source-preserving roundtrip would require storing source metadata in
 addition to the schema semantics.
 
+Use `-R` to compare normalized JSON Schema before and after the serialized YSD
+roundtrip:
+
+```sh
+ysc -R values.schema.json
+ysc -Rq values.schema.json
+```
+
+The first command prints `OK` or a unified diff. The quiet form prints nothing.
+Both return status 0 for a match and status 1 for a difference. This is a
+normalized structural comparison, not proof of validation equivalence.
+
 
 ## Implementation Checklist
 

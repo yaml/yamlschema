@@ -8,8 +8,8 @@ test::
   cmnd: bin/ysc
   want: |
     Usage: ysc (-t FORMAT | -o FILE) [INPUT]
-           ysc -F, --fmt [INPUT]
            ysc -N, --norm [INPUT]
+           ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -20,8 +20,9 @@ test::
       -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
-      -F, --fmt             Format JSON Schema to stdout.
-      -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -N, --norm            Normalize input to draft 2020-12 JSON Schema.
+      -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+      -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --help            Show this help text.
           --version         Show version.
@@ -30,8 +31,8 @@ test::
   cmnd: bin/ysc --help
   want: |
     Usage: ysc (-t FORMAT | -o FILE) [INPUT]
-           ysc -F, --fmt [INPUT]
            ysc -N, --norm [INPUT]
+           ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -42,8 +43,9 @@ test::
       -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
-      -F, --fmt             Format JSON Schema to stdout.
-      -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+      -N, --norm            Normalize input to draft 2020-12 JSON Schema.
+      -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+      -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --help            Show this help text.
           --version         Show version.
@@ -53,36 +55,25 @@ test::
   want: |
     ysc 0.1.0
 
-- name: fmt
-  cmnd: bin/ysc -F
-  stdi: |
-    {
-      "type": "object",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "$id": "x",
-      "$defs": {"b": {"type": "string"}}
-    }
+- name: reject-removed-format-options
+  cmnd: |
+    sh -c '
+      bin/ysc -F 2>&1 | sed -n 1p
+      bin/ysc --fmt 2>&1 | sed -n 1p
+    '
   want: |
-    {
-      "$id": "x",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "$defs": {
-        "b": {
-          "type": "string"
-        }
-      }
-    }
+    ysc: unknown option -F
+    ysc: unknown option --fmt
 
-- name: fmt-compact
-  cmnd: bin/ysc -FC
+- name: norm-compact
+  cmnd: bin/ysc -NC
   stdi: |
     {
-      "type": "object",
-      "$id": "x"
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {"thing": {"type": "string"}}
     }
   want: |
-    {"$id":"x","type":"object"}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"thing":{"type":"string"}}}
 
 - name: norm
   cmnd: bin/ysc -N
@@ -106,6 +97,89 @@ test::
         }
       }
     }
+
+- name: roundtrip-match
+  cmnd: bin/ysc --roundtrip -f jsc -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {"foo": {"type": "string"}},
+      "required": ["foo"],
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
+- name: roundtrip-mismatch
+  cmnd: |
+    sh -c '
+      output=$(printf "%s\n" "{\"minimum\":1}" |
+        bin/ysc -R -f jsc -)
+      status=$?
+      test "$status" -eq 1
+      printf "status=%s\n%s\n" "$status" "$output"
+    '
+  want: |
+    status=1
+    --- original
+    +++ roundtrip
+    @@ -1,4 +1,5 @@
+     {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+    -  "minimum": 1
+    +  "type": "object",
+    +  "additionalProperties": false
+     }
+
+- name: roundtrip-quiet-status
+  cmnd: |
+    sh -c '
+      same=$(printf "%s\n" \
+        "{\"type\":\"object\",\"additionalProperties\":false}" |
+        bin/ysc -Rq -f jsc - 2>&1)
+      same_status=$?
+      changed=$(printf "%s\n" "{\"minimum\":1}" |
+        bin/ysc -R --quiet -f jsc - 2>&1)
+      changed_status=$?
+      broken=$(printf "%s\n" "{bad" |
+        bin/ysc -Rq -f jsc - 2>&1)
+      broken_status=$?
+      test -z "$same"
+      test -z "$changed"
+      test -z "$broken"
+      printf "%s %s %s\n" \
+        "$same_status" "$changed_status" "$broken_status"
+    '
+  want: |
+    0 1 2
+
+- name: roundtrip-requires-json-schema
+  cmnd: |
+    sh -c '
+      output=$(printf "%s\n" "foo: +Str" |
+        bin/ysc -R -f ysd - 2>&1)
+      status=$?
+      test "$status" -eq 2
+      printf "%s\n" "$output" | sed -n 1p
+    '
+  want: |
+    ysc: -R/--roundtrip requires JSON Schema input
+
+- name: reject-roundtrip-option-conflicts
+  cmnd: |
+    sh -c '
+      bin/ysc -RN 2>&1 | sed -n 1p
+      bin/ysc -RC 2>&1 | sed -n 1p
+      bin/ysc -R -t jsc 2>&1 | sed -n 1p
+      bin/ysc -R -o out.schema.json 2>&1 | sed -n 1p
+      bin/ysc -q 2>&1 | sed -n 1p
+    '
+  want: |
+    ysc: -R/--roundtrip cannot be combined with -N/--norm
+    ysc: -R/--roundtrip cannot be combined with -C/--compact
+    ysc: -R/--roundtrip cannot be combined with -t/--to
+    ysc: -R/--roundtrip cannot be combined with -o/--output
+    ysc: -q/--quiet requires -R/--roundtrip
 
 - name: stdin-default-with-to
   cmnd: bin/ysc -t ysd

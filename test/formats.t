@@ -124,6 +124,47 @@ test::
     .open: true
     foo: +Str
 
+- name: json-schema-to-json-schema
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      printf "%s\n" \
+        "{\"title\":\"Harbor Next Helm Chart Values\",\"type\":\"object\"}" \
+        > "$dir/values.schema.json"
+      bin/ysc "$dir/values.schema.json" -t jsc -C
+      rm -r "$dir"
+    '
+  want: |
+    {"title":"Harbor Next Helm Chart Values","type":"object"}
+
+- name: normalize-all-input-formats-to-json-schema
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      printf "foo: +Str\n" > "$dir/in.ysd.yaml"
+      printf "foo:\n  .type: +Str\n" > "$dir/in.ysc.yaml"
+      printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" \
+        > "$dir/in.ysc.json"
+      printf "%s\n" \
+        "{\"type\":\"object\",\"properties\":{\"foo\":{\"type\":\"string\"}},\
+    \"required\":[\"foo\"],\"additionalProperties\":false}" \
+        > "$dir/in.schema.json"
+      for file in \
+        "$dir/in.ysd.yaml" \
+        "$dir/in.ysc.yaml" \
+        "$dir/in.ysc.json" \
+        "$dir/in.schema.json"
+      do
+        bin/ysc -NC "$file"
+      done
+      rm -r "$dir"
+    '
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
+
 - name: expanded-output-extension-inference
   cmnd: |
     sh -c '

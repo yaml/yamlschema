@@ -14,8 +14,8 @@ WILDCARD-KEY =: '+Str'
 LEGACY-WILDCARD-KEY =: '+Str*'
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) [INPUT]
-         ysc -F, --fmt [INPUT]
          ysc -N, --norm [INPUT]
+         ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
   Convert between JSON Schema and yamlschema formats.
 
@@ -26,8 +26,9 @@ HELP =: |
     -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
     -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
-    -F, --fmt             Format JSON Schema to stdout.
-    -N, --norm            Normalize JSON Schema to draft 2020-12 on stdout.
+    -N, --norm            Normalize input to draft 2020-12 JSON Schema.
+    -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+    -q, --quiet           Suppress roundtrip output.
     -C, --compact         Emit compact JSON output.
         --help            Show this help text.
         --version         Show version.
@@ -38,9 +39,8 @@ defn main(*args):
   validate-format-options: opts
   path =: opts.input || '-'
   text =: (path == '-').if(IN path):read
-  when opts.fmt:
-    format-json-schema: text opts
-    exit: 0
+  when opts.roundtrip:
+    exit: roundtrip-json-schema(text opts)
   when opts.norm:
     normalize-json-schema-output: text opts
     exit: 0
@@ -54,9 +54,7 @@ defn convert-to(target text opts):
       schema =: load-json-schema(text)
       convert: schema
     'schema.json':
-      data =: text:yaml/load
-      warn-yamlschema-passthrough: data
-      schema =: ysc-to-schema(expand-ysc(data expansion-source(opts)))
+      schema =: schema-input(text opts)
       json-output: schema opts
     'ysc.json':
       data =: canonical-input(text opts)
@@ -79,11 +77,14 @@ defn parse-args(args):
   when inputs-val.# > 1:
     usage: 'expected at most one input'
   opts-val =: state.opts
+  when opts-val.quiet && opts-val.roundtrip.!:
+    usage: '-q/--quiet requires -R/--roundtrip'
   when opts-val.to.!:
     when opts-val.output.!:
-      when opts-val.fmt.!:
-        when opts-val.norm.!:
-          usage: 'expected -t/--to, -o/--output, -F/--fmt, or -N/--norm'
+      when opts-val.norm.!:
+        when opts-val.roundtrip.!:
+          usage:
+            'expected -t/--to, -o/--output, -N/--norm, or -R/--roundtrip'
   if inputs-val.# == 1:
     opts-val +: +{'input' inputs-val.0}
     else: opts-val
@@ -108,13 +109,15 @@ defn handle-arg(state arg):
       state +: +{'expect' name}
     arg.in?(['-o', '--output']):
       state + {'expect' 'output'}
-    arg.in?(['-F', '--fmt']):
-      state + {'opts' (state.opts + {'fmt' true, 'pretty' true})}
     arg.in?(['-N', '--norm']):
-      state + {'opts' (state.opts + {'norm' true, 'pretty' true})}
+      state + {'opts' (state.opts + {'norm' true})}
+    arg.in?(['-R', '--roundtrip']):
+      state + {'opts' (state.opts + {'roundtrip' true})}
+    arg.in?(['-q', '--quiet']):
+      state + {'opts' (state.opts + {'quiet' true})}
     arg.in?(['-C', '--compact']):
       state + {'opts' (state.opts + {'compact' true})}
-    arg =~ /^-[FCN][FCN]+$/:
+    arg =~ /^-[CNRq][CNRq]+$/:
       state + {'opts' (state.opts + short-option-bundle(arg))}
     else:
       handle-input: state arg
@@ -124,8 +127,9 @@ defn short-option-bundle(arg):
 
 defn add-short-option(opts ch):
   case ch:S:
-    'F': opts + {'fmt' true, 'pretty' true}
-    'N': opts + {'norm' true, 'pretty' true}
+    'N': opts + {'norm' true}
+    'R': opts + {'roundtrip' true}
+    'q': opts + {'quiet' true}
     'C': opts + {'compact' true}
     else: opts
 
@@ -161,6 +165,21 @@ defn validate-format-options(opts):
   when opts.from.?: normalize-format(opts.from)
   reject-old-file-extension: opts.input
   reject-old-file-extension: opts.output
+  validate-roundtrip-options: opts
+
+defn validate-roundtrip-options(opts):
+  when opts.roundtrip:
+    when opts.norm:
+      usage: '-R/--roundtrip cannot be combined with -N/--norm'
+    when opts.compact:
+      usage: '-R/--roundtrip cannot be combined with -C/--compact'
+    when opts.to:
+      usage: '-R/--roundtrip cannot be combined with -t/--to'
+    when opts.output:
+      usage: '-R/--roundtrip cannot be combined with -o/--output'
+    source =: input-format(opts) || 'schema.json'
+    when source != 'schema.json':
+      usage: '-R/--roundtrip requires JSON Schema input'
 
 defn reject-old-file-extension(path):
   when path.? && path.ends?('.ysx.yaml'):
@@ -176,6 +195,19 @@ defn canonical-input(text opts):
       build-doc: schema
     else: text:yaml/load
 
+defn schema-input(text opts default-source=nil report=true):
+  source =: input-format(opts) || default-source
+  if source == 'schema.json':
+    load-json-schema: text report
+    yamlschema-input-schema: text source report
+
+defn yamlschema-input-schema(text source report=true):
+  data =: text:yaml/load
+  when report:
+    warn-yamlschema-passthrough: data
+  expanded =: expand-ysc(data expansion-source-format(source))
+  ysc-to-schema: expanded
+
 defn input-format(opts):
   normalize-format(opts.from) || infer-input-format(opts.input)
 
@@ -185,6 +217,9 @@ defn warn-canonical-input-passthrough(data opts):
 
 defn expansion-source(opts):
   source =: normalize-format(opts.from) || infer-input-format(opts.input)
+  expansion-source-format: source
+
+defn expansion-source-format(source):
   if source.in?(['ysc.yaml', 'ysc.json']):
     then: 'ysc'
     else: 'ysd'
@@ -270,22 +305,65 @@ defn map-put-if(result test key value):
     then: result + {key value}
     else: result
 
-defn format-json-schema(text opts):
-  schema =: text:json/load
-  validate-json-schema-dialect: schema
-  say: json-output(schema opts)
-
 defn normalize-json-schema-output(text opts):
-  schema =: text:json/load
-  validate-json-schema-dialect: schema
+  schema =: schema-input(text opts 'schema.json')
+  say: normalized-json-schema-text(schema opts)
+
+defn normalized-json-schema-text(schema opts):
   schema =: normalize-json-schema(schema true)
-  say: json-output(schema opts)
+  json-output: schema opts
+
+defn roundtrip-json-schema(text opts):
+  try:
+    run-json-schema-roundtrip: text opts
+    catch Exception error:
+      roundtrip-error: error opts
+
+defn run-json-schema-roundtrip(text opts):
+  report =: opts.quiet.!
+  schema =: load-json-schema(text report)
+  original =: normalized-json-schema-text(schema opts)
+  ysd =: convert(schema)
+  roundtripped =:
+    yamlschema-input-schema(ysd 'ysd.yaml' false)
+      .normalized-json-schema-text(opts)
+  if original == roundtripped:
+    roundtrip-match: opts
+    roundtrip-mismatch: original roundtripped opts
+
+defn roundtrip-match(opts):
+  when-not opts.quiet:
+    say: 'OK'
+  =>: 0
+
+defn roundtrip-mismatch(original roundtripped opts):
+  when-not opts.quiet:
+    say: unified-diff(original roundtripped)
+  =>: 1
+
+defn roundtrip-error(error opts):
+  when-not opts.quiet:
+    err: "ysc: $(ex-message(error))\n"
+  =>: 2
+
+defn unified-diff(original roundtripped):
+  dir =: bash-out('mktemp -d'):trim
+  before =: "$dir/original.json"
+  after =: "$dir/roundtrip.json"
+  write before: "$original\n"
+  write after: "$roundtripped\n"
+  command =:
+    "diff -u --label original --label roundtrip \
+     '$before' '$after' || test $? -eq 1"
+  output =: bash-out(command)
+  fs/rm-r: dir
+  =>: output
 
 defn normalize-json-schema(value root?):
   cond:
     map?(value):
       normalize-json-map: value root?
-    value:vector?:
+    sequential?(value):
       vec: map(\(normalize-json-schema(_ false)) value)
     else:
       value
@@ -330,7 +408,7 @@ defn canonical-json-schema(value):
   cond:
     map?(value):
       canonical-json-map: value
-    value:vector?:
+    sequential?(value):
       vec: map(canonical-json-schema value)
     else:
       value
@@ -1777,11 +1855,12 @@ defn passthrough-directive?(key):
 defn passthrough-keyword(directive):
   directive:S.replace(/^\./)
 
-defn load-json-schema(text):
+defn load-json-schema(text report=true):
   schema =: text:yaml/load
   validate-json-schema-document: schema
   validate-json-schema-dialect: schema
-  warn-unsupported-json-schema: schema
+  when report:
+    warn-unsupported-json-schema: schema
   =>: schema
 
 defn warn-unsupported-json-schema(value path=''):
