@@ -704,8 +704,10 @@ ysc -Rq values.schema.json
 ```
 
 The first command prints `OK` or a unified diff. The quiet form prints nothing.
-Both return status 0 for a match and status 1 for a difference. This is a
-normalized structural comparison, not proof of validation equivalence.
+When `less` is available, the diff is displayed with `less -FRX`; otherwise it
+is written directly to standard output. Both forms return status 0 for a match
+and status 1 for a difference. This is a normalized structural comparison, not
+proof of validation equivalence.
 
 
 ## Implementation Checklist

@@ -131,6 +131,46 @@ test::
     +  "additionalProperties": false
      }
 
+- name: roundtrip-diff-uses-less
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      printf "%s\n" \
+        "#!/bin/sh" \
+        "printf \"%s\n\" \"\$*\" > \"\$LESS_LOG\"" \
+        "cat" > "$dir/less"
+      chmod +x "$dir/less"
+      output=$(printf "%s\n" "{\"minimum\":1}" |
+        PATH="$dir:$PATH" LESS_LOG="$dir/less.log" \
+        bin/ysc -R -f jsc -)
+      status=$?
+      args=$(cat "$dir/less.log")
+      rm -r "$dir"
+      test "$status" -eq 1
+      test "$(printf "%s\n" "$output" | sed -n 1p)" = "--- original"
+      printf "status=%s args=%s\n" "$status" "$args"
+    '
+  want: |
+    status=1 args=-FRX
+
+- name: roundtrip-diff-without-less
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      ln -s "$(command -v ys-0)" "$dir/ys-0"
+      ln -s "$(command -v bash)" "$dir/bash"
+      ln -s "$(command -v diff)" "$dir/diff"
+      ln -s "$(command -v mktemp)" "$dir/mktemp"
+      output=$(printf "%s\n" "{\"minimum\":1}" |
+        PATH="$dir" bin/ysc -R -f jsc -)
+      status=$?
+      rm -r "$dir"
+      test "$status" -eq 1
+      printf "%s\n" "$output" | sed -n 1p
+    '
+  want: |
+    --- original
+
 - name: roundtrip-quiet-status
   cmnd: |
     sh -c '

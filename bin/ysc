@@ -338,8 +338,18 @@ defn roundtrip-match(opts):
 
 defn roundtrip-mismatch(original roundtripped opts):
   when-not opts.quiet:
-    say: unified-diff(original roundtripped)
+    present-diff: unified-diff(original roundtripped)
   =>: 1
+
+defn present-diff(text):
+  pager =: fs/which('less')
+  if pager:
+    page-diff: text pager
+    say: text
+
+defn page-diff(text pager):
+  options =: +{:in "$text\n", :out :inherit, :err :inherit}
+  deref: process(options pager '-FRX')
 
 defn roundtrip-error(error opts):
   when-not opts.quiet:
