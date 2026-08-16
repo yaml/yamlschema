@@ -55,6 +55,14 @@ test::
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"tags":{"type":"array","items":{"type":"string"},"uniqueItems":true,"minItems":1}},"required":["tags"],"additionalProperties":false}
 
+- name: any-list-omits-empty-items
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    anything: +Any[]
+    strings: +Str[]
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"anything":{"type":"array"},"strings":{"type":"array","items":{"type":"string"}}},"required":["anything","strings"],"additionalProperties":false}
+
 - name: explicit-block-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
   stdi: |

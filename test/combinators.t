@@ -7,14 +7,14 @@ test::
 - name: compact-combinator-expansion
   cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
   stdi: |
-    one: +One[+Str,+Int]
-    any: +Any[ +foo, +bar ]
-    all: +All[+foo,+bar]
+    one: +One(+Str,+Int)
+    any: +Any( +foo, +bar )
+    all: +All(+foo,+bar)
     composed: +base +constraint +other
-    not-one: +Not[+foo]
-    not-many: +Not[+Str,+Int]
-    namespaced: +Any[+net/port,+contact/email]
-    values: +Any[+foo,+bar][]
+    not-one: +Not(+foo)
+    not-many: +Not(+Str,+Int)
+    namespaced: +Any(+net/port,+contact/email)
+    values: +Any(+foo,+bar)[]
   want: |
     {"one":{".one":["+Str","+Int"]},"any":{".any":["+foo","+bar"]},"all":{".
     all":["+foo","+bar"]},"composed":{".type":"+base",".all":["+constraint",
@@ -25,12 +25,12 @@ test::
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysc -t schema.json -
   stdi: |
-    one: +One[+Str,+Int]
-    any: +Any[+foo,+bar]
-    all: +All[+foo,+bar]
+    one: +One(+Str,+Int)
+    any: +Any(+foo,+bar)
+    all: +All(+foo,+bar)
     composed: +base +constraint +other
-    not: +Not[+Str,+Int]
-    values: +Any[+foo,+bar][]
+    not: +Not(+Str,+Int)
+    values: +Any(+foo,+bar)[]
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -69,13 +69,9 @@ test::
         },
         "not": {
           "not": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer"
-              }
+            "type": [
+              "string",
+              "integer"
             ]
           }
         },
@@ -131,10 +127,37 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    one?: +One[+Str,+Int]
-    any?: +Any[+foo,+bar]
-    all?: +All[+foo,+bar]
-    not?: +Not[+Str,+Int]
+    one?: +One(+Str,+Int)
+    any?: +Any(+foo,+bar)
+    all?: +All(+foo,+bar)
+    not?: +Not(+Str,+Int)
+
+- name: primitive-any-is-json-type-union
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    value: +Any(+Str,+Int)
+    nullable: +Any(+Str,+Int)~
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"nullable":{"type":["string","integer","null"]},"value":{"type":["string","integer"]}},"required":["value","nullable"],"additionalProperties":false}
+
+- name: json-type-union-to-compact-any
+  cmnd: bin/ysc -t ysd.yaml -
+  stdi: |
+    {
+      "properties": {
+        "artifactPullAsyncFlushDuration": {
+          "type": ["string", "integer"]
+        },
+        "nullable": {
+          "type": ["string", "integer", "null"]
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    artifactPullAsyncFlushDuration?: +Any(+Str,+Int)
+    nullable?: +Any(+Str,+Int)~
 
 - name: rich-combinators-stay-explicit
   cmnd: bin/ysc -t ysd.yaml -
@@ -181,8 +204,8 @@ test::
 - name: combinator-arity-errors
   cmnd: |
     sh -c '
-      for value in "+One[]" "+One[+Str]" "+Any[+Str]" \
-                   "+All[+Str]" "+Not[]"; do
+      for value in "+One()" "+One(+Str)" "+Any(+Str)" \
+                   "+All(+Str)" "+Not()"; do
         printf "x: %s\n" "$value" |
           bin/ysc -t yscj -C - 2>&1 | sed -n 1p
       done
@@ -198,9 +221,24 @@ test::
   cmnd: |
     sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
   stdi: |
-    bad: +One[+Str,foo]
+    bad: +One(+Str,foo)
   want: |
     ysc: +One accepts only type references
+
+- name: reject-square-bracket-combinators
+  cmnd: |
+    sh -c '
+      for value in "+One[+Str,+Int]" "+Any[+Str,+Int]" \
+                   "+All[+Str,+Int]" "+Not[+Str]"; do
+        printf "x: %s\n" "$value" |
+          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+      done
+    '
+  want: |
+    ysc: unsupported compact combinator syntax: +One[+Str,+Int]; use +One(+Str,+Int)
+    ysc: unsupported compact combinator syntax: +Any[+Str,+Int]; use +Any(+Str,+Int)
+    ysc: unsupported compact combinator syntax: +All[+Str,+Int]; use +All(+Str,+Int)
+    ysc: unsupported compact combinator syntax: +Not[+Str]; use +Not(+Str)
 
 - name: list-suffixes-remain-distinct
   cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'

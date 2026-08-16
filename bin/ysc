@@ -847,7 +847,7 @@ defn tight-tokens(value):
   pattern =:
     re-pattern:
       str: +
-        '\+(?:One|Any|All|Not)\[[^\]]*\](?:\[[^\]]*\])?~?'
+        '\+(?:One|Any|All|Not)\([^\)]*\)(?:\[[^\]]*\])?~?'
         '|\+Map\{[^\}]*\}(?:\[[^\]]*\])?~?'
         '|\+[A-Za-z_][A-Za-z0-9_\/-]*\[[^\]]*\]~?'
         '|(?:[A-Za-z]+:|=~|==|=)?"[^"]*"'
@@ -897,6 +897,8 @@ defn parse-primary(token):
     /^(?:type:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
   map-match =: re-matches(pattern token)
   cond:
+    old-compact-combinator-token?(token):
+      reject-old-compact-combinator(token)
     old-map-parameter-token?(token): reject-old-map-parameters(token)
     compact-combinator-token?(token):
       compact-combinator-primary(token null)
@@ -927,18 +929,25 @@ defn reject-map-parameters(token):
 
 defn compact-combinator-token?(token):
   pattern =:
-    /^\+(One|Any|All|Not)\[([^\]]*)\](?:\[[^\]]*\])?~?$/
-  match =: re-matches(pattern token)
-  when match:
-    name =: match.1
-    body =: match.2:trim
-    if name == 'Any':
-      body.starts?('+')
-      true
+    /^\+(One|Any|All|Not)\(([^\)]*)\)(?:\[[^\]]*\])?~?$/
+  token =~: pattern
+
+defn old-compact-combinator-token?(token):
+  named =:
+    token =~ /^\+(?:One|All|Not)\[[^\]]*\](?:\[[^\]]*\])?~?$/
+  any =:
+    token =~ /^\+Any\[\s*\+[^\]]*\](?:\[[^\]]*\])?~?$/
+  named ||: any
+
+defn reject-old-compact-combinator(token):
+  replacement =:
+    token.replace(/^(\+(?:One|Any|All|Not))\[/ '$1(')
+      .replace1(/\]/ ')')
+  usage: "unsupported compact combinator syntax: $token; use $replacement"
 
 defn compact-combinator-primary(token null):
   pattern =:
-    /^\+(One|Any|All|Not)\[([^\]]*)\](\[[^\]]*\])?$/
+    /^\+(One|Any|All|Not)\(([^\)]*)\)(\[[^\]]*\])?$/
   match =: re-matches(pattern token)
   name =: match.1
   members =: compact-combinator-members(name match.2)
@@ -1605,11 +1614,37 @@ defn add-passthrough-schema-keyword(result directive value):
 
 defn add-canonical-combinators(result value):
   result =: add-canonical-combinator(result value '.one' 'oneOf')
-  result =: add-canonical-combinator(result value '.any' 'anyOf')
+  result =: add-canonical-any(result value)
   result =: add-canonical-combinator(result value '.all' 'allOf')
   if contains?(value '.not'):
     then: result + {'not' ysc-value-to-schema(value.'.not')}
     else: result
+
+defn add-canonical-any(result value):
+  if contains?(value '.any'):
+    then:
+      schemas =: vec(value.'.any'.map(ysc-value-to-schema))
+      types =: vec(schemas.map(simple-schema-type))
+      type-union =: simple-type-union?(result types)
+      if type-union:
+        then: result + {'type' types}
+        else: result + {'anyOf' schemas}
+    else: result
+
+defn simple-type-union?(result types):
+  unique =: distinct(types):count
+  and:
+    result:empty?
+    types.every?(some?)
+    unique.eq(types.#)
+
+defn simple-schema-type(schema):
+  simple =:
+    map?(schema) &&
+    key-set(schema).eq(\{'type'}) &&
+    string?(schema.type)
+  when simple:
+    =>: schema.type
 
 defn add-canonical-combinator(result value directive keyword):
   if contains?(value directive):
@@ -1632,7 +1667,8 @@ defn canonical-shape-schema(value):
       else: result + {'additionalProperties' false}
 
 defn canonical-list-schema(item value):
-  array =: +{'type' 'array', 'items' item}
+  array =: +{'type' 'array'}
+  array =: map-put-if(array empty?(item).! 'items' item)
   array =: canonical-sized-schema(array value.'.size')
   array =: map-put-if(array value.'.uniq' 'uniqueItems' true)
   if value.'.solo':
@@ -1672,8 +1708,10 @@ defn add-canonical-annotations(result value):
 defn add-null-schema(result nullable):
   if nullable:
     then:
-      if string?(result.type):
-        then: result + {'type' [result.type 'null']}
+      cond:
+        string?(result.type): result + {'type' [result.type 'null']}
+        sequential?(result.type):
+          result + {'type' vec(result.type + 'null')}
         else: +{'anyOf' [result {'type' 'null'}]}
     else: result
 
@@ -2156,6 +2194,7 @@ defn succinct-array-scalar(schema):
 defn build-properties-map(schema inherited-open):
   local-open =: imported-local-open(schema inherited-open)
   result =: add-open-override(omap() schema inherited-open local-open)
+  result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: add-properties(result schema local-open)
   add-wildcard-entry: result schema local-open
@@ -2342,7 +2381,10 @@ defn add-passthrough-directive-entry(result entry):
 defn succinct-scalar(schema):
   nullable =: nullable-json-schema?(schema)
   schema =: nullable.if(without-null-type(schema) schema)
-  scalar =: succinct-nonnull-scalar(schema)
+  scalar =:
+    succinct-nonnull-scalar(schema) ||
+    (nullable && type-only?(schema) && schema.type.eq('object'))
+      .when('+Map{+Any}')
   when scalar:
     nullable.if("$scalar~" scalar)
 
@@ -2352,6 +2394,7 @@ defn succinct-nonnull-scalar(schema):
     typed-map-only?(schema): typed-map-base(schema)
     base-allof-only?(schema): compact-base-allof-scalar(schema)
     combinator-only?(schema): compact-combinator-scalar(schema)
+    type-union-only?(schema): compact-type-union-scalar(schema)
     schema.has?('$ref'):
       only-ref?(schema).when(ref-sym(schema.'$ref'))
     schema.has?('const'):
@@ -2412,7 +2455,28 @@ defn compact-combinator-scalar(schema):
   when refs:
     when refs.# >= info.1:
       when refs.every?(some?):
-        =>: "+$(info.0)[$(refs.join(','))]"
+        =>: "+$(info.0)($(refs.join(',')))"
+
+defn type-union-only?(schema):
+  types =: schema.type
+  and:
+    type-only?: schema
+    sequential?: types
+    types.# >=: 2
+
+defn compact-type-union-scalar(schema):
+  refs =: vec(schema.type.map(union-type-ref))
+  when refs.every?(some?):
+    =>: "+Any($(refs.join(',')))"
+
+defn union-type-ref(type):
+  case type:
+    'string': '+Str'
+    'integer': '+Int'
+    'number': '+Float'
+    'boolean': '+Bool'
+    'null': '+Null'
+    else: nil
 
 defn compact-not-values(schema):
   if map?(schema) && key-set(schema).eq(\{'anyOf'}):
@@ -2612,7 +2676,9 @@ defn nullable-json-schema?(schema):
   sequential?(schema.type) && 'null'.in?(schema.type)
 
 defn without-null-type(schema):
-  schema + {'type' json-type(schema)}
+  types =: vec(remove(\(_ == 'null') schema.type))
+  type =: types.#.eq(1).if(types.0 types)
+  schema: .assoc('type' type)
 
 defn type-sym(t):
   if t.?:

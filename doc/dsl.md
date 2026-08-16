@@ -296,18 +296,18 @@ and a sibling is an error, even when the values agree.
 Reference-only alternatives have compact forms:
 
 ```yaml
-one: +One[+Str,+Int]
-any: +Any[+foo,+bar]
-all: +All[+foo,+bar]
-neither: +Not[+foo,+bar]
-values: +Any[+foo,+bar][]
+one: +One(+Str,+Int)
+any: +Any(+foo,+bar)
+all: +All(+foo,+bar)
+neither: +Not(+foo,+bar)
+values: +Any(+foo,+bar)[]
 ```
 
 `One`, `Any`, and `All` require at least two references. `Not` requires at
 least one; multiple references mean the value must match none of them. A list
 suffix follows the complete combinator type.
 
-Multiple references without brackets are an implicit conjunction. The first
+Multiple references without parentheses are an implicit conjunction. The first
 is the base and the rest are additional constraint groups:
 
 ```yaml

@@ -148,6 +148,7 @@ If no keys are required, the `required` array can be omitted.
 | `{"type": "null"}` | `+Null` |
 | `{"type": "object"}` | `+Map{+Any}` or a mapping shape |
 | `{"type": "array"}` | `+Any[]`, another `+Type[]`, or a list key suffix |
+| `{"type": ["string", "integer"]}` | `+Any(+Str,+Int)` |
 
 Example:
 
@@ -636,14 +637,17 @@ JSON Schema combinators round-trip through explicit directives:
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `oneOf` | `.one` or `+One[...]` |
-| `anyOf` | `.any` or `+Any[...]` |
-| `allOf` | `.all` or `+All[...]` |
-| `not` | `.not` or `+Not[...]` |
+| `oneOf` | `.one` or `+One(...)` |
+| `anyOf` | `.any` or `+Any(...)` |
+| `allOf` | `.all` or `+All(...)` |
+| `not` | `.not` or `+Not(...)` |
 
 The compact forms contain type references only. `One`, `Any`, and `All`
 require at least two references. `Not` requires at least one; multiple
 references mean `not(anyOf(...))`.
+
+When every `+Any(...)` branch is a simple built-in type, JSON Schema output
+uses a `type` array. References and richer alternatives use `anyOf`.
 
 
 ## Unsupported or Open JSON Schema Features

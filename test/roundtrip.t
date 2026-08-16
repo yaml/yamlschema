@@ -86,9 +86,10 @@ test::
           "uniqueItems": true,
           "minItems": 1,
           "maxItems": 3
-        }
+        },
+        "anything": {"type": "array"}
       },
-      "required": ["role", "version", "host", "port", "tags"],
+      "required": ["role", "version", "host", "port", "tags", "anything"],
       "additionalProperties": false
     }
   want: |

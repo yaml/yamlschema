@@ -586,10 +586,10 @@ expression shares a mapping with annotations, constraints, or shape entries.
 Compact combinators contain type references:
 
 ```yaml
-+scalar: +One[+Str,+Int]
-+value: +Any[+foo,+bar]
-+both: +All[+foo,+bar]
-+neither: +Not[+foo,+bar]
++scalar: +One(+Str,+Int)
++value: +Any(+foo,+bar)
++both: +All(+foo,+bar)
++neither: +Not(+foo,+bar)
 ```
 
 `One`, `Any`, and `All` require two or more references. `Not` requires one or
@@ -605,8 +605,8 @@ explicit form:
     password: +Str
 ```
 
-Multiple unbracketed references are conjunctive. The first becomes `.type` and
-the remaining references become `.all` branches.
+Multiple unparenthesized references are conjunctive. The first becomes `.type`
+and the remaining references become `.all` branches.
 
 
 ## Regex Composition

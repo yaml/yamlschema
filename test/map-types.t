@@ -188,6 +188,37 @@ test::
     closed?:
       .open: false
 
+- name: nullable-object-generation
+  cmnd: bin/ysc -t ysd.yaml -
+  stdi: |
+    {
+      "properties": {
+        "startup": {"type": ["object", "null"]},
+        "probes": {
+          "type": ["object", "null"],
+          "description": "Container probes.",
+          "properties": {
+            "liveness": {"type": ["object", "null"]}
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    startup?: +Map{+Any}~
+    probes?:
+      .null: true
+      .desc: Container probes.
+      liveness?: +Map{+Any}~
+
+- name: nullable-any-map-to-json-schema
+  cmnd: bin/ysc -t schema.json -C -
+  stdi: |
+    startup?: +Map{+Any}~
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"startup":{"type":["object","null"],"additionalProperties":true}},"additionalProperties":false}
+
 - name: reserved-str-definition-collision
   cmnd: |
     sh -c 'bin/ysc -t ysd.yaml - 2>&1 | sed -n 1p'
