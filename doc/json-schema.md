@@ -600,9 +600,10 @@ that closed scope is locally reopened when its own JSON Schema omits
 `additionalProperties`.
 
 On export, an open shape omits `additionalProperties`, while a closed shape
-gets `additionalProperties: false`. An explicit `+Str: +Any` emits
-`additionalProperties: true`; other wildcard values emit the corresponding
-schema. The root yamlschema document remains closed without a wildcard:
+gets `additionalProperties: false`. An explicit `+Str: +Any` also omits
+`additionalProperties`, since the JSON Schema default has the same semantics;
+other wildcard values emit the corresponding schema. The root yamlschema
+document remains closed without a wildcard:
 top-level `.open` is the lexical default for the types defined beneath it.
 
 Canonical YSC does not depend on surrounding lexical state. Expansion places

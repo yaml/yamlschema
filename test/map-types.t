@@ -30,12 +30,12 @@ test::
     many: +Map{+Str}[]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"any":{"type":"object","additionalProperties":true}
-    ,"custom":{"type":"object","additionalProperties":{"$ref":"#\/$defs\/fla
-    g"}},"many":{"type":"array","items":{"type":"object","additionalProperti
-    es":{"type":"string"}}},"strings":{"type":"object","additionalProperties
-    ":{"type":"string"}}},"required":["any","strings","custom","many"],"addi
-    tionalProperties":false,"$defs":{"flag":{"type":"boolean"}}}
+    bject","properties":{"any":{"type":"object"},"custom":{"type":"object","
+    additionalProperties":{"$ref":"#\/$defs\/flag"}},"many":{"type":"array",
+    "items":{"type":"object","additionalProperties":{"type":"string"}}},"str
+    ings":{"type":"object","additionalProperties":{"type":"string"}}},"requi
+    red":["any","strings","custom","many"],"additionalProperties":false,"$de
+    fs":{"flag":{"type":"boolean"}}}
 
 - name: json-schema-to-typed-maps
   cmnd: bin/ysc -t ysd.yaml -
@@ -183,7 +183,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    implicit?: {}
+    implicit?: +Map{+Any}
     explicit?: +Map{+Any}
     closed?:
       .open: false
@@ -217,7 +217,7 @@ test::
   stdi: |
     startup?: +Map{+Any}~
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"startup":{"type":["object","null"],"additionalProperties":true}},"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"startup":{"type":["object","null"]}},"additionalProperties":false}
 
 - name: reserved-str-definition-collision
   cmnd: |

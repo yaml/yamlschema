@@ -1383,8 +1383,12 @@ defn ysc-to-schema(doc):
     .map-put-if(empty?(state.props).! 'properties' state.props)
     .map-put-if(empty?(reqs).! 'required' reqs)
     .map-put-if(empty?(defs-val).! '$defs' defs-val)
-  result +:
-    +{'additionalProperties' state.wildcard.if(state.additional false)}
+  if state.wildcard:
+    then:
+      if state.additional == true:
+        then: result
+        else: result + {'additionalProperties' state.additional}
+    else: result + {'additionalProperties' false}
 
 defn initial-ysc-doc-state(doc):
   result =: add-json-meta(omap() doc.'.json')
@@ -1514,8 +1518,12 @@ defn ysc-object-to-schema(value):
   result =: +{'type' 'object'}
   result =: map-put-if(result empty?(reqs).! 'required' reqs)
   result =: map-put-if(result empty?(state.props).! 'properties' state.props)
-  result +:
-    +{'additionalProperties' state.wildcard.if(state.additional false)}
+  if state.wildcard:
+    then:
+      if state.additional == true:
+        then: result
+        else: result + {'additionalProperties' state.additional}
+    else: result + {'additionalProperties' false}
 
 defn initial-object-state()::
   props: {}
@@ -1662,7 +1670,10 @@ defn canonical-shape-schema(value):
     result =:
       map-put-if(result state.required:seq 'required' state.required)
     cond:
-      state.wildcard: result + {'additionalProperties' state.additional}
+      state.wildcard:
+        if state.additional == true:
+          then: result
+          else: result + {'additionalProperties' state.additional}
       value.'.open': result
       else: result + {'additionalProperties' false}
 
@@ -2381,10 +2392,7 @@ defn add-passthrough-directive-entry(result entry):
 defn succinct-scalar(schema):
   nullable =: nullable-json-schema?(schema)
   schema =: nullable.if(without-null-type(schema) schema)
-  scalar =:
-    succinct-nonnull-scalar(schema) ||
-    (nullable && type-only?(schema) && schema.type.eq('object'))
-      .when('+Map{+Any}')
+  scalar =: succinct-nonnull-scalar(schema)
   when scalar:
     nullable.if("$scalar~" scalar)
 
@@ -2410,7 +2418,7 @@ defn succinct-nonnull-scalar(schema):
 
 defn type-only-scalar(schema):
   if schema.type == 'object':
-    then: nil
+    then: '+Map{+Any}'
     else: type-sym(schema.type)
 
 defn key-set(schema):

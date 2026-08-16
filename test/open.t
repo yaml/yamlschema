@@ -107,7 +107,7 @@ test::
     false
     false
     true
-    true
+    null
 
 - name: open-validation-errors
   cmnd: |

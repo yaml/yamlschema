@@ -87,9 +87,16 @@ test::
           "minItems": 1,
           "maxItems": 3
         },
-        "anything": {"type": "array"}
+        "anything": {"type": "array"},
+        "routeOverrides": {
+          "type": "object",
+          "description": "Per-group overrides."
+        }
       },
-      "required": ["role", "version", "host", "port", "tags", "anything"],
+      "required": [
+        "role", "version", "host", "port", "tags", "anything",
+        "routeOverrides"
+      ],
       "additionalProperties": false
     }
   want: |
