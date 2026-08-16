@@ -17,6 +17,15 @@ test::
           "type": "string",
           "title": "Full name",
           "description": "Display name."
+        },
+        "profile": {
+          "type": "object",
+          "description": "Profile settings.",
+          "properties": {
+            "visible": {
+              "type": "boolean"
+            }
+          }
         }
       },
       "required": ["name"]
@@ -30,6 +39,9 @@ test::
       .type: +Str
       .title: Full name
       .desc: Display name.
+    profile?:
+      .desc: Profile settings.
+      visible?: +Bool
     .json:
       $id: https://example.com/arrays.schema.json
 

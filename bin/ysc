@@ -2156,6 +2156,7 @@ defn succinct-array-scalar(schema):
 defn build-properties-map(schema inherited-open):
   local-open =: imported-local-open(schema inherited-open)
   result =: add-open-override(omap() schema inherited-open local-open)
+  result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: add-properties(result schema local-open)
   add-wildcard-entry: result schema local-open
 

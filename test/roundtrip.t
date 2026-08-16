@@ -39,6 +39,7 @@ test::
       "$defs": {
         "veggie": {
           "type": "object",
+          "description": "A vegetable record.",
           "required": ["veggieName", "veggieLike"],
           "properties": {
             "veggieName": {
