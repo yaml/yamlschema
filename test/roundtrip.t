@@ -21,6 +21,31 @@ test::
   want: |
     OK
 
+- name: singleton-ref-allof-with-properties-roundtrip
+  cmnd: bin/ysc -R -f jsc -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "base": {
+          "type": "object",
+          "properties": {"shared": {"type": "string"}}
+        }
+      },
+      "type": "object",
+      "properties": {
+        "component": {
+          "type": "object",
+          "description": "Component",
+          "allOf": [{"$ref": "#/$defs/base"}],
+          "properties": {"local": {"type": "integer"}}
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: metadata-roundtrip
   cmnd: |
     sh -c '

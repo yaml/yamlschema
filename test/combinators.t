@@ -132,6 +132,55 @@ test::
     all?: +All(+foo,+bar)
     not?: +Not(+Str,+Int)
 
+- name: singleton-ref-allof-with-properties
+  cmnd: bin/ysc -t ysd -
+  stdi: |
+    {
+      "$defs": {
+        "base": {
+          "type": "object",
+          "properties": {"shared": {"type": "string"}}
+        }
+      },
+      "type": "object",
+      "properties": {
+        "component": {
+          "type": "object",
+          "description": "Component",
+          "allOf": [{"$ref": "#/$defs/base"}],
+          "properties": {"local": {"type": "integer"}}
+        },
+        "alias": {
+          "allOf": [{"$ref": "#/$defs/base"}]
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+
+    +base:
+      shared?: +Str
+
+    component?:
+      .type: +base
+      .desc: Component
+      local?: +Int
+    alias?: +base
+
+- name: referenced-base-with-properties-to-json-schema
+  cmnd: bin/ysc -f ysd -t jsc -C -
+  stdi: |
+    .open: true
+    +base:
+      shared?: +Str
+    component?:
+      .type: +base
+      .desc: Component
+      local?: +Int
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}},"additionalProperties":false,"$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}}}
+
 - name: primitive-any-is-json-type-union
   cmnd: bin/ysc -t schema.json -C -
   stdi: |

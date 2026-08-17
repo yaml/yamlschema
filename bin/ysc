@@ -381,6 +381,7 @@ defn normalize-json-map(value root?):
   result =: reduce(\(normalize-json-entry(_1 _2)) result value)
   result =: normalize-definitions(result)
   result =: normalize-ref(result)
+  result =: normalize-single-ref-allof(result)
   if root?:
     then:
       result +: +{'$schema' JSON-SCHEMA-DIALECT}
@@ -429,6 +430,14 @@ defn normalize-ref-value(ref):
   if string?(ref):
     then: ref.replace(/^#\/definitions\// '#/\$defs/')
     else: ref
+
+defn normalize-single-ref-allof(result):
+  if result.has?('$ref') || singleton-ref-allof?(result).!:
+    then: result
+    else:
+      reference =: result.allOf.0.'$ref'
+      normalized =: dissoc(result 'allOf')
+      normalized +: +{'$ref' reference}
 
 defn canonical-json-schema(value):
   cond:
@@ -1581,7 +1590,7 @@ defn ysc-block-to-schema(value):
   item-value =: list.if(canonical-list-item(native-value) native-value)
   item =: canonical-item-schema(item-value)
   shape =: canonical-shape-schema(item-value)
-  item =: shape || item
+  item =: shape.if(merge(item shape) item)
   result =:
     if list:
       then: canonical-list-schema(item value)
@@ -2275,7 +2284,9 @@ defn succinct-array-scalar(schema):
 
 defn build-properties-map(schema inherited-open):
   local-open =: imported-local-open(schema inherited-open)
-  result =: add-open-override(omap() schema inherited-open local-open)
+  base =: schema-base-ref(schema)
+  result =: map-put-if(omap() base.? '.type' base)
+  result =: add-open-override(result schema inherited-open local-open)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: add-properties(result schema local-open)
@@ -2471,6 +2482,7 @@ defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
     typed-map-only?(schema): typed-map-base(schema)
+    only-singleton-ref-allof?(schema): ref-sym(schema.allOf.0.'$ref')
     base-allof-only?(schema): compact-base-allof-scalar(schema)
     combinator-only?(schema): compact-combinator-scalar(schema)
     type-union-only?(schema): compact-type-union-scalar(schema)
@@ -2505,6 +2517,23 @@ defn typed-map-only?(schema):
 
 defn only-ref?(schema):
   key-set(schema) ==: \{'$ref'}
+
+defn singleton-ref-allof?(schema):
+  branches =: schema.allOf
+  and:
+    sequential?(branches)
+    count(branches).eq(1)
+    only-ref?(branches.0)
+
+defn only-singleton-ref-allof?(schema):
+  and:
+    singleton-ref-allof?(schema)
+    key-set(schema).eq(\{'allOf'})
+
+defn schema-base-ref(schema):
+  cond:
+    schema.'$ref'.?: ref-sym(schema.'$ref')
+    singleton-ref-allof?(schema): ref-sym(schema.allOf.0.'$ref')
 
 defn schema-type-ref(schema):
   typed =:

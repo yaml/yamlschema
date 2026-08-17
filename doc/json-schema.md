@@ -534,6 +534,10 @@ Roundtrip notes:
 
 - `$defs` and older `definitions` both import as `+name`.
 - A local reference such as `#/$defs/email` imports as `+email`.
+- A singleton `allOf` containing only a reference normalizes to a sibling
+  `$ref` under Draft 2020-12.
+- A referenced mapping refined by local properties puts `+name` under `.type`
+  and keeps those property definitions as siblings.
 - Exporting back to JSON Schema should prefer `$defs`.
 - Namespaced yamlschema symbols can map to external `$ref` URIs.
 
