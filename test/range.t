@@ -21,7 +21,7 @@ test::
     .open: true
     port: +Int 1..65535
     age: +Int 0..
-    ratio: +Float 0..1
+    ratio: +Num 0..1
     debt: +Int ..-1
 
 - name: range-expansion
@@ -74,7 +74,7 @@ test::
       .type: +Int
       .range: [null, -1]
     bounded:
-      .type: +Float
+      .type: +Num
       .range: [0.5, 1]
   want: |
     {

@@ -64,7 +64,7 @@ test::
         ]
       },
       "ratio": {
-        ".type": "+Float",
+        ".type": "+Num",
         ".range": [
           0.5,
           1

@@ -9,7 +9,7 @@ test::
   stdi: |
     s: +Str
     i: +Int
-    n: +Float
+    n: +Num
     b: +Bool
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"b":{"type":"boolean"},"i":{"type":"integer"},"n":{"type":"number"},"s":{"type":"string"}},"required":["s","i","n","b"],"additionalProperties":false}

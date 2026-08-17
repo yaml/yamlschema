@@ -3,42 +3,44 @@
 `yamlschema` is an experimental schema language for YAML data.
 
 The goal is to make schemas look like the data they describe while keeping
-common validation constraints short and readable. It is intended to cover the
-same kind of data-model validation as JSON Schema, but with YAML-native syntax
-and a succinct form for human-authored schemas.
+common validation constraints short and readable.
+It is intended to cover the same kind of data-model validation as JSON Schema,
+but with YAML-native syntax and a succinct form for human-authored schemas.
 
-For the authoring syntax, see [doc/dsl.md](doc/dsl.md). For the broader
-language design, see [doc/design.md](doc/design.md).
+For the authoring syntax, see [doc/dsl.md](doc/dsl.md).
+For the broader language design, see [doc/design.md](doc/design.md).
+The [built-in type reference](doc/dsl.md#built-in-types) covers scalar, null,
+arbitrary-value, and mapping types.
 
 ## Example
 
 ```yaml
-+email: /^\S+@\S+$/
-+port: 1..65535
++email: +Str =~"\S+@\S+"
++port: +Int 1..65535
 
 name: +Str
 email?: +email
 port: +port
-tags[!+]: +Str
+tags: +Str[1+,!]
 address:
   street: +Str
   city: +Str
-  zip: /^\d{5}(-\d{4})?$/
+  zip: +Str =~"\d{5}(-\d{4})?"
 ```
 
 This schema describes a mapping where:
 
 - `name`, `port`, `tags`, and `address` are required.
 - `email` is optional because the key ends in `?`.
-- `tags[!+]` is a unique list with one or more string values.
+- `tags` is a unique list with one or more string values.
 - `+email` and `+port` are reusable definitions.
-- Regexes, ranges, enums, list suffixes, and symbols imply most explicit type
-  information.
+- Regexes, ranges, enums, list suffixes, and symbols express common
+  constraints without verbose directive mappings.
 
 ## Repository Contents
 
-- [bin/ysc](bin/ysc) converts a JSON Schema document to the current
-  yamlschema syntax.
+- [bin/ysc](bin/ysc) converts among succinct yamlschema, expanded yamlschema,
+  and JSON Schema.
 - [test/](test/) contains YAMLScript TAP tests for the converter.
 - [doc/design.md](doc/design.md) describes the language model, syntax,
   directives, JSON Schema mapping, and current implementation scope.
@@ -46,8 +48,8 @@ This schema describes a mapping where:
   reference.
 - [doc/json-schema.md](doc/json-schema.md) describes roundtripping with JSON
   Schema and the `.schema.json` convention.
-- [note/yaml-schema-language-plan.md](note/yaml-schema-language-plan.md) is the
-  original design note.
+- [note/yaml-schema-language-plan.md](note/yaml-schema-language-plan.md) is
+  the original design note.
 
 ## File Extensions
 
@@ -74,7 +76,8 @@ The format targets and explicit `--from` values are:
 
 ## Installation
 
-For local development, source the repo `.rc` file to put `bin/` on your `PATH`:
+For local development, source the repo `.rc` file to put `bin/` on your
+`PATH`:
 
 ```sh
 . ./.rc
@@ -88,22 +91,24 @@ ysc -t yscj contact.ysd.yaml
 ysc -t yscy contact.ysd.yaml
 ysc -t jsc contact.ysd.yaml
 ysc -t jsc -C contact.ysd.yaml
-ysc -F contact.schema.json
+ysc -N contact.ysd.yaml
 ysc -N legacy.schema.json
+ysc -R contact.schema.json
 ```
 
 ## Converter Usage
 
 The current converter script is `ysc`.
-It requires either `-t` / `--to`, `-o` / `--output`, `-F` / `--fmt`, or
-`-N` / `--norm`.
+It requires `-t` / `--to`, `-o` / `--output`, `-N` / `--norm`, or `-R` /
+`--roundtrip`.
 Input defaults to stdin.
-Use `-` explicitly to read JSON Schema or yamlschema from stdin:
+Use `-` explicitly to read JSON Schema or yamlschema from stdin.
+Supply `-f` / `--from` when stdin does not make the input format unambiguous:
 
 ```sh
 ysc -t ysd - < contact.schema.json
 ysc -t jsc - < contact.ysd.yaml
-ysc -FC - < contact.schema.json
+ysc -f ysd -NC - < contact.ysd.yaml
 ```
 
 or from a file path:
@@ -141,9 +146,11 @@ Example input:
 Expected `.ysd.yaml` output:
 
 ```yaml
+# Converted from JSON Schema
+.open: true
 name: +Str
-email?: /^\S+@\S+$/
-tags[!+]: +Str
+email?: +Str =~"\S+@\S+"
+tags: +Str[1+,!]
 ```
 
 ## Development
@@ -154,7 +161,9 @@ The test suite is made of executable `.t` files under `test/`:
 make test
 ```
 
-The converter currently targets the direct JSON Schema mappings listed in the
-design document. More complex JSON Schema features such as `oneOf`, `allOf`,
-conditionals, and `patternProperties` are still design work; when encountered,
-the converter emits `# TODO: <keyword>` markers where possible.
+The converter supports the direct mappings listed in
+[doc/json-schema.md](doc/json-schema.md), including `oneOf`, `anyOf`, `allOf`,
+and `not`.
+Unsupported JSON Schema keywords are retained as same-named dotted directives,
+such as `.if`, and reported with a warning so conversion does not silently
+discard them.

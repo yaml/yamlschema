@@ -31,8 +31,8 @@ contact.ysd.yaml -> contact.schema.json
 The `.ysd.yaml` form is ordinary YAML and should be pleasant to edit by hand.
 The `ysc` forms contain the same non-human, fully expanded data and are
 intended for validators, caches, publication, and generated artifacts.
-The `.schema.json` form is the JSON Schema representation used for interop with
-the JSON Schema ecosystem.
+The `.schema.json` form is the JSON Schema representation used for interop
+with the JSON Schema ecosystem.
 
 
 ## Core Model
@@ -77,17 +77,19 @@ The optional marker remains on the key in the canonical explicit model.
 `.need` is reserved until requiredness has a separate final design.
 
 
-### Constraints Imply Types
+### Constraints Refine Types
 
-The succinct syntax avoids repeating type information when the constraint
-already implies it:
+The succinct syntax puts a base type before the constraints that refine it:
 
 ```yaml
 email: +Str =~"\S+@\S+"  # whole-string regex match
-role: +Str [admin,user,guest]  # enum with explicit type
-port: 1..65535           # numeric range
-tags: +Str[1+]          # list of one or more strings
+role: +Str [admin, user, guest]  # enum with explicit type
+port: +Int 1..65535      # numeric range
+tags: +Str[1+]           # list of one or more strings
 ```
+
+Regexes and numeric ranges can infer a built-in type in handwritten YSD, but
+generated YSD includes that type explicitly.
 
 The corresponding canonical form uses type references and directives such as
 `.type`, `.like`, `.enum`, and `.size`.
@@ -98,29 +100,21 @@ The corresponding canonical form uses type references and directives such as
 Symbols begin with `+`.
 
 ```yaml
-+email: /^\S+@\S+$/
-+port: 1..65535
++email: +Str =~"\S+@\S+"
++port: +Int 1..65535
 
 admin_email: +email
 listen_port: +port
 ```
 
-Built-in symbols are uppercase:
-
-```text
-+Any
-+Str
-+Int
-+Float
-+Bool
-+Null
-+Map{+Type}
-```
+Built-in symbols use uppercase names.
+The complete list and special mapping forms are defined in the [DSL
+built-in-types reference](dsl.md#built-in-types).
 
 User-defined symbols are normally lowercase:
 
 ```yaml
-+email: /^\S+@\S+$/
++email: +Str =~"\S+@\S+"
 +address:
   street: +Str
   city: +Str
@@ -131,12 +125,12 @@ Order is not significant.
 A symbol may refer to a base type, a regex, a range, an enum, a map shape, or
 another schema construct.
 
-Private definitions use `:+name` as the key and are still referenced as `+name`
-inside the same schema:
+Private definitions use `:+name` as the key and are still referenced as
+`+name` inside the same schema:
 
 ```yaml
-:+local-part: /[a-zA-Z0-9._%+-]+/
-+email: /{+local-part}@example\.com/
+:+local-part: +Str /[a-zA-Z0-9._%+-]+/
++email: +Str /{+local-part}@example\.com/
 ```
 
 Namespaced references are written with `/`:
@@ -195,21 +189,24 @@ Meta directives are top-level schema metadata:
 
 ## Succinct Values
 
-A succinct value is a YAML plain scalar. A type reference is conventionally
-first, and labeled clauses can occur in any order. The scalar labels are
-`type`, `match`, `find`, `const`, `range`, `size`, `list`, `item`,
-`solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
-`enum:[...]` uses the compact enum grammar. Structural `.one`, `.any`,
-`.all`, `.not`, `.with`, and `.when` values remain explicit.
+A succinct value is a YAML plain scalar.
+A type reference is conventionally first, and labeled clauses can occur in any
+order.
+The scalar labels are `type`, `match`, `find`, `const`, `range`, `size`,
+`item`, `solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
+`enum:[...]` uses the compact enum grammar.
+Structural `.one`, `.any`, `.all`, `.not`, `.with`, and `.when` values remain
+explicit.
 
 ```yaml
 foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
 ```
 
-The canonical explicit form uses the period-prefixed directive names. The old
-names `titl`, `just`, and `only` are errors with diagnostics naming `title`
-and `const`. The tight `like:` label is also rejected in favor of YSD
-`match:` or `find:`; canonical YSC `.like` stores the resulting raw pattern.
+The canonical explicit form uses the period-prefixed directive names.
+The old names `titl`, `just`, and `only` are errors with diagnostics naming
+`title` and `const`.
+The tight `like:` label is also rejected in favor of YSD `match:` or `find:`;
+canonical YSC `.like` stores the resulting raw pattern.
 
 ### Descriptions
 
@@ -239,10 +236,11 @@ The whole value is a YAML plain scalar.
 The quote characters are yamlschema syntax, not YAML quoting syntax.
 The description starts after the schema expression and opening double quote.
 It ends at the scalar's final double quote.
-The two outer quote characters are removed. Inside them, `:\ ` represents
-colon-space and ` \#` represents space-hash so the containing YAML value can
-remain a plain scalar. These are exact triplets: `foo\ bar`, `\n`, and `\t`
-remain literal. Internal double quotes are not representable.
+The two outer quote characters are removed.
+Inside them, `:\ ` represents colon-space and ` \#` represents space-hash so
+the containing YAML value can remain a plain scalar.
+These are exact triplets: `foo\ bar`, `\n`, and `\t` remain literal.
+Internal double quotes are not representable.
 List suffixes may follow the schema expression before the description.
 
 YAML plain-scalar folding is allowed:
@@ -253,11 +251,12 @@ repository?: +Str
 ```
 
 Generated YSD keeps a tight scalar on one physical line when that line is at
-most 80 columns. When the complete line is longer, its base expression,
-compact enum, and description are placed on separate lines. Long enums wrap
-after commas and long descriptions wrap at safe spaces. Every continuation
-line uses the same indentation, so YAML folding reconstructs the original
-single scalar:
+most 80 columns.
+When the complete line is longer, its base expression, compact enum, and
+description are placed on separate lines.
+Long enums wrap after commas and long descriptions wrap at safe spaces.
+Every continuation line uses the same indentation, so YAML folding
+reconstructs the original single scalar:
 
 ```yaml
 mode?: +Str
@@ -271,21 +270,10 @@ Descriptions that cannot be safely represented in a YAML plain scalar use the
 explicit `.desc` form.
 
 
-### Built-in Types
-
-```yaml
-name: +Str
-age: +Int
-ratio: +Float
-enabled: +Bool
-metadata: +Map{+Any}
-anything: +Any
-```
-
-
 ### Regex
 
-Use `=~"..."` for a whole-string match. `match:"..."` is also accepted:
+Use `=~"..."` for a whole-string match.
+`match:"..."` is also accepted:
 
 ```yaml
 email: +Str =~"\S+@\S+"
@@ -303,12 +291,13 @@ zip:
   .like: ^\d{5}(-\d{4})?$
 ```
 
-Use `find:"..."` for an unanchored search. `/pattern/` is its compact form
-when `pattern` contains neither whitespace nor `/`:
+Use `find:"..."` for an unanchored search.
+`/pattern/` is its compact form when `pattern` contains neither whitespace nor
+`/`:
 
 ```yaml
-word: /good/
-path: find:"usr/local"
+word: +Str /good/
+path: +Str find:"usr/local"
 ```
 
 
@@ -334,9 +323,11 @@ level:
 ```
 
 Compact members may contain letters, digits, whitespace, `.`, `-`, `_`, and
-`+`. Whitespace surrounding members is trimmed and interior whitespace is
-preserved. A leading `=` marks the one member that is also the default. Quoted
-or otherwise punctuated values use explicit `.enum`:
+`+`.
+Whitespace surrounding members is trimmed and interior whitespace is
+preserved.
+A leading `=` marks the one member that is also the default.
+Quoted or otherwise punctuated values use explicit `.enum`:
 
 ```yaml
 label: +Str [has space, ok]
@@ -351,7 +342,7 @@ symbol:
 ```yaml
 port: +Int 1..65535
 age: +Int 0..
-ratio: +Float 0..1
+ratio: +Num 0..1
 ```
 
 Equivalent explicit form:
@@ -364,7 +355,7 @@ age:
   .type: +Int
   .range: [0]
 ratio:
-  .type: +Float
+  .type: +Num
   .range: [0, 1]
 ```
 
@@ -390,8 +381,9 @@ kind:
   .const: User
 ```
 
-`const:User` is the labeled alternative. `=User` is independently a default,
-so `+Str ==User =User` exports both `const` and `default`.
+`const:User` is the labeled alternative.
+`=User` is independently a default, so `+Str ==User =User` exports both
+`const` and `default`.
 
 
 ## Property Keys
@@ -430,8 +422,9 @@ Key-side list syntax such as `key[]` and `key?[1+]` is rejected.
 ## Key/Value Pair Constraints
 
 Optionality belongs to one key/value pair, but some mapping constraints relate
-several pairs. The properties remain ordinary sibling entries so their order
-is preserved. A planned `.keys` sequence holds ordered relationship rules:
+several pairs.
+The properties remain ordinary sibling entries so their order is preserved.
+A planned `.keys` sequence holds ordered relationship rules:
 
 ```yaml
 aaa: +Bool
@@ -446,9 +439,9 @@ bbb: +bar
 - .one: [bar, baz]
 ```
 
-Each `.one` rule requires exactly one named property. Repeating `.one` is
-valid because every rule is a separate mapping in the sequence; YAML duplicate
-keys are not required.
+Each `.one` rule requires exactly one named property.
+Repeating `.one` is valid because every rule is a separate mapping in the
+sequence; YAML duplicate keys are not required.
 
 Other presence relationships fit the same ordered rule model:
 
@@ -464,14 +457,14 @@ Other presence relationships fit the same ordered rule model:
 ```
 
 `.any` requires at least one property, `.excl` permits at most one, and
-`.with` declares dependent required properties. `.when` tests whether its
-property is present; `.then` and `.else` select additional required
-properties. For example, the last rule corresponds to JSON Schema `if` with
-`required: [key1]`, followed by `then` and `else` schemas requiring `key2` or
-`key3`.
+`.with` declares dependent required properties.
+`.when` tests whether its property is present; `.then` and `.else` select
+additional required properties.
+For example, the last rule corresponds to JSON Schema `if` with `required:
+[key1]`, followed by `then` and `else` schemas requiring `key2` or `key3`.
 
-This `.keys` rule system is design-only for now. It is not accepted by the
-converter yet.
+This `.keys` rule system is design-only for now.
+It is not accepted by the converter yet.
 
 
 ## Wildcard Keys
@@ -510,9 +503,10 @@ labels:
 
 `+Map` is an incomplete mapping type that requires sibling key/value pairs.
 `+Map[]` is therefore a list of shaped mappings whose item properties follow
-as siblings. The complete open form `+Map{+Value}` is shorthand for
-`+Map{+Str,+Value}`. The two-reference form is reserved for future YAML key
-schemas but is not implemented yet.
+as siblings.
+The complete open form `+Map{+Value}` is shorthand for `+Map{+Str,+Value}`.
+The two-reference form is reserved for future YAML key schemas but is not
+implemented yet.
 
 ```yaml
 extraEnv?:
@@ -522,10 +516,11 @@ extraEnv?:
   valueFrom?: +Map{+Any}
 ```
 
-This is a scalar or unique list of one through ten closed mapping values. The
-sibling pairs complete the list item shape. In list brackets, size, `$`, and
-`!` are independent properties. Commas, whitespace, and adjacency are
-accepted separators, while generated YSD uses canonical `[size,$!]` order.
+This is a scalar or unique list of one through ten closed mapping values.
+The sibling pairs complete the list item shape.
+In list brackets, size, `$`, and `!` are independent properties.
+Commas, whitespace, and adjacency are accepted separators, while generated YSD
+uses canonical `[size,$!]` order.
 
 
 ## Explicit Form
@@ -574,11 +569,15 @@ Implicit typing applies where possible:
   to `.like`.
 - `.enum` implies the common value type.
 - A mapping shape implies the mapping type without emitting a base marker.
-- Numeric range syntax implies `+Int` or `+Float` when no explicit type exists.
+- Integer-only numeric range syntax implies `+Int` when no explicit type
+  exists.
+- A fractional numeric range implies `+Num` because its interval may include
+  integers.
 
 Emit an unrefined built-in or named reference as a `+Type` scalar when it is
-the type's entire value. Use `.type` when the reference or complete tight type
-expression shares a mapping with annotations, constraints, or shape entries.
+the type's entire value.
+Use `.type` when the reference or complete tight type expression shares a
+mapping with annotations, constraints, or shape entries.
 
 
 ## Schema Combinators
@@ -592,9 +591,9 @@ Compact combinators contain type references:
 +neither: +Not(+foo,+bar)
 ```
 
-`One`, `Any`, and `All` require two or more references. `Not` requires one or
-more and excludes every listed type. Complete branch definitions use the
-explicit form:
+`One`, `Any`, and `All` require two or more references.
+`Not` requires one or more and excludes every listed type.
+Complete branch definitions use the explicit form:
 
 ```yaml
 +auth:
@@ -605,8 +604,8 @@ explicit form:
     password: +Str
 ```
 
-Multiple unparenthesized references are conjunctive. The first becomes `.type`
-and the remaining references become `.all` branches.
+Multiple unparenthesized references are conjunctive.
+The first becomes `.type` and the remaining references become `.all` branches.
 
 
 ## Regex Composition
@@ -614,17 +613,17 @@ and the remaining references become `.all` branches.
 Regex-valued definitions can be composed by reference:
 
 ```yaml
-:+user: /[a-zA-Z0-9._%+-]+/
-:+host: /[a-zA-Z0-9.-]+/
-:+tld: /[a-zA-Z]{2,}/
+:+user: +Str /[a-zA-Z0-9._%+-]+/
+:+host: +Str /[a-zA-Z0-9.-]+/
+:+tld: +Str /[a-zA-Z]{2,}/
 
-+email: /^{+user}@{+host}\.{+tld}$/
++email: +Str /^{+user}@{+host}\.{+tld}$/
 ```
 
 The composed result expands to:
 
 ```yaml
-+email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
++email: +Str /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 ```
 
 Rules:
@@ -647,14 +646,14 @@ Top-level `+symbols` are private by default.
 .from: https://yaml.org/schema/base/v1
 .name: contact
 
-+email: /^\S+@\S+$/
++email: +Str =~"\S+@\S+"
 
 name: +Str
 email?: +email
 address:
   street: +Str
   city: +Str
-  zip: /^\d{5}$/
+  zip: +Str =~"\d{5}"
 ```
 
 
@@ -667,14 +666,9 @@ Public symbols use `+name`; private symbols use `:+name`.
 ```yaml
 .from: https://yaml.org/schema/base/v1
 
-:+max: 65535
-
-+port:
-  .type: +Int
-  .size: [1, +max]
-
-+email: /^\S+@\S+$/
-+hostname: /^[a-z0-9.-]+$/
++port: +Int 1..65535
++email: +Str =~"\S+@\S+"
++hostname: +Str =~"[a-z0-9.-]+"
 ```
 
 
@@ -742,8 +736,8 @@ Inline schema is also possible:
 --- !!yaml
 schema:
   name: +Str
-  age?: 0..
-  email?: /^\S+@\S+$/
+  age?: +Int 0..
+  email?: +Str =~"\S+@\S+"
 ---
 name: Alice
 age: 30
@@ -790,16 +784,17 @@ Example compiled shape:
 
 ## JSON Schema Mapping
 
-The `bin/ysc` converter is a bootstrap path from JSON Schema into
-yamlschema.
+The `bin/ysc` converter is a bootstrap path from JSON Schema into yamlschema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
 Generated human-facing yamlschema output should use `.ysd.yaml`.
 Expanded yamlschema should use `.ysc.yaml` or `.ysc.json`; both contain the
 same canonical model.
-The converter can also generate `.schema.json` from `.ysd.yaml` for the
-same direct mapping subset.
-The `.schema.json` target currently uses JSON Schema Draft 2020-12 only.
+The converter can also generate `.schema.json` from `.ysd.yaml` for the same
+direct mapping subset.
+The `.schema.json` target emits JSON Schema Draft 2020-12.
+The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
+identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by the target and is not encoded in
 yamlschema.
 
@@ -807,7 +802,7 @@ yamlschema.
 | --- | --- |
 | `type: "string"` | `+Str` |
 | `type: "integer"` | `+Int` |
-| `type: "number"` | `+Float` |
+| `type: "number"` | `+Num` |
 | `type: "boolean"` | `+Bool` |
 | `type: "null"` | `+Null` |
 | `type: "object"` | `+Map{+Any}` or a nested mapping shape |
@@ -857,7 +852,7 @@ Example:
 Converts to:
 
 ```yaml
-+email: /^\S+@\S+$/
++email: +Str =~"\S+@\S+"
 
 name: +Str
 email?: +email
@@ -869,42 +864,46 @@ tags: +Str[1+,!]
 
 `bin/ysc` works in these stages:
 
-1. Read JSON Schema from the required input path, or from stdin when the input
-   is `-`.
-2. Require either `-t` / `--to` or `-o` / `--output`.
-3. Use `-t ysd` to parse Draft 2020-12 JSON Schema and emit succinct
-   yamlschema.
+1. Read JSON Schema or yamlschema from an input path, or from stdin by
+   default.
+2. Require `-t` / `--to`, `-o` / `--output`, `-N` / `--norm`, or `-R` /
+   `--roundtrip`.
+3. Use `-t ysd` to parse JSON Schema and emit succinct yamlschema.
 4. Use `-t yscy` or `-t yscj` to emit fully expanded yamlschema as YAML or
    JSON.
-5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON
-   Schema.
+5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON Schema.
 6. Build a YAMLScript data structure for the output document.
 7. Prefer succinct scalar forms where possible.
 8. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-9. Dump `ysd.yaml` and `ysc.yaml` results as YAML. Dump `ysc.json` and
-   `schema.json` results as canonical, two-space-indented JSON.
+9. Dump `ysd.yaml` and `ysc.yaml` results as YAML.
+   Dump `ysc.json` and `schema.json` results as canonical, two-space-indented
+   JSON.
    Use `-C` / `--compact` for compact JSON output.
-10. Post-process generated TODO sentinel keys into `# TODO: <keyword>`
-    comments.
+10. Preserve unsupported JSON Schema keywords as same-named dotted
+    directives and report each occurrence with a warning.
 11. Prefix generated YSD with `# Converted from JSON Schema`.
 12. Put a blank line before every top-level type definition and between the
     final definition and the document body.
 
-The converter emits TODO comments for JSON Schema features that still need
-language design or implementation:
+Unsupported JSON Schema keywords remain data rather than becoming comments:
 
 ```yaml
-auth:
-  # TODO: if
+auth?:
+  .if:
+    required:
+    - token
 ```
 
-Current TODO keywords include:
+Current passthrough keywords include:
 
 ```text
-if then else dependentRequired dependentSchemas patternProperties
-propertyNames prefixItems contains
-unevaluatedItems unevaluatedProperties exclusiveMinimum exclusiveMaximum format
+$anchor $dynamicRef $dynamicAnchor $vocabulary $comment
+prefixItems contains patternProperties dependentSchemas propertyNames
+if then else unevaluatedItems unevaluatedProperties multipleOf
+exclusiveMaximum exclusiveMinimum maxContains minContains dependentRequired
+deprecated readOnly writeOnly examples format
+contentEncoding contentMediaType contentSchema
 ```
 
 
@@ -935,8 +934,7 @@ Still open or incomplete:
 - `contains`, `minContains`, and `maxContains`.
 - Unevaluated item/property handling.
 - JSON Schema dynamic references, anchors, vocabularies, content validation,
-  and
-boolean schemas.
+  and boolean schemas.
 
 Some of those may become first-class yamlschema features; some may remain
 outside the scope of the language.

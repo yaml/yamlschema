@@ -206,6 +206,8 @@ defn yamlschema-input-schema(text source report=true):
   when report:
     warn-yamlschema-passthrough: data
   expanded =: expand-ysc(data expansion-source-format(source))
+  when report:
+    warn-yamlschema-float-export: expanded
   ysc-to-schema: expanded
 
 defn input-format(opts):
@@ -1243,7 +1245,7 @@ defn safe-compact-enum-token?(token):
 defn infer-base(values):
   bases =: values.map(base-for-value):set
   cond:
-    bases == \{'+Int' '+Float'}: '+Float'
+    bases == \{'+Int' '+Float'}: '+Num'
     bases.# == 1: bases:first
     else:
       usage: 'cannot infer a common enum type; add an explicit type reference'
@@ -1258,10 +1260,24 @@ defn base-for-value(value):
     map?(value): '+Map'
     else: '+Any'
 
+defn json-infer-base(values):
+  bases =: values.map(json-base-for-value):set
+  cond:
+    bases == \{'+Int' '+Num'}: '+Num'
+    bases.# == 1: bases:first
+    else:
+      usage: 'cannot infer a common enum type; add an explicit type reference'
+
+defn json-base-for-value(value):
+  cond:
+    integer?(value): '+Int'
+    number?(value): '+Num'
+    else: base-for-value(value)
+
 defn range-block(value base):
   range =: normalize-range(value)
   inferred =:
-    base || range-number-type(range).eq('integer').if('+Int' '+Float')
+    base || range-number-type(range).eq('integer').if('+Int' '+Num')
   result =:
     if base:
       then: +{}
@@ -1830,6 +1846,7 @@ defn ysc-bare-scalar-to-schema(value):
       value-list-to-schema(s)
     s == '+Str': +{'type' 'string'}
     s == '+Int': +{'type' 'integer'}
+    s == '+Num': +{'type' 'number'}
     s == '+Float': +{'type' 'number'}
     s == '+Bool': +{'type' 'boolean'}
     s == '+Null': +{'type' 'null'}
@@ -1987,6 +2004,46 @@ defn warn-yamlschema-child(key value path root):
     else:
       child-path =: yamlschema-schema-child-path(path key root)
       warn-yamlschema-passthrough: value child-path false
+
+defn warn-yamlschema-float-export(value path='' root=true):
+  when map?(value):
+    reference =: value.get('.type')
+    warn-float-reference: reference path
+    each entry value:
+      key child =: entry
+      key =: key:S
+      warn-yamlschema-float-child: key child path root
+
+defn warn-yamlschema-float-child(key value path root):
+  cond:
+    key.in?(['.one', '.any', '.all']) && sequential?(value):
+      keyword =: +{'.one' 'oneOf', '.any' 'anyOf', '.all' 'allOf'}.$key
+      child-path =: json-pointer-child(path keyword)
+      ignored =:
+        map-indexed(
+          \(warn-yamlschema-float-export(
+            _2 json-pointer-child(child-path _1) false))
+          value):vec
+    key.in?(['.item', '.not']):
+      keyword =: key.eq('.item').if('items' 'not')
+      warn-yamlschema-float-export:
+        value json-pointer-child(path keyword) false
+    key =~ /^\./: nil
+    else:
+      child-path =: yamlschema-schema-child-path(path key root)
+      warn-yamlschema-float-export: value child-path false
+
+defn warn-float-reference(reference path):
+  when string?(reference):
+    cond:
+      reference == '+Float': warn-float-json-schema(path)
+      reference == '+Float[]':
+        warn-float-json-schema: json-pointer-child(path 'items')
+
+defn warn-float-json-schema(path):
+  location =: path.empty?.if('/' path)
+  prefix =: "ysc: warning: +Float at $location exports as JSON Schema "
+  err: "$prefix\"number\", which also accepts integers\n"
 
 defn yamlschema-schema-child-path(path key root):
   cond:
@@ -2243,7 +2300,7 @@ defn add-block(result schema inherited-open=true):
         result =:
           if result.has?('.type'):
             then: result
-            else: result + {'.type' infer-base(schema.enum)}
+            else: result + {'.type' json-infer-base(schema.enum)}
         result +: +{'.enum' enum-block-list(schema.enum)}
       else: result
   result =:
@@ -2252,7 +2309,7 @@ defn add-block(result schema inherited-open=true):
         result =:
           if result.has?('.type'):
             then: result
-            else: result + {'.type' base-for-value(schema.const)}
+            else: result + {'.type' json-base-for-value(schema.const)}
         result +: +{'.const' literal-value(schema.const)}
       else: result
   result =: map-put-if(result schema.uniqueItems '.uniq' true)
@@ -2481,7 +2538,7 @@ defn union-type-ref(type):
   case type:
     'string': '+Str'
     'integer': '+Int'
-    'number': '+Float'
+    'number': '+Num'
     'boolean': '+Bool'
     'null': '+Null'
     else: nil
@@ -2520,7 +2577,7 @@ defn only-const?(schema):
 defn compact-const-scalar(value):
   token =: compact-const-token(value)
   when token:
-    base =: base-for-value(value)
+    base =: json-base-for-value(value)
     =>: "$base ==$token"
 
 defn compact-const-token(value):
@@ -2693,7 +2750,7 @@ defn type-sym(t):
     case t:
       'string': '+Str'
       'integer': '+Int'
-      'number': '+Float'
+      'number': '+Num'
       'boolean': '+Bool'
       'null': '+Null'
       'object': '+Map'
@@ -2728,7 +2785,7 @@ defn regex-literal(pattern):
 defn compact-enum-scalar(schema):
   values =: schema.enum
   when values.every?(safe-compact-enum-value?):
-    base =: schema.type.if(type-sym(schema.type) infer-base(values))
+    base =: schema.type.if(type-sym(schema.type) json-infer-base(values))
     members =: values.map(\(_:S)):vec.join(', ')
     =>: "$base [$members]"
 
@@ -2740,7 +2797,8 @@ defn compact-enum-default-scalar(schema):
     default.in?(schema.enum) &&
     schema.enum.every?(safe-compact-enum-value?)
   when valid:
-    base =: schema.type.if(type-sym(schema.type) infer-base(schema.enum))
+    base =:
+      schema.type.if(type-sym(schema.type) json-infer-base(schema.enum))
     members =:
       schema.enum
         .map(\(enum-default-member(_ default)))

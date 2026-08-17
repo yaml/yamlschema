@@ -19,8 +19,8 @@ still validating the same data.
 
 ## Roundtrip Model
 
-There are three useful semantic representations. Expanded yamlschema has YAML
-and JSON serializations:
+There are three useful semantic representations.
+Expanded yamlschema has YAML and JSON serializations:
 
 ```text
 contact.schema.json
@@ -43,7 +43,7 @@ shape:
 ```json
 {
   "name": "+Str",
-  "email": {".type": "+Str", ".like": "^\\S+@\\S+$"},
+  "email?": {".type": "+Str", ".like": "^\\S+@\\S+$"},
   "tags": {
     ".type": "+Str[]",
     ".uniq": true,
@@ -72,8 +72,9 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 ```
 
 Use `.schema.json` for JSON Schema files and `.ysd.yaml` for human-maintained
-yamlschema DSL files. Use `.ysc.yaml` or `.ysc.json` for the same non-human,
-fully expanded yamlschema model.
+yamlschema DSL files.
+Use `.ysc.yaml` or `.ysc.json` for the same non-human, fully expanded
+yamlschema model.
 
 
 ## Conversion Directions
@@ -137,18 +138,27 @@ Roundtrip back to JSON Schema:
 If no keys are required, the `required` array can be omitted.
 
 
-## Built-in Types
+## JSON Schema Type Mapping
+
+The authoritative list and semantics of yamlschema built-ins are in the [DSL
+built-in-types reference](dsl.md#built-in-types).
+Their direct JSON Schema mappings are:
 
 | JSON Schema | yamlschema |
 | --- | --- |
 | `{"type": "string"}` | `+Str` |
 | `{"type": "integer"}` | `+Int` |
-| `{"type": "number"}` | `+Float` |
+| `{"type": "number"}` | `+Num` |
 | `{"type": "boolean"}` | `+Bool` |
 | `{"type": "null"}` | `+Null` |
 | `{"type": "object"}` | `+Map{+Any}` or a mapping shape |
-| `{"type": "array"}` | `+Any[]`, another `+Type[]`, or a list key suffix |
+| `{"type": "array"}` | `+Any[]` or another value-side `+Type[]` |
 | `{"type": ["string", "integer"]}` | `+Any(+Str,+Int)` |
+
+JSON Schema `number` accepts integer and non-integer numeric values, so it maps
+to `+Num`.
+The YAML-specific `+Float` type exports as JSON Schema `number`, but `ysc`
+warns because the exported schema also accepts integers.
 
 Example:
 
@@ -169,7 +179,7 @@ converts to:
 ```yaml
 s: +Str
 i: +Int
-n: +Float
+n: +Num
 b: +Bool
 ```
 
@@ -200,16 +210,18 @@ Roundtrip notes:
 - JSON Schema regexes are strings.
 - YSD `.match` is a whole-string match; canonicalization bookends its value
   with `^` and `$`.
-- YSD `.find` is an unanchored search and canonicalization preserves its value.
+- YSD `.find` is an unanchored search and canonicalization preserves its
+  value.
 - Canonical YSC uses `.like` for both and exports its value unchanged as the
   JSON Schema `pattern`.
 - `/pattern/` is shorthand for `find:"pattern"` only when the body contains
   neither whitespace nor `/`.
 - `=~"..."`, its accepted `match:"..."` alias, and `find:"..."` cannot contain
-  `"`; use an explicit YSD `.match` or `.find` property when needed. Generated
-  YSD uses `=~"..."` for `.match`.
+  `"`; use an explicit YSD `.match` or `.find` property when needed.
+  Generated YSD uses `=~"..."` for `.match`.
 - In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
-  represents space-hash. Other backslash sequences remain literal.
+  represents space-hash.
+  Other backslash sequences remain literal.
 - All regex forms imply string validation.
 
 
@@ -233,32 +245,31 @@ role: +Str [admin, user, guest]
 An enum default is marked on its member:
 
 ```yaml
-logLevel: +Str [debug,=info,warning,error,fatal]
+logLevel: +Str [debug, =info, warning, error, fatal]
 ```
 
-This expands to `.enum: [debug, info, warning, error, fatal]` plus
-`.init: info`.
+This expands to `.enum: [debug, info, warning, error, fatal]` plus `.init:
+info`.
 
 Compact members may contain whitespace; surrounding whitespace is trimmed and
-interior whitespace is preserved. Thus `[foo,bar,foo bar]` and
-`[ foo, bar, foo bar ]` are equivalent. Quoted members and punctuation other
-than `.`, `-`, `_`, and `+` use explicit `.enum`:
+interior whitespace is preserved.
+Thus `[foo,bar,foo bar]` and `[ foo, bar, foo bar ]` are equivalent.
+Quoted members and punctuation other than `.`, `-`, `_`, and `+` use explicit
+`.enum`:
 
 ```json
 {
   "properties": {
     "symbol": {"enum": ["ok", "bad/value"]}
   },
-  "required": ["label"]
+  "required": ["symbol"]
 }
 ```
 
 ```yaml
 symbol:
   .type: +Str
-  .enum:
-  - ok
-  - bad/value
+  .enum: [ok, bad/value]
 ```
 
 Both forms roundtrip back to:
@@ -291,9 +302,9 @@ version: +Str ==v1
 kind: +Str ==User
 ```
 
-`==value` maps to `const`; `=="foo bar"` is the quoted form and
-`const:value` is the labeled alternative. A following `=value` independently
-adds JSON Schema `default`:
+`==value` maps to `const`; `=="foo bar"` is the quoted form and `const:value`
+is the labeled alternative.
+A following `=value` independently adds JSON Schema `default`:
 
 ```yaml
 fixed: +Str ==User =User
@@ -333,9 +344,9 @@ Numeric ranges:
 ```
 
 ```yaml
-port: 1..65535
-age: 0..
-ratio: 0..1
+port: +Int 1..65535
+age: +Int 0..
+ratio: +Num 0..1
 ```
 
 String lengths use `.size`:
@@ -351,31 +362,24 @@ String lengths use `.size`:
 ```
 
 ```yaml
-bio:
-  .type: +Str
-  .size:
-  - 1
-  - 500
-code:
-  .type: +Str
-  .size:
-  - 3
-  - '*'
+bio: +Str 1-500
+code: +Str 3+
 ```
 
 Roundtrip rule:
 
-- `.range` on `+Int` or `+Float` maps its optional bounds to `minimum` and
-  `maximum`.
+- `.range` on `+Int`, `+Float`, or `+Num` maps its optional bounds to
+  `minimum` and `maximum`.
 - `.size` on `+Str` maps to `minLength` and `maxLength`.
 - `.size` on lists maps to `minItems` and `maxItems`.
 - `.size` on maps maps to `minProperties` and `maxProperties`.
-- `*` means the upper bound is absent.
+- A one-number canonical sequence such as `.size: [3]` means that the upper
+  bound is absent.
 
 
 ## Arrays
 
-Homogeneous arrays use key suffixes when possible:
+Homogeneous arrays use suffixes on the value type:
 
 ```json
 {
@@ -454,12 +458,8 @@ JSON Schema:
 yamlschema:
 
 ```yaml
-port:
-  .type: +Int
-  .init: 8080
-host:
-  .type: +Str
-  .init: localhost
+port: +Int =8080
+host: +Str =localhost
 ```
 
 Roundtrip rule: `.init` maps to JSON Schema `default`.
@@ -467,13 +467,15 @@ Roundtrip rule: `.init` maps to JSON Schema `default`.
 
 ## Annotations
 
-JSON Schema Draft 2020-12 is the only supported JSON Schema dialect for now.
-The `$schema` keyword is implied by `.schema.json` output and is not encoded in
-yamlschema.
+Generated `.schema.json` uses JSON Schema Draft 2020-12.
+The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
+dialect identifiers for the direct mappings it supports.
+The `$schema` keyword is implied by `.schema.json` output and is not encoded
+in yamlschema.
 
 Other JSON Schema metadata roundtrips through explicit yamlschema directives.
-These fields do not affect validation, but keeping them preserves useful schema
-metadata.
+These fields do not affect validation, but keeping them preserves useful
+schema metadata.
 
 | JSON Schema | yamlschema |
 | --- | --- |
@@ -502,8 +504,8 @@ JSON Schema definitions become top-level symbols:
 ```
 
 ```yaml
-+port: 1..65535
-+email: /^\S+@\S+$/
++port: +Int 1..65535
++email: +Str =~"\S+@\S+"
 
 host: +Str
 port: +port
@@ -593,25 +595,26 @@ Explicit JSON Schema values import as follows:
 | `additionalProperties: false` | No wildcard |
 
 Generated YSD starts with `.open: true`, matching JSON Schema's default that
-undeclared object properties are allowed. A shaped mapping with omitted
-`additionalProperties` inherits that setting. A nested
-`additionalProperties: false` becomes `.open: false`; a mapping nested below
-that closed scope is locally reopened when its own JSON Schema omits
-`additionalProperties`.
+undeclared object properties are allowed.
+A shaped mapping with omitted `additionalProperties` inherits that setting.
+A nested `additionalProperties: false` becomes `.open: false`; a mapping
+nested below that closed scope is locally reopened when its own JSON Schema
+omits `additionalProperties`.
 
 On export, an open shape omits `additionalProperties`, while a closed shape
-gets `additionalProperties: false`. An explicit `+Str: +Any` also omits
-`additionalProperties`, since the JSON Schema default has the same semantics;
-other wildcard values emit the corresponding schema. The root yamlschema
-document remains closed without a wildcard:
-top-level `.open` is the lexical default for the types defined beneath it.
+gets `additionalProperties: false`.
+An explicit `+Str: +Any` also omits `additionalProperties`, since the JSON
+Schema default has the same semantics; other wildcard values emit the
+corresponding schema.
+The root yamlschema document remains closed without a wildcard: top-level
+`.open` is the lexical default for the types defined beneath it.
 
-Canonical YSC does not depend on surrounding lexical state. Expansion places
-`.open: true` on each inherited open mapping shape and uses the ordinary
-closed default for the rest.
+Canonical YSC does not depend on surrounding lexical state.
+Expansion places `.open: true` on each inherited open mapping shape and uses
+the ordinary closed default for the rest.
 
-An incomplete `+Map` requires sibling properties. Pure open objects use
-`+Map{+Any}`.
+An incomplete `+Map` requires sibling properties.
+Pure open objects use `+Map{+Any}`.
 
 When named properties coexist with `additionalProperties`, the importer emits
 an explicit wildcard after the named properties:
@@ -623,12 +626,12 @@ labels:
 ```
 
 `+Map{+Type}` accepts one built-in, user-defined, or namespaced reference.
-It is shorthand for the future `+Map{+Str,+Type}` form. Two-reference maps are
-reserved for YAML key schemas but are not implemented. More complex value
-constraints continue to use explicit `+Str` syntax.
+It is shorthand for the future `+Map{+Str,+Type}` form.
+Two-reference maps are reserved for YAML key schemas but are not implemented.
+More complex value constraints continue to use explicit `+Str` syntax.
 
-Generated `.ysd.yaml` begins with `# Converted from JSON Schema`. Root
-annotations and `.open` follow, then each top-level `+type` definition is
+Generated `.ysd.yaml` begins with `# Converted from JSON Schema`.
+Root annotations and `.open` follow, then each top-level `+type` definition is
 preceded by a blank line.
 
 
@@ -643,24 +646,32 @@ JSON Schema combinators round-trip through explicit directives:
 | `allOf` | `.all` or `+All(...)` |
 | `not` | `.not` or `+Not(...)` |
 
-The compact forms contain type references only. `One`, `Any`, and `All`
-require at least two references. `Not` requires at least one; multiple
-references mean `not(anyOf(...))`.
+The compact forms contain type references only.
+`One`, `Any`, and `All` require at least two references.
+`Not` requires at least one; multiple references mean `not(anyOf(...))`.
 
 When every `+Any(...)` branch is a simple built-in type, JSON Schema output
-uses a `type` array. References and richer alternatives use `anyOf`.
+uses a `type` array.
+References and richer alternatives use `anyOf`.
 
 
 ## Unsupported or Open JSON Schema Features
 
-The converter emits TODO comments for features that still need design:
+The converter keeps unsupported keywords as same-named dotted directives and
+warns for every occurrence.
+Their values remain data and export under the original JSON Schema keyword
+rather than being converted into comments:
 
 ```yaml
-auth:
-  # TODO: if
+auth?:
+  .if:
+    required:
+    - token
 ```
 
-Open mappings include:
+These passthrough directives preserve information but do not yet provide
+yamlschema-native semantics.
+Open design areas include:
 
 | JSON Schema | Possible yamlschema direction |
 | --- | --- |
@@ -693,9 +704,11 @@ Semantic roundtrip does not preserve every textual detail:
 - Whitespace and comments in JSON Schema are not preserved.
 - Equivalent JSON Schema spellings may normalize to one spelling.
 - `definitions` should export back as `$defs`.
-- Succinct yamlschema may expand to explicit yamlschema before JSON generation.
+- Succinct yamlschema may expand to explicit yamlschema before JSON
+  generation.
 - A compact enum and an explicit `.enum` with the same values are equivalent.
-- Unbounded `*` in yamlschema maps to an omitted JSON Schema bound.
+- A one-element `.range` or `.size` sequence denotes a missing upper bound;
+  generated YSD uses `n..` or `n+` rather than the obsolete `*` marker.
 
 Lossless source-preserving roundtrip would require storing source metadata in
 addition to the schema semantics.
@@ -708,11 +721,13 @@ ysc -R values.schema.json
 ysc -Rq values.schema.json
 ```
 
-The first command prints `OK` or a unified diff. The quiet form prints nothing.
+The first command prints `OK` or a unified diff.
+The quiet form prints nothing.
 When `less` is available, the diff is displayed with `less -FRX`; otherwise it
-is written directly to standard output. Both forms return status 0 for a match
-and status 1 for a difference. This is a normalized structural comparison, not
-proof of validation equivalence.
+is written directly to standard output.
+Both forms return status 0 for a match and status 1 for a difference.
+This is a normalized structural comparison, not proof of validation
+equivalence.
 
 
 ## Implementation Checklist
@@ -728,5 +743,4 @@ For full bidirectional roundtrip support:
 
 The existing `bin/ysc` covers step 1 for the direct mappings listed above.
 It does some of step 2 by emitting succinct forms where possible.
-It also covers step 4 for the same direct mapping subset with
-`ysc -t jsc`.
+It also covers step 4 for the same direct mapping subset with `ysc -t jsc`.

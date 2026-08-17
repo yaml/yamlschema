@@ -98,6 +98,14 @@ test::
       }
     }
 
+- name: norm-warns-for-float-export
+  cmnd: sh -c 'bin/ysc -f ysd -NC - 2>&1'
+  stdi: |
+    precise: +Float
+  want: |
+    ysc: warning: +Float at /properties/precise exports as JSON Schema "number", which also accepts integers
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"precise":{"type":"number"}},"required":["precise"],"additionalProperties":false}
+
 - name: roundtrip-match
   cmnd: bin/ysc --roundtrip -f jsc -
   stdi: |

@@ -35,7 +35,7 @@ test::
     # Converted from JSON Schema
     .open: true
     price?:
-      .type: +Float
+      .type: +Num
       .multipleOf: 0.5
       .exclusiveMinimum: 0
     choice?:
@@ -59,13 +59,13 @@ test::
     }
   want: |
     ysc: warning: unsupported JSON Schema keyword "multipleOf" at /properties/price/multipleOf
-    {".open":true,"price?":{".type":"+Float",".multipleOf":0.5}}
+    {".open":true,"price?":{".type":"+Num",".multipleOf":0.5}}
 
 - name: passthrough-roundtrip-from-expanded-yaml
   cmnd: sh -c 'bin/ysc -f yscy -t jsc -C - 2>&1'
   stdi: |
     price?:
-      .type: +Float
+      .type: +Num
       .multipleOf: 0.5
       .exclusiveMinimum: 0
     choice?:

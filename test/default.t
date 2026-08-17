@@ -33,7 +33,7 @@ test::
     # Converted from JSON Schema
     .open: true
     port: +Int =8080
-    ratio: +Float =1.5
+    ratio: +Num =1.5
     create: +Bool =true
     host: +Str =localhost
     word: +Str =8gcr
