@@ -4,6 +4,23 @@ use ys::taptest: :all
 
 test::
 
+- name: explicit-true-additional-properties-roundtrip
+  cmnd: bin/ysc -R -f jsc -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  want: |
+    OK
+
 - name: metadata-roundtrip
   cmnd: |
     sh -c '

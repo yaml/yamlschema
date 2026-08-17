@@ -372,13 +372,9 @@ defn unified-diff(original roundtripped):
   =>: output
 
 defn normalize-json-schema(value root?):
-  cond:
-    map?(value):
-      normalize-json-map: value root?
-    sequential?(value):
-      vec: map(\(normalize-json-schema(_ false)) value)
-    else:
-      value
+  if map?(value):
+    then: normalize-json-map(value root?)
+    else: value
 
 defn normalize-json-map(value root?):
   result =: omap()
@@ -393,7 +389,25 @@ defn normalize-json-map(value root?):
 defn normalize-json-entry(result entry):
   key =: entry.0
   value =: entry.1
-  result +: +{key normalize-json-schema(value false)}
+  if key.eq('additionalProperties') && value.eq(true):
+    then: result
+    else: result + {key normalize-json-keyword-value(key value)}
+
+defn normalize-json-keyword-value(key value):
+  cond:
+    single-schema-json-keyword?(key):
+      normalize-json-schema: value false
+    sequence-schema-json-keyword?(key) && sequential?(value):
+      vec: value.map(\(normalize-json-schema(_ false)))
+    mapping-schema-json-keyword?(key) && map?(value):
+      normalize-json-schema-mapping: value
+    else: value
+
+defn normalize-json-schema-mapping(value):
+  reduce normalize-json-schema-mapping-entry: omap() value
+
+defn normalize-json-schema-mapping-entry(result entry):
+  result +: +{entry.0 normalize-json-schema(entry.1 false)}
 
 defn normalize-definitions(result):
   if contains?(result 'definitions'):

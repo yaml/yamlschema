@@ -98,6 +98,31 @@ test::
       }
     }
 
+- name: norm-canonicalizes-explicit-open-objects
+  cmnd: bin/ysc -NC
+  stdi: |
+    {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "open": {"type": "object", "additionalProperties": true},
+        "closed": {"type": "object", "additionalProperties": false},
+        "typed": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "data": {
+          "default": {
+            "additionalProperties": true,
+            "definitions": {"x": {"type": "string"}},
+            "$ref": "#/definitions/x"
+          }
+        }
+      }
+    }
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"closed":{"type":"object","additionalProperties":false},"data":{"default":{"$ref":"#\/definitions\/x","additionalProperties":true,"definitions":{"x":{"type":"string"}}}},"open":{"type":"object"},"typed":{"type":"object","additionalProperties":{"type":"string"}}}}
+
 - name: norm-warns-for-float-export
   cmnd: sh -c 'bin/ysc -f ysd -NC - 2>&1'
   stdi: |

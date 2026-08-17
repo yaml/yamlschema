@@ -703,6 +703,7 @@ Semantic roundtrip does not preserve every textual detail:
 - JSON object key order may change.
 - Whitespace and comments in JSON Schema are not preserved.
 - Equivalent JSON Schema spellings may normalize to one spelling.
+- Explicit `additionalProperties: true` normalizes to omission.
 - `definitions` should export back as `$defs`.
 - Succinct yamlschema may expand to explicit yamlschema before JSON
   generation.
