@@ -98,6 +98,37 @@ Canonical YSC materializes inherited open shapes with `.open: true`; absence
 continues to mean closed.
 
 
+## Key/Value Pair Constraints
+
+Use a top-level `.keys` sequence when a constraint relates multiple mapping
+pairs:
+
+```yaml
+token?: +Str
+existingSecret?: +Str
+
+.keys:
+- .any:
+  - token: +Str 8+
+  - existingSecret: +Str 1+
+```
+
+Each `.any` branch is a partial mapping constraint.
+The example requires at least one branch to match: `token` must be present and
+have at least eight characters, or `existingSecret` must be present and have
+at least one character.
+
+Plain branch keys are required.
+A branch key ending in `?` is optional.
+Unmentioned properties remain unaffected, and a branch does not create or
+close an object type.
+
+One `.keys` rule becomes a root JSON Schema `anyOf`.
+Multiple rules all apply and become ordered members of a root `allOf`.
+Each rule must currently contain exactly one `.any` entry with at least two
+non-empty property-to-type mappings.
+
+
 ## Built-in Types
 
 | Type | Accepted value |

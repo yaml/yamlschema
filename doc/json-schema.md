@@ -536,6 +536,8 @@ Roundtrip notes:
 - A local reference such as `#/$defs/email` imports as `+email`.
 - A singleton `allOf` containing only a reference normalizes to a sibling
   `$ref` under Draft 2020-12.
+- A singleton `allOf` containing only an `anyOf` normalizes to a sibling
+  `anyOf`.
 - A referenced mapping refined by local properties puts `+name` under `.type`
   and keeps those property definitions as siblings.
 - Exporting back to JSON Schema should prefer `$defs`.
@@ -657,6 +659,20 @@ The compact forms contain type references only.
 When every `+Any(...)` branch is a simple built-in type, JSON Schema output
 uses a `type` array.
 References and richer alternatives use `anyOf`.
+
+Root `anyOf` branches made only from `properties` and `required` import as an
+ordered `.keys` rule:
+
+```yaml
+.keys:
+- .any:
+  - token: +Str 8+
+  - existingSecret: +Str 1+
+```
+
+Each branch is a partial mapping constraint rather than an object type.
+One rule exports directly as `anyOf`.
+Multiple `.keys` rules export as ordered members of `allOf`.
 
 
 ## Unsupported or Open JSON Schema Features

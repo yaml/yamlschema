@@ -424,30 +424,40 @@ Key-side list syntax such as `key[]` and `key?[1+]` is rejected.
 Optionality belongs to one key/value pair, but some mapping constraints relate
 several pairs.
 The properties remain ordinary sibling entries so their order is preserved.
-A planned `.keys` sequence holds ordered relationship rules:
+The `.keys` sequence holds ordered relationship rules without requiring
+duplicate YAML keys:
 
 ```yaml
 aaa: +Bool
 foo?: +Str
 fool?: +Int
-bar?: +Str
-baz?: +Int
 bbb: +bar
 
 .keys:
-- .one: [foo, fool]
-- .one: [bar, baz]
+- .any:
+  - foo: +Str
+  - fool: +Int
 ```
 
-Each `.one` rule requires exactly one named property.
-Repeating `.one` is valid because every rule is a separate mapping in the
-sequence; YAML duplicate keys are not required.
+Each `.any` branch is a partial mapping constraint.
+A plain branch key is required, while a branch key ending in `?` is optional.
+Keys not mentioned by the branch are unaffected.
+The branch itself does not create an object type or close the surrounding
+mapping.
+
+The example means that either `foo` must be a string or `fool` must be an
+integer.
+It maps directly to JSON Schema `anyOf` branches containing `properties` and
+`required`.
+One `.keys` rule exports directly as `anyOf`.
+Multiple rules all apply and export as members of `allOf`, preserving their
+order.
 
 Other presence relationships fit the same ordered rule model:
 
 ```yaml
 .keys:
-- .any: [host, socket, url]
+- .one: [host, socket, url]
 - .excl: [debug, quiet]
 - .with:
     user: [password]
@@ -456,15 +466,13 @@ Other presence relationships fit the same ordered rule model:
   .else: [key3]
 ```
 
-`.any` requires at least one property, `.excl` permits at most one, and
-`.with` declares dependent required properties.
+These name-list forms are planned but are not accepted yet.
+`.one` would require exactly one property, `.excl` would permit at most one,
+and `.with` would declare dependent required properties.
 `.when` tests whether its property is present; `.then` and `.else` select
 additional required properties.
 For example, the last rule corresponds to JSON Schema `if` with `required:
 [key1]`, followed by `then` and `else` schemas requiring `key2` or `key3`.
-
-This `.keys` rule system is design-only for now.
-It is not accepted by the converter yet.
 
 
 ## Wildcard Keys

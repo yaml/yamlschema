@@ -382,6 +382,7 @@ defn normalize-json-map(value root?):
   result =: normalize-definitions(result)
   result =: normalize-ref(result)
   result =: normalize-single-ref-allof(result)
+  result =: normalize-single-anyof-allof(result)
   if root?:
     then:
       result +: +{'$schema' JSON-SCHEMA-DIALECT}
@@ -438,6 +439,14 @@ defn normalize-single-ref-allof(result):
       reference =: result.allOf.0.'$ref'
       normalized =: dissoc(result 'allOf')
       normalized +: +{'$ref' reference}
+
+defn normalize-single-anyof-allof(result):
+  if result.has?('anyOf') || singleton-anyof-allof?(result).!:
+    then: result
+    else:
+      alternatives =: result.allOf.0.anyOf
+      normalized =: dissoc(result 'allOf')
+      normalized +: +{'anyOf' alternatives}
 
 defn canonical-json-schema(value):
   cond:
@@ -559,14 +568,54 @@ defn expand-doc-entry(result entry):
       add-expanded-field: result key value
 
 defn top-directive?(key):
-  key.in?(['.from', '.name', '.root', '.json', '.title', '.desc', '.open'])
+  key.in?([
+    '.from', '.name', '.root', '.json', '.title', '.desc', '.open',
+    '.keys'])
 
 defn expand-top-directive(result key value):
   when-not top-directive?(key):
     reject-unknown-directive: key
-  when key == '.open':
-    validate-open-value: value
-  result +: +{key value}
+  normalized =:
+    case key:
+      '.open': validate-open-value(value)
+      '.keys': expand-key-rules(value)
+      else: value
+  result +: +{key normalized}
+
+defn expand-key-rules(value):
+  when-not sequential?(value):
+    usage: 'yamlschema .keys requires a non-empty sequence of rules'
+  rules =: vec(value)
+  when rules:empty?:
+    usage: 'yamlschema .keys requires a non-empty sequence of rules'
+  vec: rules.map(expand-key-rule)
+
+defn expand-key-rule(value):
+  valid =: map?(value) && key-set(value).eq(\{'.any'})
+  when-not valid:
+    usage: 'yamlschema .keys rules currently require exactly one .any entry'
+  branches =: value.'.any'
+  when-not sequential?(branches):
+    usage: 'yamlschema .keys .any requires at least two branches'
+  when count(branches) < 2:
+    usage: 'yamlschema .keys .any requires at least two branches'
+  expanded =: vec(branches.map(expand-key-rule-branch))
+  =>: +{'.any' expanded}
+
+defn expand-key-rule-branch(value):
+  when-not map?(value):
+    usage:
+      'yamlschema .keys .any branches require property-to-type mappings'
+  when empty?(value):
+    usage:
+      'yamlschema .keys .any branches require property-to-type mappings'
+  reduce expand-key-rule-branch-entry: omap() value
+
+defn expand-key-rule-branch-entry(result entry):
+  key =: entry.0:S
+  when key.starts?('.') || key.starts?('+'):
+    usage: 'yamlschema .keys .any branch keys must be property names'
+  add-expanded-field: result key entry.1
 
 defn add-expanded-field(result key value):
   info =: parse-expanded-key(key)
@@ -710,9 +759,28 @@ defn resolve-open-doc(doc):
 defn resolve-open-doc-entry(result entry inherited):
   key =: entry.0:S
   value =: entry.1
-  if key =~ /^\./:
-    then: result + {key value}
+  cond:
+    key == '.keys':
+      result + {key resolve-open-key-rules(value inherited)}
+    key =~ /^\./: result + {key value}
     else: result + {key resolve-open-type(value inherited)}
+
+defn resolve-open-key-rules(rules inherited):
+  vec: rules.map(\(resolve-open-key-rule(_ inherited)))
+
+defn resolve-open-key-rule(rule inherited):
+  branches =: rule.'.any'.map(
+    \(resolve-open-key-branch(_ inherited))):vec
+  =>: +{'.any' branches}
+
+defn resolve-open-key-branch(branch inherited):
+  reduce:
+    \(resolve-open-key-branch-entry(_1 _2 inherited))
+    omap()
+    branch
+
+defn resolve-open-key-branch-entry(result entry inherited):
+  result + {entry.0 resolve-open-type(entry.1 inherited)}
 
 defn resolve-open-type(value inherited):
   when-not map?(value):
@@ -1477,12 +1545,37 @@ defn add-schema-meta(result key value):
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
     '.open': result
+    '.keys': add-key-rules-schema(result value)
     '.additionalProperties':
       reject-additional-properties: key
     else:
       if passthrough-directive?(key):
         then: add-passthrough-schema-keyword(result key value)
         else: result
+
+defn add-key-rules-schema(result rules):
+  schemas =: rules.map(key-rule-to-schema):vec
+  if count(schemas).eq(1):
+    then:
+      when result.has?('anyOf'):
+        usage: 'duplicate root anyOf from yamlschema .keys'
+      result +: schemas.0
+    else:
+      when result.has?('allOf'):
+        usage: 'duplicate root allOf from yamlschema .keys'
+      result +: +{'allOf' schemas}
+
+defn key-rule-to-schema(rule):
+  alternatives =: rule.'.any'.map(key-rule-branch-to-schema):vec
+  =>: +{'anyOf' alternatives}
+
+defn key-rule-branch-to-schema(branch):
+  state =: reduce(ysc-object-step initial-object-state() branch)
+  result =: omap()
+  result =: result.map-put-if(
+    empty?(state.props).! 'properties' state.props)
+  result: .map-put-if(
+    empty?(state.required).! 'required' state.required)
 
 defn legacy-directive?(key):
   key =~ /^-/
@@ -2014,6 +2107,9 @@ defn warn-yamlschema-passthrough(value path='' root=true):
 
 defn warn-yamlschema-child(key value path root):
   cond:
+    key == '.keys':
+      when sequential?(value):
+        warn-yamlschema-key-rules: value path
     key.in?(['.one', '.any', '.all']) && sequential?(value):
       keyword =: +{'.one' 'oneOf', '.any' 'anyOf', '.all' 'allOf'}.$key
       child-path =: json-pointer-child(path keyword)
@@ -2028,6 +2124,36 @@ defn warn-yamlschema-child(key value path root):
       child-path =: yamlschema-schema-child-path(path key root)
       warn-yamlschema-passthrough: value child-path false
 
+defn warn-yamlschema-key-rules(rules path):
+  many =: count(rules) > 1
+  ignored =:
+    map-indexed(
+      \(warn-yamlschema-key-rule(_2 _1 path many false)) rules):vec
+
+defn warn-yamlschema-key-rule(rule index path many float?):
+  rule-path =:
+    if many:
+      then: json-pointer-child(json-pointer-child(path 'allOf') index)
+      else: path
+  alternatives =: rule.get('.any' [])
+  branch-path =: json-pointer-child(rule-path 'anyOf')
+  ignored =:
+    map-indexed(
+      \(warn-yamlschema-key-branch(_2 _1 branch-path float?))
+      alternatives):vec
+
+defn warn-yamlschema-key-branch(branch index path float?):
+  when map?(branch):
+    properties-path =:
+      json-pointer-child(json-pointer-child(path index) 'properties')
+    each entry branch:
+      key value =: entry
+      name =: key:S.replace(/\?$/)
+      child-path =: json-pointer-child(properties-path name)
+      if float?:
+        then: warn-yamlschema-float-export(value child-path false)
+        else: warn-yamlschema-passthrough(value child-path false)
+
 defn warn-yamlschema-float-export(value path='' root=true):
   when map?(value):
     reference =: value.get('.type')
@@ -2039,6 +2165,13 @@ defn warn-yamlschema-float-export(value path='' root=true):
 
 defn warn-yamlschema-float-child(key value path root):
   cond:
+    key == '.keys':
+      when sequential?(value):
+        ignored =:
+          map-indexed(
+            \(warn-yamlschema-key-rule(
+              _2 _1 path (count(value) > 1) true))
+            value):vec
     key.in?(['.one', '.any', '.all']) && sequential?(value):
       keyword =: +{'.one' 'oneOf', '.any' 'anyOf', '.all' 'allOf'}.$key
       child-path =: json-pointer-child(path keyword)
@@ -2125,6 +2258,7 @@ defn build-doc(schema):
     .add-import-open-default()
     .add-defs(defs true)
     .add-body(schema true)
+    .add-root-key-rules(schema true)
   add-json-schema-meta: result schema
 
 defn add-root-annotations(result schema):
@@ -2178,6 +2312,55 @@ defn add-property(result entry required inherited-open):
     if array?:
       build-list-value(sub inherited-open)
       build-value(sub inherited-open)
+  result +: +{key value}
+
+defn add-root-key-rules(result schema inherited-open):
+  alternatives =: root-key-anyof(schema)
+  supported =:
+    and:
+      sequential?(alternatives)
+      count(alternatives) >= 2
+      alternatives.every?(root-key-branch-schema?)
+  if supported:
+    then:
+      branches =: alternatives.map(
+        \(build-root-key-branch(_ inherited-open))):vec
+      rule =: +{'.any' branches}
+      rules =: +[rule]
+      result +: +{'.keys' rules}
+    else: result
+
+defn root-key-anyof(schema):
+  cond:
+    schema.anyOf.?: schema.anyOf
+    singleton-anyof-allof?(schema): schema.allOf.0.anyOf
+
+defn root-key-branch-schema?(schema):
+  when-not map?(schema):
+    =>: false
+  when-not map?(schema.properties):
+    =>: false
+  when empty?(schema.properties):
+    =>: false
+  allowed =: \{'properties' 'required'}
+  when-not key-set(schema).every?(\(allowed.has?(_))):
+    =>: false
+  required =: schema.get('required' [])
+  and:
+    sequential?(required)
+    required.every?(\(schema.properties.has?(_)))
+
+defn build-root-key-branch(schema inherited-open):
+  required =: set(schema.get('required' []))
+  reduce:
+    \(build-root-key-branch-entry(_1 _2 required inherited-open))
+    omap()
+    schema.properties
+
+defn build-root-key-branch-entry(result entry required inherited-open):
+  name sub =: entry
+  key =: key-for(name required.has?(name))
+  value =: build-value(sub inherited-open)
   result +: +{key value}
 
 defn build-list-value(schema inherited-open):
@@ -2524,6 +2707,14 @@ defn singleton-ref-allof?(schema):
     sequential?(branches)
     count(branches).eq(1)
     only-ref?(branches.0)
+
+defn singleton-anyof-allof?(schema):
+  branches =: schema.allOf
+  and:
+    sequential?(branches)
+    count(branches).eq(1)
+    map?(branches.0)
+    key-set(branches.0).eq(\{'anyOf'})
 
 defn only-singleton-ref-allof?(schema):
   and:
