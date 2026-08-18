@@ -3059,9 +3059,9 @@ defn literal-value(v): v
 # Post-processing the dumped YAML.
 # --------------------------------------------------------------------
 
-# Wrap generated YSD tight scalars without changing their folded YAML value.
-# When a complete line exceeds 80 columns, the enum and description clauses
-# each start on their own continuation line.
+# Wrap generated YSD tight scalars and `.desc` pairs without changing their
+# folded YAML values. When a complete tight-scalar line exceeds 80 columns,
+# the enum and description clauses each start on their own continuation line.
 defn format-ysd-tight-scalars(text):
   lines =: reduce(format-ysd-tight-line [] text:lines)
   join "\n": lines
@@ -3093,8 +3093,12 @@ defn format-ysd-tight-line(result line):
 defn wrapped-ysd-tight-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
   match =: re-matches(pattern line)
+  desc-pattern =: re-pattern(str('^([ ]*)\.desc' ':' ' (.*)$'))
+  desc =: re-matches(desc-pattern line)
   cond:
     line.# <= 80: +[line]
+    desc && wrappable-ysd-desc?(desc.2):
+      ysd-desc-pair-lines: desc.1 desc.2
     match.!: +[line]
     match.1 =~ /^\s*\./: +[line]
     else:
@@ -3102,6 +3106,29 @@ defn wrapped-ysd-tight-line(line):
       if clauses:
         then: ysd-tight-clause-lines(match.1 clauses)
         else: +[line]
+
+defn wrappable-ysd-desc?(value):
+  plain =: value !~ /^["|>]/
+  single =: value.starts?("'") && value.ends?("'")
+  plain ||: single
+
+defn ysd-desc-pair-lines(indent value):
+  tokens =: vec(value.split(/(?<! ) (?! )/))
+  prefix =: "$indent.desc$(C(58)) "
+  state =: +{
+    'lines' [], 'line' prefix,
+    'continuation' "$indent  ", 'has-token' false}
+  state =: reduce(append-ysd-desc-token state tokens)
+  state.lines: .conj(state.line)
+
+defn append-ysd-desc-token(state token):
+  separator =: state.has-token.if(' ' '')
+  candidate =: "$(state.line)$separator$token"
+  if (candidate.# <= 80) || state.has-token.!:
+    then: state + {'line' candidate, 'has-token' true}
+    else: state + {
+      'lines' (state.lines + state.line),
+      'line' "$(state.continuation)$token", 'has-token' true}
 
 defn ysd-tight-line-clauses(value):
   tokens =: tight-tokens(value)

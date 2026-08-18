@@ -94,6 +94,79 @@ test::
         it is flattened to env vars via toEnvVars. For file-driven components
         (registry, jobservice) it is the config file body passed through verbatim."
 
+- name: long-desc-pair-wraps-at-whitespace
+  cmnd: bin/ysc -t ysd -
+  stdi: |
+    {
+      "properties": {
+        "storageCredentials": {
+          "type": "object",
+          "description": "BYO Secret references for storage credentials. The chart injects REGISTRY_STORAGE_<BACKEND>_<KEY> env vars on both the registry and registryctl containers (distribution honors these env overrides).",
+          "properties": {
+            "s3": {"type": "object"}
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    storageCredentials?:
+      .desc: BYO Secret references for storage credentials. The chart injects
+        REGISTRY_STORAGE_<BACKEND>_<KEY> env vars on both the registry and
+        registryctl containers (distribution honors these env overrides).
+      s3?: +Map{+Any}
+
+- name: wrapped-desc-pairs-retain-quoted-and-spaced-values
+  cmnd: |
+    sh -c '
+      set -eu
+      tmp=$(mktemp -d)
+      trap "rm -r \"$tmp\"" EXIT
+      cat > "$tmp/in.schema.json"
+      bin/ysc -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
+      cat "$tmp/out.ysd.yaml"
+      bin/ysc -f ysd -t jsc -C "$tmp/out.ysd.yaml" |
+        ys -e "say: IN:read:json/load.properties.x.description"
+    '
+  stdi: |
+    {
+      "properties": {
+        "x": {
+          "type": "object",
+          "description": "BYO Secret references:  the chart injects many registry storage credential environment variables on both the registry and registryctl containers without changing their values.",
+          "properties": {"y": {"type": "string"}}
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    x?:
+      .desc: 'BYO Secret references:  the chart injects many registry storage
+        credential environment variables on both the registry and registryctl
+        containers without changing their values.'
+      y?: +Str
+    BYO Secret references:  the chart injects many registry storage credential environment variables on both the registry and registryctl containers without changing their values.
+
+- name: desc-pair-wrap-boundary-is-over-80
+  cmnd: |
+    sh -c '
+      for width in 10 11; do
+        first=$(printf "%060d" 0 | tr 0 a)
+        last=$(printf "%0${width}d" 0 | tr 0 b)
+        printf \
+          "{\"properties\":{\"x\":{\"description\":\"%s %s\"}}}\n" \
+          "$first" "$last" |
+          bin/ysc -t ysd - |
+          awk -v width="$width" "/\\.desc:|^    b/ {print width, length(\$0)}"
+      done
+    '
+  want: |
+    10 80
+    11 69
+    11 15
+
 - name: line-wrap-boundary-is-over-80
   cmnd: |
     sh -c '
