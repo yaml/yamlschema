@@ -51,9 +51,13 @@ test::
           --version         Show version.
 
 - name: version
-  cmnd: bin/ysc --version
+  cmnd: |
+    sh -c '
+      bin/ysc --version |
+        perl -pe "s/[0-9]+[.][0-9]+[.][0-9]+/VERSION/"
+    '
   want: |
-    ysc 0.1.0
+    ysc VERSION
 
 - name: reject-removed-format-options
   cmnd: |
