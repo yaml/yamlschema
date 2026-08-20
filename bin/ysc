@@ -34,6 +34,19 @@ HELP =: |
         --version         Show version.
 
 defn main(*args):
+  try:
+    run-main: args*
+    catch Exception error:
+      data =: ex-data(error)
+      if data.type == 'yamlschema/usage':
+        handle-usage-error: error
+        throw: error
+
+EXPORT =::
+  json-schema-to-ysd: [str, str]
+  ysd-to-json-schema: [str, str]
+
+defn run-main(*args):
   handle-info-options: args
   opts =: parse-args(args)
   validate-format-options: opts
@@ -47,6 +60,14 @@ defn main(*args):
   target =: output-format(opts)
   output =: convert-to(target text opts)
   emit-output: output opts.output
+
+defn json-schema-to-ysd(text):
+  convert: load-json-schema(text false)
+
+defn ysd-to-json-schema(text):
+  schema =: yamlschema-input-schema(text 'ysd.yaml' false)
+  opts =: +{'compact' false}
+  json-output: schema opts
 
 defn convert-to(target text opts):
   case target:
@@ -280,7 +301,11 @@ defn emit-output(text output):
     say: text
 
 defn usage(msg):
-  err: "ysc: $msg\n"
+  data =: +{'type' 'yamlschema/usage'}
+  throw: ex-info(msg data)
+
+defn handle-usage-error(error):
+  err: "ysc: $(ex-message(error))\n"
   err: HELP
   exit: 2
 
@@ -1770,7 +1795,9 @@ defn add-passthrough-schema-entry(result entry):
 defn add-passthrough-schema-keyword(result directive value):
   keyword =: passthrough-keyword(directive)
   when contains?(result keyword):
-    usage: "duplicate JSON Schema keyword from yamlschema directive: $directive"
+    usage: str(
+      'duplicate JSON Schema keyword from yamlschema directive'
+      C(58) ' ' directive)
   result +: +{keyword value}
 
 defn add-canonical-combinators(result value):
@@ -2138,7 +2165,9 @@ defn warn-yamlschema-child(key value path root):
       keyword =: +{'.one' 'oneOf', '.any' 'anyOf', '.all' 'allOf'}.$key
       child-path =: json-pointer-child(path keyword)
       ignored =:
-        map-indexed(\(warn-yamlschema-passthrough(_2 "$child-path/$_1" false)) value):vec
+        map-indexed(
+          \(warn-yamlschema-passthrough(_2 "$child-path/$_1" false))
+          value):vec
     key.in?(['.item', '.not']):
       keyword =: key.eq('.item').if('items' 'not')
       warn-yamlschema-passthrough:
@@ -2574,7 +2603,9 @@ defn add-block(result schema inherited-open=true):
           then:
             result =: result.add-properties(schema local-open)
             add-wildcard-entry: result schema local-open
-          else: map-base.if(result add-wildcard-entry(result schema local-open))
+          else:
+            map-base.if(result
+              add-wildcard-entry(result schema local-open))
       else: result
   add-passthrough-directives: result schema
 
@@ -3301,7 +3332,9 @@ defn start-flow-candidate(state line):
 defn continue-flow-candidate(state line):
   item =: re-matches(/^([ ]*)- (.*)$/ line)
   if item && (item.1 == state.indent):
-    then: state + {'items' (state.items + item.2), 'original' (state.original + line)}
+    then: state + {
+      'items' (state.items + item.2),
+      'original' (state.original + line)}
     else:
       if line-indent(line).# > state.indent.#:
         then: start-flow-candidate(flush-flow-original(state) line)

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YAMLSchema converter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>YAMLSchema converter</h1>
+        <p>Edit either schema and the other side updates automatically.</p>
+      </div>
+      <span id="status">Loading converter...</span>
+    </header>
+    <section class="editors" aria-label="Schema converter">
+      <article>
+        <label for="json-schema">JSON Schema</label>
+        <textarea id="json-schema" spellcheck="false"></textarea>
+        <p class="error" id="json-error" aria-live="polite"></p>
+      </article>
+      <article>
+        <label for="yaml-schema">YAML Schema (YSD)</label>
+        <textarea id="yaml-schema" spellcheck="false"></textarea>
+        <p class="error" id="yaml-error" aria-live="polite"></p>
+      </article>
+    </section>
+  </main>
+  <script src="wasm_exec.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
