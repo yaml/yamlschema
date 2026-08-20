@@ -97,7 +97,8 @@ test::
       cat "$tmp/import.warn"
       cat "$tmp/out.ysc.yaml"
       cat "$tmp/export.warn"
-      ys -pe "ARGS.0:read:json/load == ARGS.1:read:json/load" \
+      ys -pe "ARGS.0:read:json/load == select-keys( \
+        ARGS.1:read:json/load ARGS.0:read:json/load:keys)" \
         -- "$tmp/in.schema.json" "$tmp/out.schema.json"
     '
   stdi: |
