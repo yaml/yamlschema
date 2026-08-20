@@ -8,7 +8,7 @@
 # Unsupported JSON Schema keywords are preserved as dotted passthrough
 # directives and reported as warnings.
 
-VERSION =: '0.1.1'
+VERSION =: '0.1.2'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 WILDCARD-KEY =: '+Str'
 LEGACY-WILDCARD-KEY =: '+Str*'

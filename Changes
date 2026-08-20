@@ -1,5 +1,57 @@
 # YAMLSchema release history
 
+- version: 0.1.2
+  date:    Thu Aug 20 04:44:06 PM EDT 2026
+  changes:
+  - Make version tests release-safe
+  - Prepare release 0.1.1
+  - Add cross-platform release workflow
+  - Add generated schema comments
+  - Wrap long YSD description pairs
+  - Add ordered key constraint rules
+  - Normalize singleton reference allOf schemas
+  - Normalize explicitly open JSON schemas
+  - Distinguish YAML floats from JSON numbers
+  - Preserve unconstrained object types
+  - Improve union and collection roundtripping
+  - Preserve descriptions on shaped objects
+  - Page roundtrip diffs with less
+  - Add normalized JSON Schema roundtrip checking
+  - Add open map semantics and format generated YSD
+  - Preserve unsupported JSON Schema keywords
+  - Unify type directives across yamlschema
+  - Refine canonical types and YSC formatting
+  - Normalize canonical regex and direct types
+  - Normalize canonical type and range directives
+  - Standardize yamlschema format names
+  - Add expanded formats and preserve map order
+  - Remove a generated test file accidentally committed
+  - Add a .gitignore file
+  - Expand yamlschema DSL type syntax
+  - Implement canonical yamlschema DSL expansion
+  - Use period-prefixed schema directives
+  - Add typed wildcard mapping keys
+  - Use base directive and dot ranges
+  - Updates to bin/ysc
+  - Add JSON Schema suite roundtrip harness
+  - Add oneOf to pick conversion
+  - YS refactoring
+  - Add ysc roundtrip utility
+  - Preserve string enum type in roundtrip
+  - Preserve JSON schema definition order
+  - Update ysc CLI format options
+  - Add JSON Schema normalization mode
+  - Canonicalize JSON Schema output
+  - Normalize JSON Schema definitions import
+  - Refactor bin/ysc to idiomatic ys
+  - Remove atom usage from ysc
+  - Reduce ysc atom usage
+  - Support JSON Schema metadata roundtrips
+  - Add schema.json output target
+  - Use ysc.json for compiled yamlschema
+  - Add ysc CLI help and local PATH setup
+  - Initial commit
+
 - version: 0.1.1
   date:    Thu Aug 20 02:37:07 PM EDT 2026
   changes:

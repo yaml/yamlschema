@@ -3,7 +3,7 @@ M := .cache/makes
 $(shell [ -d '$M' ] || git clone -q $R '$M')
 
 MAKES_LOCAL_DIR ?= $(CURDIR)/.cache/local
-YSC-VERSION := 0.1.1
+YSC-VERSION := 0.1.2
 
 include $M/init.mk
 include $M/gh.mk
