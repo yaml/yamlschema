@@ -76,6 +76,12 @@ The format targets and explicit `--from` values are:
 
 ## Installation
 
+Prebuilt releases are available for Linux Intel, macOS ARM, Windows Intel,
+and JavaScript WebAssembly.
+The native archives contain `ysc` or `ysc.exe` and this ReadMe.
+The `js_wasm` archive contains the raw `ysc.wasm` module for use with the Go
+JavaScript WebAssembly runtime.
+
 For local development, source the repo `.rc` file to put `bin/` on your
 `PATH`:
 

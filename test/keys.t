@@ -173,8 +173,17 @@ test::
     ysc: warning: unsupported JSON Schema keyword "if" at /anyOf/0/properties/foo/if
     ysc: warning: +Float at /anyOf/1/properties/bar exports as JSON Schema "number", which also accepts integers
 
-- name: values-schema-roundtrip
-  cmnd: sh -c 'bin/ysc -Rq values.schema.json && echo OK'
+- name: tracked-schema-roundtrip
+  cmnd: sh -c 'bin/ysc -Rq -f jsc - && echo OK'
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"}
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
   want: |
     OK
 

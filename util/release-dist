@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Perl programs are single quoted to keep their sigils from the shell.
+# shellcheck disable=SC2016
+
+set -euo pipefail
+
+usage='release-dist VERSION GLOAT TOP DIST BUILD CURRENT-VERSION'
+version=${1:?usage: $usage}
+gloat=${2:?usage: $usage}
+top=${3:?usage: $usage}
+dist_dir=${4:?usage: $usage}
+build_dir=${5:?usage: $usage}
+current_version=${6:?usage: $usage}
+perl=${PERL:?PERL is required}
+
+version=${version#v}
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  echo 'release-dist: VERSION must have the form X.Y.Z' >&2
+  exit 1
+}
+[[ $current_version == "$version" ]] || {
+  echo "release-dist: VERSION=$version does not match current version" \
+    "$current_version" >&2
+  exit 1
+}
+[[ $top == "$(git -C "$top" rev-parse --show-toplevel)" ]] || {
+  echo 'release-dist: TOP is not the repository root' >&2
+  exit 1
+}
+[[ $dist_dir == "$top/dist" && $build_dir == "$top/.cache/release" ]] || {
+  echo 'release-dist: refusing unexpected output directories' >&2
+  exit 1
+}
+
+source_version=$(
+  "$perl" -ne \
+    'if (/^VERSION =: '\''([0-9]+\.[0-9]+\.[0-9]+)'\''$/) {
+       print "$1\n";
+       exit;
+     }' \
+    "$top/bin/ysc"
+)
+[[ $source_version == "$version" ]] || {
+  echo "release-dist: bin/ysc version $source_version does not match" \
+    "$version" >&2
+  exit 1
+}
+
+platforms=(linux_amd64 darwin_arm64 windows_amd64 js_wasm)
+archives=()
+
+rm -rf -- "$dist_dir" "$build_dir"
+mkdir -p "$dist_dir" "$build_dir/bin" "$build_dir/packages"
+
+build_platform() {
+  local platform=$1 target output name=ysc
+  if [[ $platform == js_wasm ]]; then
+    name=ysc.wasm
+    output="$build_dir/bin/$platform/$name"
+    mkdir -p "${output%/*}"
+    echo "* Building $platform"
+    "$gloat" "$top/bin/ysc" \
+      --out="$output" --to=js --force --quiet \
+      --module=github.com/yaml/yamlschema
+    return
+  fi
+
+  target=${platform/_//}
+  [[ $platform != windows_amd64 ]] || name=ysc.exe
+  output="$build_dir/bin/$platform/$name"
+  mkdir -p "${output%/*}"
+  echo "* Building $platform"
+  "$gloat" "$top/bin/ysc" \
+    --out="$output" --platform="$target" --force --quiet \
+    --module=github.com/yaml/yamlschema
+}
+
+package_platform() {
+  local platform=$1 package_name package_dir archive executable
+  package_name="ysc-$version-$platform"
+  package_dir="$build_dir/packages/$package_name"
+  mkdir -p "$package_dir"
+  cp "$top/ReadMe.md" "$package_dir/"
+
+  case $platform in
+    windows_amd64)
+      executable=ysc.exe
+      cp "$build_dir/bin/$platform/$executable" "$package_dir/"
+      archive="$dist_dir/$package_name.zip"
+      (cd "$build_dir/packages" && zip -qr "$archive" "$package_name")
+      ;;
+    js_wasm)
+      executable=ysc.wasm
+      cp "$build_dir/bin/$platform/$executable" "$package_dir/"
+      archive="$dist_dir/$package_name.tar.gz"
+      tar -czf "$archive" -C "$build_dir/packages" "$package_name"
+      ;;
+    *)
+      executable=ysc
+      cp "$build_dir/bin/$platform/$executable" "$package_dir/"
+      chmod 0755 "$package_dir/$executable"
+      archive="$dist_dir/$package_name.tar.gz"
+      tar -czf "$archive" -C "$build_dir/packages" "$package_name"
+      ;;
+  esac
+  archives+=("${archive##*/}")
+}
+
+for platform in "${platforms[@]}"; do
+  build_platform "$platform"
+  package_platform "$platform"
+done
+
+(
+  cd "$dist_dir"
+  sha256sum "${archives[@]}"
+) > "$dist_dir/ysc-checksums.txt"
+
+echo '* Created release artifacts'
+for archive in "${archives[@]}" ysc-checksums.txt; do
+  echo "  $archive"
+done

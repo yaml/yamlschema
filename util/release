@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+# Perl programs are single quoted to keep their sigils from the shell.
+# shellcheck disable=SC2016
+
+set -euo pipefail
+
+command=${1:?usage: release release|prepare|publish VERSION}
+version=${2:?usage: release release|prepare|publish VERSION}
+version=${version#v}
+perl=${PERL:?PERL is required}
+
+[[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  echo 'release: VERSION must have the form X.Y.Z' >&2
+  exit 1
+}
+
+top=$(git rev-parse --show-toplevel)
+changes_file="$top/Changes"
+makefile="$top/Makefile"
+source_file="$top/bin/ysc"
+
+current_version() {
+  "$perl" -ne '
+    if (/^YSC-VERSION := ([0-9]+\.[0-9]+\.[0-9]+)$/) {
+      print "$1\n";
+      exit;
+    }
+  ' "$makefile"
+}
+
+source_version() {
+  "$perl" -ne '
+    if (/^VERSION =: '\''([0-9]+\.[0-9]+\.[0-9]+)'\''$/) {
+      print "$1\n";
+      exit;
+    }
+  ' "$source_file"
+}
+
+has_changes_entry() {
+  VERSION_VALUE=$version "$perl" -ne '
+    $found = 1 if /^- version: \Q$ENV{VERSION_VALUE}\E$/;
+    END { exit($found ? 0 : 1) }
+  ' "$changes_file"
+}
+
+release_files() {
+  printf '%s\n' Changes Makefile bin/ysc | sort
+}
+
+set_makefile_version() {
+  local temporary
+  temporary=$(mktemp)
+  NEW_VERSION=$version "$perl" -pe '
+    if (/^YSC-VERSION := /) {
+      $_ = "YSC-VERSION := $ENV{NEW_VERSION}\n";
+      $found = 1;
+    }
+    END { exit 1 unless $found }
+  ' "$makefile" > "$temporary"
+  mv "$temporary" "$makefile"
+  chmod 0644 "$makefile"
+}
+
+set_source_version() {
+  local temporary
+  temporary=$(mktemp)
+  NEW_VERSION=$version "$perl" -pe '
+    if (/^VERSION =: '\''/) {
+      $_ = "VERSION =: '\''$ENV{NEW_VERSION}'\''\n";
+      $found = 1;
+    }
+    END { exit 1 unless $found }
+  ' "$source_file" > "$temporary"
+  mv "$temporary" "$source_file"
+  chmod 0755 "$source_file"
+}
+
+prepare() {
+  if [[ $(current_version) == "$version" && \
+        $(source_version) == "$version" ]] && has_changes_entry; then
+    echo "Release v$version is already prepared"
+    return
+  fi
+  [[ -z $(git status --short) ]] || {
+    echo 'release: prepare requires a clean worktree' >&2
+    exit 1
+  }
+
+  local current previous_tag changes temporary previous_changes
+  current=$(current_version)
+  [[ $(source_version) == "$current" ]] || {
+    echo 'release: Makefile and bin/ysc versions do not match' >&2
+    exit 1
+  }
+  previous_tag=$(
+    git tag -l 'v[0-9]*' --sort=-v:refname |
+      "$perl" -ne 'print; exit'
+  )
+  if [[ -n $previous_tag ]]; then
+    changes=$(git log "$previous_tag"..HEAD --format='%s')
+  else
+    changes=$(git log HEAD --format='%s')
+  fi
+  changes=$(
+    RELEASE_SUBJECT="Prepare release $version" \
+      "$perl" -ne 'print unless $_ eq "$ENV{RELEASE_SUBJECT}\n"' \
+      <<< "$changes"
+  )
+
+  temporary=$(mktemp)
+  previous_changes=$(
+    "$perl" -0pe \
+      's/\A# YAMLSchema release history\n*//' \
+      "$changes_file"
+  )
+  {
+    echo '# YAMLSchema release history'
+    echo
+    echo "- version: $version"
+    echo "  date:    $(date)"
+    echo '  changes:'
+    if [[ -n $changes ]]; then
+      while IFS= read -r line; do
+        echo "  - $line"
+      done <<< "$changes"
+    else
+      echo "  - Release v$version"
+    fi
+    if [[ -n $previous_changes ]]; then
+      echo
+      printf '%s\n' "$previous_changes"
+    fi
+  } > "$temporary"
+  mv "$temporary" "$changes_file"
+  chmod 0644 "$changes_file"
+  set_makefile_version
+  set_source_version
+
+  if [[ ${RELEASE_EDIT:-1} != 0 ]]; then
+    "${EDITOR:-vi}" "$changes_file"
+  fi
+  if [[ ${RELEASE_CONFIRM:-1} != 0 ]]; then
+    read -rp \
+      "Continue preparing v$version? Enter to continue, Ctrl-C to cancel. "
+  fi
+}
+
+release_notes() {
+  VERSION_VALUE=$version "$perl" -ne '
+    if (/^- version: (.+)$/) {
+      last if $found;
+      $found = ($1 eq $ENV{VERSION_VALUE});
+      next;
+    }
+    print "- $1\n" if $found && /^  - (.*)$/;
+  ' "$changes_file"
+}
+
+release_commit_ready() {
+  local changed expected subject
+  [[ $(current_version) == "$version" ]] || return 1
+  [[ $(source_version) == "$version" ]] || return 1
+  has_changes_entry || return 1
+  subject=$(git log -1 --format=%s)
+  [[ $subject == "Prepare release $version" ]] || return 1
+  changed=$(git diff-tree --no-commit-id --name-only -r HEAD | sort)
+  expected=$(release_files)
+  [[ $changed == "$expected" ]]
+}
+
+validate_git_context() {
+  local branch
+  branch=$(git branch --show-current)
+  [[ $branch == main ]] || {
+    echo "release: releases must be made from main, not $branch" >&2
+    exit 1
+  }
+  [[ -z $(git status --short) ]] || {
+    echo 'release: release requires a clean worktree' >&2
+    exit 1
+  }
+  if ! git var GIT_AUTHOR_IDENT >/dev/null 2>&1 ||
+     ! git var GIT_COMMITTER_IDENT >/dev/null 2>&1; then
+    echo 'release: Git identities must be available' >&2
+    exit 1
+  fi
+  git remote get-url origin >/dev/null 2>&1 || {
+    echo 'release: git remote origin is not configured' >&2
+    exit 1
+  }
+}
+
+validate_release_state() {
+  local tag
+  validate_git_context
+  release_commit_ready || {
+    echo "release: HEAD is not the prepared $version release commit" >&2
+    exit 1
+  }
+  tag="v$version"
+  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+    [[ $(git rev-list -n 1 "$tag") == "$(git rev-parse HEAD)" ]] || {
+      echo "release: tag $tag does not point to HEAD" >&2
+      exit 1
+    }
+  fi
+}
+
+preflight_new_release() {
+  local current tag
+  validate_git_context
+  current=$(current_version)
+  [[ $(source_version) == "$current" ]] || {
+    echo 'release: Makefile and bin/ysc versions do not match' >&2
+    exit 1
+  }
+  [[ $current != "$version" ]] || {
+    echo "release: version $version is current but not prepared" >&2
+    exit 1
+  }
+
+  if [[ ${RELEASE_SKIP_REMOTE_CHECK:-0} == 0 ]]; then
+    git fetch --quiet origin main || {
+      echo 'release: could not fetch origin/main' >&2
+      exit 1
+    }
+    git merge-base --is-ancestor origin/main HEAD || {
+      echo 'release: origin/main contains commits not in local main' >&2
+      exit 1
+    }
+  fi
+
+  tag="v$version"
+  ! git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null || {
+    echo "release: local tag $tag already exists" >&2
+    exit 1
+  }
+  [[ -z $(git ls-remote --tags origin "refs/tags/$tag") ]] || {
+    echo "release: remote tag $tag already exists" >&2
+    exit 1
+  }
+}
+
+create_release_commit() {
+  local changed expected
+  RELEASE_EDIT=0 RELEASE_CONFIRM=0 prepare
+  changed=$(git diff --name-only | sort)
+  expected=$(release_files)
+  [[ $changed == "$expected" ]] || {
+    echo 'release: version bump changed unexpected files' >&2
+    exit 1
+  }
+  [[ -z $(git ls-files --others --exclude-standard) ]] || {
+    echo 'release: version bump created untracked files' >&2
+    exit 1
+  }
+  git diff --check
+  while IFS= read -r file; do
+    git add -- "$file"
+  done <<< "$expected"
+  git commit \
+    -m "Prepare release $version" \
+    -m "Update the current version and release history.
+Prepare validated artifacts for publication."
+  release_commit_ready || {
+    echo 'release: generated release commit is invalid' >&2
+    exit 1
+  }
+}
+
+publish() {
+  local tag notes_file gh
+  validate_release_state
+  tag="v$version"
+  if [[ ${RELEASE_SKIP_REMOTE_CHECK:-0} == 0 ]]; then
+    git fetch --quiet origin main
+    git merge-base --is-ancestor origin/main HEAD || {
+      echo 'release: origin/main contains commits not in this checkout' >&2
+      exit 1
+    }
+  fi
+
+  make test
+  make release-smoke VERSION="$version"
+
+  if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+    git tag -a "$tag" -m "Release $tag"
+  fi
+  [[ $(git rev-list -n 1 "$tag") == "$(git rev-parse HEAD)" ]] || {
+    echo "release: tag $tag does not point to HEAD" >&2
+    exit 1
+  }
+  git push --atomic origin HEAD:main "$tag"
+
+  notes_file="$top/.cache/release-notes-$version.md"
+  release_notes > "$notes_file"
+  gh=${GH:-gh}
+  if "$gh" release view "$tag" --repo yaml/yamlschema >/dev/null 2>&1; then
+    "$gh" release upload "$tag" --repo yaml/yamlschema --clobber \
+      "$top"/dist/ysc-*
+  else
+    "$gh" release create "$tag" --repo yaml/yamlschema \
+      --title "YAMLSchema $tag" --notes-file "$notes_file" \
+      "$top"/dist/ysc-*
+  fi
+  echo "Release $tag complete"
+}
+
+release_all() {
+  if release_commit_ready; then
+    echo "Resuming release $version"
+  else
+    preflight_new_release
+    create_release_commit
+  fi
+  publish
+}
+
+case $command in
+  prepare) prepare ;;
+  publish) publish ;;
+  release) release_all ;;
+  *) echo "release: unknown command '$command'" >&2; exit 1 ;;
+esac

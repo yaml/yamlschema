@@ -3136,7 +3136,7 @@ defn wrappable-ysd-desc?(value):
   plain ||: single
 
 defn ysd-desc-pair-lines(indent value):
-  tokens =: vec(value.split(/(?<! ) (?! )/))
+  tokens =: split-wrappable-spaces(value isolated-space?)
   prefix =: "$indent.desc$(C(58)) "
   state =: +{
     'lines' [], 'line' prefix,
@@ -3198,16 +3198,44 @@ defn ysd-description-clause-lines(indent clause):
   words =:
     if body:empty?:
       then: +['']
-      else: vec(body.split(description-break-pattern()))
+      else: split-wrappable-spaces(body description-break?)
   count =: words.#
   tokens =:
     map-indexed(\(ysd-description-word-token(_1 _2 count)) words):vec
   wrap-ysd-clause-tokens: indent '"' tokens
 
-defn description-break-pattern():
+defn split-wrappable-spaces(value break?):
+  loop index 0, tokens [], token '':
+    if index == value.#:
+      then: tokens.conj(token)
+      else:
+        char =: value.$index
+        if break?(value index):
+          then: recur(index.++ tokens.conj(token) '')
+          else: recur(index.++ tokens "$token$char")
+
+defn isolated-space?(value index):
+  space =: C(32)
+  current-space =: value.$index == space
+  previous-space =:
+    (index > 0) && (value.nth(index.--) == space)
+  next-space =:
+    (index.++ < value.#) && (value.nth(index.++) == space)
+  current-space &&: previous-space.! && next-space.!
+
+defn description-break?(value index):
+  colon =: C(58)
   slash =: C(92)
-  re-pattern:
-    str('(?<! )(?<!' ':' slash slash ') (?! )(?!' slash slash '#)')
+  hash =: C(35)
+  escaped-colon =:
+    (index >= 2) &&
+      (value.nth(index - 2) == colon) &&
+      (value.nth(index.--) == slash)
+  escaped-hash =:
+    ((index + 2) < value.#) &&
+      (value.nth(index.++) == slash) &&
+      (value.nth(index + 2) == hash)
+  isolated-space?(value index) &&: escaped-colon.! && escaped-hash.!
 
 defn ysd-description-word-token(index word count):
   if index == (count - 1):
