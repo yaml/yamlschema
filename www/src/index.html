@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>YAMLSchema converter</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <main>
@@ -13,22 +13,57 @@
         <h1>YAMLSchema converter</h1>
         <p>Edit either schema and the other side updates automatically.</p>
       </div>
-      <span id="status">Loading converter...</span>
+      <select id="sample-select" aria-label="Sample schema" disabled>
+        <option value="person">Person</option>
+        <option value="harbor-next">Harbor Next Helm Chart Values</option>
+        <optgroup label="JSON Schema examples">
+          <option value="address">Address</option>
+          <option value="blog-post">Blog Post</option>
+          <option value="calendar">Calendar</option>
+          <option value="device-type">Device Type</option>
+          <option value="ecommerce-system">Ecommerce System</option>
+          <option value="geographical-location">
+            Geographical Location
+          </option>
+          <option value="health-record">Health Record</option>
+          <option value="job-posting">Job Posting</option>
+          <option value="movie">Movie</option>
+          <option value="user-profile">User Profile</option>
+        </optgroup>
+      </select>
     </header>
     <section class="editors" aria-label="Schema converter">
       <article>
-        <label for="json-schema">JSON Schema</label>
-        <textarea id="json-schema" spellcheck="false"></textarea>
-        <p class="error" id="json-error" aria-live="polite"></p>
-      </article>
-      <article>
-        <label for="yaml-schema">YAML Schema (YSD)</label>
+        <div class="editor-heading">
+          <span class="roundtrip-status checking" title="Checking Roundtrip"
+                aria-label="Checking Roundtrip">…</span>
+          <label class="editor-title" for="yaml-schema">YAML Schema</label>
+          <div class="format-selector" role="radiogroup"
+               aria-label="YAML Schema format">
+            <label>
+              <input type="radio" name="yaml-format" value="ysd" checked>
+              YSD
+            </label>
+            <label>
+              <input type="radio" name="yaml-format" value="ysc">
+              YSC
+            </label>
+          </div>
+        </div>
         <textarea id="yaml-schema" spellcheck="false"></textarea>
         <p class="error" id="yaml-error" aria-live="polite"></p>
       </article>
+      <article>
+        <div class="editor-heading">
+          <span class="roundtrip-status checking" title="Checking Roundtrip"
+                aria-label="Checking Roundtrip">…</span>
+          <label class="editor-title" for="json-schema">JSON Schema</label>
+        </div>
+        <textarea id="json-schema" spellcheck="false"></textarea>
+        <p class="error" id="json-error" aria-live="polite"></p>
+      </article>
     </section>
   </main>
-  <script src="wasm_exec.js"></script>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=17"></script>
 </body>
 </html>

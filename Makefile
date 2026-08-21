@@ -73,3 +73,6 @@ release: $(GH) $(PERL)
 	  '$(RELEASE)' release '$(VERSION)'
 
 MAKES-CLEAN += .cache/release dist
+
+serve publish:
+	$(MAKE) -C www $@
