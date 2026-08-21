@@ -1378,8 +1378,7 @@ defn json-infer-base(values):
   cond:
     bases == \{'+Int' '+Num'}: '+Num'
     bases.# == 1: bases:first
-    else:
-      usage: 'cannot infer a common enum type; add an explicit type reference'
+    else: '+Any'
 
 defn json-base-for-value(value):
   cond:
@@ -2064,7 +2063,8 @@ defn unsupported-json-schema-keyword?(key):
 defn passthrough-directive?(key):
   text =: key:S
   (text =~ /^\./) &&:
-    unsupported-json-schema-keyword?(passthrough-keyword(text))
+    (unsupported-json-schema-keyword?(passthrough-keyword(text)) ||
+     passthrough-keyword(text).eq('required'))
 
 defn passthrough-keyword(directive):
   directive:S.replace(/^\./)
@@ -2123,7 +2123,8 @@ defn warn-yamlschema-passthrough(value path='' root=true):
         then:
           keyword =: passthrough-keyword(key)
           child-path =: json-pointer-child(path keyword)
-          warn-unsupported-json-schema-keyword: keyword child-path
+          when unsupported-json-schema-keyword?(keyword):
+            warn-unsupported-json-schema-keyword: keyword child-path
           warn-json-schema-children: keyword child child-path
         else:
           warn-yamlschema-child: key child path root
@@ -2662,9 +2663,15 @@ defn add-combinator-directive(result schema keyword directive inherited-open):
     else: result
 
 # Preserve unsupported JSON Schema keywords verbatim as dotted directives.
+# Also preserve required-only schemas because they have no property keys on
+# which yamlschema can encode requiredness.
 # Their values remain opaque JSON Schema data until a native yamlschema
 # representation is implemented.
 defn add-passthrough-directives(result schema):
+  result =:
+    if schema.required.? && empty?(schema.properties):
+      then: result + {'.required' schema.required}
+      else: result
   reduce add-passthrough-directive-entry: result schema
 
 defn add-passthrough-directive-entry(result entry):
@@ -3043,8 +3050,9 @@ defn compact-enum-scalar(schema):
   values =: schema.enum
   when values.every?(safe-compact-enum-value?):
     base =: schema.type.if(type-sym(schema.type) json-infer-base(values))
-    members =: values.map(\(_:S)):vec.join(', ')
-    =>: "$base [$members]"
+    when base != '+Any':
+      members =: values.map(\(_:S)):vec.join(', ')
+      =>: "$base [$members]"
 
 defn compact-enum-default-scalar(schema):
   bare =: dissoc(schema 'default')
@@ -3056,12 +3064,13 @@ defn compact-enum-default-scalar(schema):
   when valid:
     base =:
       schema.type.if(type-sym(schema.type) json-infer-base(schema.enum))
-    members =:
-      schema.enum
-        .map(\(enum-default-member(_ default)))
-        .vec()
-        .join(', ')
-    =>: "$base [$members]"
+    when base != '+Any':
+      members =:
+        schema.enum
+          .map(\(enum-default-member(_ default)))
+          .vec()
+          .join(', ')
+      =>: "$base [$members]"
 
 defn enum-default-member(value default):
   token =: value:S

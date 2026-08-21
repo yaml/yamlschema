@@ -575,7 +575,7 @@ Implicit typing applies where possible:
 
 - `.like` implies `+Str` in canonical YSC; YSD `.match` and `.find` normalize
   to `.like`.
-- `.enum` implies the common value type.
+- `.enum` implies the common value type, or `+Any` for heterogeneous values.
 - A mapping shape implies the mapping type without emitting a base marker.
 - Integer-only numeric range syntax implies `+Int` when no explicit type
   exists.

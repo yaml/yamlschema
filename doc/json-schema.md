@@ -280,6 +280,15 @@ Both forms roundtrip back to:
 
 when used as a property schema.
 
+Enums whose values have different JSON types use an expanded `+Any` block so
+that strings resembling other YAML scalars remain distinct:
+
+```yaml
+enabled:
+  .type: +Any
+  .enum: ['true', 'false', true, false]
+```
+
 
 ## Constants
 
@@ -683,6 +692,16 @@ ordered `.keys` rule:
 Each branch is a partial mapping constraint rather than an object type.
 One rule exports directly as `anyOf`.
 Multiple `.keys` rules export as ordered members of `allOf`.
+
+A `required` schema without a corresponding `properties` mapping cannot use
+property-key requiredness.
+Inside combinators, it is preserved as a `.required` interop directive:
+
+```yaml
+.one:
+- .required: [Action]
+- .required: [NotAction]
+```
 
 
 ## Unsupported or Open JSON Schema Features

@@ -73,6 +73,24 @@ test::
   want: |
     OK
 
+- name: required-only-combinator-branches-roundtrip
+  cmnd: bin/ysc -R -f jsc -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "choice": {
+          "oneOf": [
+            {"required": ["Action"]},
+            {"required": ["NotAction"]}
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: metadata-roundtrip
   cmnd: |
     sh -c '
