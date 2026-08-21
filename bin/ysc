@@ -12,6 +12,8 @@ VERSION =: '0.1.2'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 WILDCARD-KEY =: '+Str'
 LEGACY-WILDCARD-KEY =: '+Str*'
+BUILT-IN-TYPE-NAMES =:
+  set: qw(Any Str Int Float Num Bool Null Map One All Not)
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) [INPUT]
          ysc -N, --norm [INPUT]
@@ -44,6 +46,8 @@ defn main(*args):
 
 EXPORT =::
   json-schema-to-ysd: [str, str]
+  json-schema-to-ysc: [str, str]
+  json-schema-roundtrip-works: [str, bool]
   ysd-to-json-schema: [str, str]
 
 defn run-main(*args):
@@ -63,6 +67,14 @@ defn run-main(*args):
 
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
+
+defn json-schema-to-ysc(text):
+  opts =: +{'from' 'jsc'}
+  convert-to 'ysc.yaml': text opts
+
+defn json-schema-roundtrip-works(text):
+  opts =: +{'quiet' true}
+  falsey?: run-json-schema-roundtrip(text opts)
 
 defn ysd-to-json-schema(text):
   schema =: yamlschema-input-schema(text 'ysd.yaml' false)
@@ -345,7 +357,7 @@ defn json-output(value opts):
   value =: canonical-json-schema(value)
   if opts.compact:
     json/dump(value)
-    pretty-json(value)
+    pretty-json(value true)
 
 defn map-put-if(result test key value):
   if test:
@@ -444,6 +456,8 @@ defn normalize-json-entry(result entry):
 
 defn normalize-json-keyword-value(key value):
   cond:
+    key.eq('required') && sequential?(value):
+      sort(value):vec
     single-schema-json-keyword?(key):
       normalize-json-schema: value false
     sequence-schema-json-keyword?(key) && sequential?(value):
@@ -508,8 +522,16 @@ defn canonical-json-map(value):
   result =: omap()
   result =: reduce(\(add-canonical-key(_1 _2 value))
                    result preferred-json-schema-keys())
-  extra-keys =: sort(remove(\(preferred-json-schema-key?(_)) value:keys))
+  extra-keys =:
+    sort(remove(\(preferred-json-schema-key?(_)) value:keys))
   reduce \(add-canonical-key(_1 _2 value)): result extra-keys
+
+defn canonical-json-map-keys(value):
+  preferred =:
+    filter(\(contains?(value _)) preferred-json-schema-keys())
+  extra =:
+    sort(remove(\(preferred-json-schema-key?(_)) value:keys))
+  preferred +: extra
 
 defn add-canonical-key(result key value):
   if contains?(value key):
@@ -527,40 +549,51 @@ defn preferred-json-schema-keys():
   keys +=: ' minProperties maxProperties $defs'
   keys: .split(' ')
 
-defn pretty-json(value):
-  pretty-value(value 0)
+defn pretty-json(value schema-order=false):
+  pretty-value(value 0 schema-order)
 
-defn pretty-value(value level):
+defn pretty-value(value level schema-order):
   cond:
-    map?(value): pretty-map(value level)
-    value:vector?: pretty-array(value level)
+    map?(value): pretty-map(value level schema-order)
+    value:vector?: pretty-array(value level schema-order)
     else: pretty-scalar(value)
 
 defn pretty-scalar(value):
   json/dump(value).replace(/\\\// '/')
 
-defn pretty-map(value level):
+defn pretty-map(value level schema-order):
   if empty?(value):
     then: '{}'
     else:
       child =: level + 2
       entries =:
-        map(\(pretty-map-entry(_ child)) value)
+        if schema-order:
+          then:
+            map(\(pretty-map-schema-entry(value child schema-order _))
+                canonical-json-map-keys(value))
+          else:
+            map(\(pretty-map-entry(_ child schema-order)) value)
       body =: join(",\n" entries)
       =>: "{\n$body\n$(indent(level))}"
 
-defn pretty-map-entry(entry level):
-  key =: entry.0
-  val =: entry.1
-  =>: "$(indent(level))$(json/dump(key)): $(pretty-value(val level))"
+defn pretty-map-entry(entry level schema-order):
+  pretty-map-key: entry.0 entry.1 level schema-order
 
-defn pretty-array(value level):
+defn pretty-map-schema-entry(value level schema-order key):
+  pretty-map-key: key value.$key level schema-order
+
+defn pretty-map-key(key value level schema-order):
+  rendered =: pretty-value(value level schema-order)
+  =>: "$(indent(level))$(json/dump(key)): $rendered"
+
+defn pretty-array(value level schema-order):
   if empty?(value):
     then: '[]'
     else:
       child =: level + 2
       entries =:
-        map(\("$(indent(child))$(pretty-value(_ child))") value)
+        map(\("$(indent(child))$(pretty-value(_ child schema-order))")
+            value)
       body =: join(",\n" entries)
       =>: "[\n$body\n$(indent(level))]"
 
@@ -1213,7 +1246,13 @@ defn slash-delimited-token?(token):
   token.starts?('/') && token.ends?('/')
 
 defn type-symbol?(token):
-  token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
+  valid =: token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
+  when valid:
+    when token =~ /^\+[A-Z]/:
+      name =: token.replace(/^\+/)
+      when-not BUILT-IN-TYPE-NAMES.has?(name):
+        usage: "unknown yamlschema built-in type: $token"
+  =>: valid
 
 defn direct-type-symbol?(token):
   list-pattern =:

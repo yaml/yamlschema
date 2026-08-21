@@ -143,6 +143,12 @@ non-empty property-to-type mappings.
 | `+Map` | A mapping shape completed by sibling property definitions |
 | `+Map{+Type}` | A mapping with string keys and `+Type` values |
 
+Capitalized type names are reserved for these built-ins and the `+One`,
+`+All`, and `+Not` combinator heads.
+A type reference beginning with a capital letter is rejected when it is not
+one of those known names.
+User-defined type references must not begin with a capital letter.
+
 Examples:
 
 ```yaml

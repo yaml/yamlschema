@@ -73,4 +73,23 @@ test::
     ysc: warning: +Float at /properties/nested/properties/reading exports as JSON Schema "number", which also accepts integers
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"choice":{"oneOf":[{"type":"integer"},{"type":"number"}]},"float":{"type":"number"},"floats":{"type":"array","items":{"type":"number"}},"nested":{"type":"object","properties":{"reading":{"type":"number"}},"additionalProperties":false},"number":{"type":"number"}},"required":["number","float","floats","choice","nested"],"additionalProperties":false,"$defs":{"measurement":{"type":"number"}}}
 
+- name: reject-unknown-capitalized-type-references
+  cmnd: |
+    sh -c '
+      for value in \
+        "+Stx" \
+        "+Stx[]" \
+        "+Map{+Stx}" \
+        "+One(+Str,+Stx)"; do
+        printf "value: %s\n" "$value" |
+          bin/ysc -f ysd -t jsc - 2>&1 |
+          perl -ne "print if \$. == 1"
+      done
+    '
+  want: |
+    ysc: unknown yamlschema built-in type: +Stx
+    ysc: unknown yamlschema built-in type: +Stx
+    ysc: unknown yamlschema built-in type: +Stx
+    ysc: unknown yamlschema built-in type: +Stx
+
 done:

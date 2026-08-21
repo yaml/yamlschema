@@ -91,6 +91,33 @@ test::
   want: |
     OK
 
+- name: required-property-order-does-not-affect-roundtrip
+  cmnd: bin/ysc -R -f jsc -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ip": {"type": "string"},
+              "hostnames": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            },
+            "required": ["ip", "hostnames"]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: metadata-roundtrip
   cmnd: |
     sh -c '
