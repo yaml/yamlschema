@@ -3,6 +3,7 @@ importScripts('wasm_exec.js?v=3');
 let ready = false;
 const pending = [];
 const operations = new Set([
+  'json-schema-normalize',
   'json-schema-to-ysc',
   'json-schema-to-ysd',
   'ysd-to-json-schema',
@@ -46,7 +47,7 @@ globalThis.addEventListener('gloat-ready', () => {
 });
 
 const go = new Go();
-WebAssembly.instantiateStreaming(fetch('ysc.wasm?v=4'), go.importObject)
+WebAssembly.instantiateStreaming(fetch('ysc.wasm?v=11'), go.importObject)
   .then(({instance}) => go.run(instance))
   .catch((error) => {
     postMessage({type: 'error', error: String(error)});

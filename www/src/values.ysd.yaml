@@ -1,7 +1,6 @@
 # Converted from JSON Schema
 .title: Harbor Next Helm Chart Values
 .desc: Schema for Harbor Next Helm chart values.yaml validation
-.open: true
 
 +imageSpec:
   registry?: +Str "Registry host override; empty uses image.source"
@@ -9,15 +8,19 @@
     "Repository path without registry host; empty uses image.source"
   tag?: +Str
   digest?: +Str "Pin by digest (sha256:...); used instead of tag when set"
+  +Str: +Any
 
 +resources:
   .desc: Kubernetes resource requests and limits
   requests?:
     cpu?: +Any(+Str,+Int,+Num)
     memory?: +Str
+    +Str: +Any
   limits?:
     cpu?: +Any(+Str,+Int,+Num)
     memory?: +Str
+    +Str: +Any
+  +Str: +Any
 
 +securityContext:
   .desc: Container security context
@@ -29,8 +32,11 @@
   capabilities?:
     drop?: +Str[]
     add?: +Str[]
+    +Str: +Any
   seccompProfile?:
     type?: +Str [RuntimeDefault, Localhost, Unconfined]
+    +Str: +Any
+  +Str: +Any
 
 +podSecurityContext:
   .desc: Pod security context
@@ -41,12 +47,15 @@
   runAsGroup?: +Int
   seccompProfile?:
     type?: +Str [RuntimeDefault, Localhost, Unconfined]
+    +Str: +Any
+  +Str: +Any
 
 +serviceAccount:
   create?: +Bool =true
   name?: +Str
   annotations?: +Map{+Str}
   automountServiceAccountToken?: +Bool
+  +Str: +Any
 
 +persistence:
   .desc: Persistence configuration
@@ -59,6 +68,7 @@
   size?: +Str =~"[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei)?"
   existingClaim?: +Str
   annotations?: +Map{+Str}
+  +Str: +Any
 
 +pdb:
   .desc: PodDisruptionBudget configuration
@@ -71,24 +81,37 @@
     .one:
     - +Int 0..
     - +Str =~"[0-9]+%"
+  +Str: +Any
 
 +harborComponent:
-  config?: +Map{+Any}
-    "Primary component config. For env-driven components (core, exporter, trivy)
-    it is flattened to env vars via toEnvVars. For file-driven components
-    (registry, jobservice) it is the config file body passed through verbatim."
-  secret?: +Map{+Any} "Sensitive config (converted to env vars in a Secret)"
-  env?: +Map{+Any}
-    "Supplementary env vars flattened via toEnvVars. Used by file-driven
-    components (jobservice) where config holds the YAML config file rather than
-    env vars."
+  config?:
+    .desc: Primary component config. For env-driven components (core, exporter,
+      trivy) it is flattened to env vars via toEnvVars. For file-driven
+      components (registry, jobservice) it is the config file body passed
+      through verbatim.
+    +Str: +Any
+  secret?:
+    .desc: Sensitive config (converted to env vars in a Secret)
+    +Str: +Any
+  env?:
+    .desc: Supplementary env vars flattened via toEnvVars. Used by file-driven
+      components (jobservice) where config holds the YAML config file rather
+      than env vars.
+    +Str: +Any
   probes?:
     .null: true
     .desc: Container probes. Each key holds a full Kubernetes probe spec
       rendered verbatim; set a probe to null to omit it.
-    startup?: +Map{+Any}~
-    liveness?: +Map{+Any}~
-    readiness?: +Map{+Any}~
+    startup?:
+      .null: true
+      +Str: +Any
+    liveness?:
+      .null: true
+      +Str: +Any
+    readiness?:
+      .null: true
+      +Str: +Any
+    +Str: +Any
   existingConfigMap?: +Str
     "Externally-managed ConfigMap holding the component's config file, used
     instead of the chart-generated one. Applies to file-driven components
@@ -97,10 +120,13 @@
     .type: +Map[]
     name: +Str
     value?: +Str
-    valueFrom?: +Map{+Any}
+    valueFrom?:
+      +Str: +Any
+    +Str: +Any
   initContainers?: +Any[]
   topologySpreadConstraints?: +Any[]
-  deploymentStrategy?: +Map{+Any}
+  deploymentStrategy?:
+    +Str: +Any
   priorityClassName?: +Str
   revisionHistoryLimit?: +Int 0..
   image?: +imageSpec
@@ -112,9 +138,13 @@
     .type: +Map[]
     ip: +Str
     hostnames: +Str[]
+    +Str: +Any
   lifecycle?:
-    postStart?: +Map{+Any}
-    preStop?: +Map{+Any}
+    postStart?:
+      +Str: +Any
+    preStop?:
+      +Str: +Any
+    +Str: +Any
   autoscaling?:
     enabled?: +Bool =false
     minReplicas?: +Int 1..
@@ -122,8 +152,11 @@
     targetCPUUtilizationPercentage?: +Int 1..100
     targetMemoryUtilizationPercentage?: +Int 1..100
     metrics?: +Any[]
-    behavior?: +Map{+Any}
-  affinity?: +Map{+Any}
+    behavior?:
+      +Str: +Any
+    +Str: +Any
+  affinity?:
+    +Str: +Any
   annotations?: +Map{+Str}
     "Annotations for the component workload object (Deployment/StatefulSet)"
   podAnnotations?: +Map{+Str}
@@ -132,6 +165,7 @@
   securityContext?: +securityContext
   podSecurityContext?: +podSecurityContext
   pdb?: +pdb
+  +Str: +Any
 
 image?:
   .desc: Global image settings
@@ -142,11 +176,13 @@ image?:
   pullPolicy?: +Str
     [Always, =IfNotPresent, Never]
     "Image pull policy for all Harbor components"
+  +Str: +Any
 imagePullSecrets?:
   .type: +Any[]
   .one:
   - +Str 1+
   - name: +Str 1+
+    +Str: +Any
   .desc: List of image pull secrets
 nameOverride?: +Str "Override the chart name"
 fullnameOverride?: +Str "Override the full name"
@@ -167,15 +203,20 @@ ipFamily?:
   .desc: IP family configuration for dual-stack clusters
   ipv4?:
     enabled?: +Bool
+    +Str: +Any
   ipv6?:
     enabled?: +Bool
+    +Str: +Any
+  +Str: +Any
 trace?:
   .desc: Distributed tracing configuration (jaeger or otel provider)
   enabled?: +Bool
   provider?: +Str [jaeger, otel]
   sample_rate?: +Num
-  jaeger?: +Map{+Any}
-  otel?: +Map{+Any}
+  jaeger?:
+    +Str: +Any
+  otel?:
+    +Str: +Any
   +Str: +Any
 existingSecretSecretKey?: +Str "Existing secret containing the encryption key"
 existingSecretSecretKeyKey?: +Str
@@ -189,6 +230,7 @@ global?:
   imageRegistry?: +Str
     "Override the registry host for all component images at once
     (air-gap/mirror). Wins over image.source and per-component image.registry."
+  +Str: +Any
 commonAnnotations?: +Map{+Str}
   "Annotations to add to all resources this chart deploys"
 commonLabels?: +Map{+Str}
@@ -199,14 +241,17 @@ imageCredentials?:
   username?: +Str
   password?: +Str
   email?: +Str
+  +Str: +Any
 cache?:
   enabled?: +Bool
   expireHours?: +Int 1..
+  +Str: +Any
 proxy?:
   httpProxy?: +Str~
   httpsProxy?: +Str~
   noProxy?: +Str
   components?: +Str[] [core, jobservice, registry, trivy]
+  +Str: +Any
 expose?:
   clusterIP?:
     enabled?: +Bool
@@ -215,8 +260,10 @@ expose?:
     ports?:
       http?: +Int 1..65535
       https?: +Int 1..65535
+      +Str: +Any
     annotations?: +Map{+Str}
     labels?: +Map{+Str}
+    +Str: +Any
   nodePort?:
     enabled?: +Bool
     name?: +Str
@@ -224,11 +271,15 @@ expose?:
       http?:
         port?: +Int 1..65535
         nodePort?: +Int 1..65535
+        +Str: +Any
       https?:
         port?: +Int 1..65535
         nodePort?: +Int 1..65535
+        +Str: +Any
+      +Str: +Any
     annotations?: +Map{+Str}
     labels?: +Map{+Str}
+    +Str: +Any
   loadBalancer?:
     enabled?: +Bool
     name?: +Str
@@ -236,9 +287,11 @@ expose?:
     ports?:
       http?: +Int 1..65535
       https?: +Int 1..65535
+      +Str: +Any
     sourceRanges?: +Str[]
     annotations?: +Map{+Str}
     labels?: +Map{+Str}
+    +Str: +Any
   route?:
     enabled?: +Bool
     host?: +Str
@@ -247,6 +300,9 @@ expose?:
     tls?:
       termination?: +Str [edge, passthrough, reencrypt]
       insecureEdgeTerminationPolicy?: +Str [Allow, Disable, Redirect]
+      +Str: +Any
+    +Str: +Any
+  +Str: +Any
 ingress?:
   .desc: Ingress configuration
   enabled?: +Bool =true
@@ -258,23 +314,29 @@ ingress?:
   hosts?:
     .type: +Map[]
     host?: +Str
+    +Str: +Any
   tls?:
     .type: +Map[]
     secretName?: +Str
     hosts?: +Str[]
+    +Str: +Any
+  +Str: +Any
 gateway?:
   .desc: Gateway API configuration
   enabled?: +Bool =false
   parentRefs?: +Any[]
   hostnames?: +Str[]
-  timeouts?: +Map{+Any}
-    "Timeouts applied to every generated HTTPRoute rule (Gateway API
-    durations)."
+  timeouts?:
+    .desc: Timeouts applied to every generated HTTPRoute rule (Gateway API
+      durations).
+    +Str: +Any
   filters?: +Any[] "HTTPRoute filters applied to every generated rule."
-  routeOverrides?: +Map{+Any}
-    "Per-group (core/default) timeouts and filters overrides."
+  routeOverrides?:
+    .desc: Per-group (core/default) timeouts and filters overrides.
+    +Str: +Any
   extraRules?: +Any[]
     "Extra HTTPRoute rules appended verbatim after the chart-managed rules."
+  +Str: +Any
 core?:
   .type: +harborComponent
   .desc: Harbor Core component configuration
@@ -306,7 +368,9 @@ core?:
     .desc: GDPR compliance settings.
     deleteUser?: +Bool "Anonymize user data on deletion."
     auditLogsCompliant?: +Bool "GDPR-compliant audit logs."
+    +Str: +Any
   serviceAnnotations?: +Map{+Str} "Annotations for the core Service."
+  +Str: +Any
 registry?:
   .type: +harborComponent
   .desc: Harbor Registry component configuration
@@ -317,10 +381,11 @@ registry?:
   existingSecretKey?: +Str
     "Key in registry.existingSecret that holds REGISTRY_HTTP_SECRET (defaults to
     REGISTRY_HTTP_SECRET)."
-  config?: +Map{+Any}
-    "Full distribution/distribution config.yml passed through verbatim.
-    Chart-managed redis/log/http blocks are merged on top at render time. Used
-    only when existingConfigMap is empty."
+  config?:
+    .desc: Full distribution/distribution config.yml passed through verbatim.
+      Chart-managed redis/log/http blocks are merged on top at render time. Used
+      only when existingConfigMap is empty.
+    +Str: +Any
   existingConfigMap?: +Str
     "Externally-managed ConfigMap with config.yml + ctl-config.yml. When set,
     the chart skips generating the registry ConfigMap and mounts this one
@@ -333,23 +398,30 @@ registry?:
       existingSecret?: +Str
       existingSecretAccessKeyKey?: +Str
       existingSecretSecretKeyKey?: +Str
+      +Str: +Any
     azure?:
       existingSecret?: +Str
       existingSecretKey?: +Str
+      +Str: +Any
     oss?:
       existingSecret?: +Str
       existingSecretKey?: +Str
+      +Str: +Any
     gcs?:
       existingSecret?: +Str
       existingSecretKey?: +Str
+      +Str: +Any
+    +Str: +Any
   controller?:
     image?: +imageSpec
-    probes?: +Map{+Any}
-      "Probes for the registryctl sidecar (full Kubernetes probe specs, rendered
-      verbatim)."
+    probes?:
+      .desc: Probes for the registryctl sidecar (full Kubernetes probe specs,
+        rendered verbatim).
+      +Str: +Any
     resources?: +resources
       "registryctl sidecar resources; falls back to registry.resources when
       unset."
+    +Str: +Any
   credentials?:
     .desc: Registry basic-auth credentials used by core/jobservice to talk to
       the registry.
@@ -359,7 +431,9 @@ registry?:
       "Existing Secret with keys REGISTRY_PASSWD and REGISTRY_HTPASSWD."
     htpasswdString?: +Str
       "Pre-computed htpasswd line (stable across renders, GitOps-friendly)."
+    +Str: +Any
   persistence?: +persistence
+  +Str: +Any
 portal?:
   .type: +harborComponent
   .desc: Harbor Portal component configuration
@@ -369,6 +443,7 @@ portal?:
     "URL core uses to reach the portal (PORTAL_URL); empty auto-derives the
     in-cluster service."
   serviceAnnotations?: +Map{+Str} "Annotations for the portal Service."
+  +Str: +Any
 jobservice?:
   .type: +harborComponent
   .desc: Harbor Jobservice component configuration
@@ -379,10 +454,12 @@ jobservice?:
     "Key in jobservice.existingSecret that holds the secret (defaults to
     JOBSERVICE_SECRET)."
   persistence?: +persistence
+  +Str: +Any
 exporter?:
   .type: +harborComponent
   .desc: Harbor Exporter component configuration
   enabled?: +Bool =true
+  +Str: +Any
 database?:
   .desc: External database configuration (required)
   host: +Str 1+ "Database host"
@@ -401,6 +478,7 @@ database?:
     "Include sslcert/sslkey in the auto-built POSTGRESQL_URL"
   connMaxIdleTime?: +Str
   connMaxLifetime?: +Str
+  +Str: +Any
 valkey?:
   .desc: Valkey (Redis-compatible) subchart configuration
   enabled?: +Bool =true
@@ -408,7 +486,10 @@ valkey?:
   auth?:
     enabled?: +Bool =true
     password?: +Str
-  master?: +Map{+Any}
+    +Str: +Any
+  master?:
+    +Str: +Any
+  +Str: +Any
 externalRedis?:
   .desc: External Redis configuration (when valkey.enabled=false)
   host?: +Str
@@ -427,6 +508,8 @@ externalRedis?:
       (Redis, S3, OIDC, etc.). Mounted at /etc/harbor/extra-ca."
     existingCaSecretKey?: +Str =ca.crt
       "Key inside existingCaSecret that holds the PEM-encoded CA bundle"
+    +Str: +Any
+  +Str: +Any
 trivy?:
   .type: +harborComponent
   .desc: Trivy scanner subchart configuration
@@ -450,6 +533,7 @@ trivy?:
     "OCI repositories for the Trivy vulnerability DB, in priority order."
   javaDBRepository?: +Str[]
     "OCI repositories for the Trivy Java DB, in priority order."
+  +Str: +Any
 tls?:
   .desc: TLS configuration
   enabled?: +Bool =false
@@ -461,11 +545,15 @@ tls?:
     issuerRef?:
       name?: +Str
       kind?: +Str
+      +Str: +Any
     duration?: +Str
     renewBefore?: +Str
+    +Str: +Any
   customSecrets?:
     core?: +Str
     registry?: +Str
+    +Str: +Any
+  +Str: +Any
 metrics?:
   .desc: Monitoring configuration
   enabled?: +Bool =false
@@ -476,6 +564,8 @@ metrics?:
     interval?: +Str =~"[0-9]+(ms|s|m|h)"
     scrapeTimeout?: +Str =~"[0-9]+(ms|s|m|h)"
     honorLabels?: +Bool
+    +Str: +Any
+  +Str: +Any
 extraManifests?: +Any[] "Extra static manifests to deploy"
 extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
 .keys:

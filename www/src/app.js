@@ -5,7 +5,13 @@ const yamlEditor = document.querySelector('#yaml-schema');
 const jsonError = document.querySelector('#json-error');
 const yamlError = document.querySelector('#yaml-error');
 const sampleSelect = document.querySelector('#sample-select');
+const normalizeJsonButton = document.querySelector('#normalize-json');
 const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
+const roundtripDiffDialog = document.querySelector(
+  '#roundtrip-diff-dialog',
+);
+const roundtripDiffOutput = document.querySelector('#roundtrip-diff');
+const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
 const formatControls = document.querySelectorAll(
   'input[name="yaml-format"]',
 );
@@ -57,14 +63,16 @@ let roundtripTimer;
 let roundtripWorker;
 let roundtripBusy = false;
 let roundtripRequest = 0;
+let roundtripSource;
 let conversionRequest = 0;
 let workerRequest = 0;
 let schemaWorkerReady = false;
 let updating = false;
 let yamlFormat = loadYamlFormat();
 let ysdValue = '';
+let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=2');
+const schemaWorker = new Worker('schema-worker.js?v=7');
 
 function loadYamlFormat() {
   try {
@@ -116,16 +124,64 @@ function setRoundtripStatus(status, alternateTitle) {
   const [symbol, defaultTitle] = states[status];
   const title = alternateTitle || defaultTitle;
   for (const indicator of roundtripStatuses) {
+    const active = indicator.dataset.roundtripSource === roundtripSource;
     indicator.textContent = symbol;
-    indicator.className = `roundtrip-status ${status}`;
+    indicator.className = `roundtrip-status ${status}` +
+      (active ? ' source-active' : '');
     indicator.title = title;
     indicator.setAttribute('aria-label', title);
+    indicator.setAttribute('aria-hidden', String(!active));
+    indicator.disabled = !active || status !== 'fails' || !roundtripDiff;
   }
+}
+
+function setRoundtripSource(source) {
+  roundtripSource = source;
+  for (const indicator of roundtripStatuses) {
+    const active = indicator.dataset.roundtripSource === source;
+    indicator.classList.toggle('source-active', active);
+    indicator.setAttribute('aria-hidden', String(!active));
+    indicator.disabled = !active ||
+      !indicator.classList.contains('fails') ||
+      !roundtripDiff;
+  }
+}
+
+function setRoundtripDiff(diff) {
+  roundtripDiff = diff;
+  if (diff) return;
+  for (const indicator of roundtripStatuses) indicator.disabled = true;
+  roundtripDiffOutput.replaceChildren();
+  if (roundtripDiffDialog.open) roundtripDiffDialog.close();
+}
+
+function diffLineClass(line, index) {
+  if (index < 2) return 'diff-file-header';
+  if (line.startsWith('@@')) return 'diff-hunk-header';
+  if (line.startsWith('+')) return 'diff-addition';
+  if (line.startsWith('-')) return 'diff-deletion';
+  return 'diff-context';
+}
+
+function showRoundtripDiff() {
+  if (!roundtripDiff) return;
+  const fragment = document.createDocumentFragment();
+  const lines = roundtripDiff.replace(/\n$/, '').split('\n');
+  for (const [index, line] of lines.entries()) {
+    const row = document.createElement('span');
+    row.className = diffLineClass(line, index);
+    row.textContent = `${line}\n`;
+    fragment.append(row);
+  }
+  roundtripDiffOutput.replaceChildren(fragment);
+  roundtripDiffDialog.showModal();
+  roundtripDiffOutput.focus();
 }
 
 function failWorker(error) {
   const message = `Worker error: ${error}`;
   schemaWorkerReady = false;
+  normalizeJsonButton.disabled = true;
   for (const resolve of workerCalls.values()) {
     resolve({ok: false, error: message});
   }
@@ -146,34 +202,40 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=2');
+  roundtripWorker = new Worker('roundtrip-worker.js?v=9');
   roundtripWorker.addEventListener('message', ({data}) => {
+    if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;
     if (data.type === 'error') {
+      setRoundtripDiff('');
       setRoundtripStatus('unknown', 'Roundtrip Check Error');
-    } else if (data.id === roundtripRequest) {
+    } else {
+      setRoundtripDiff(data.diff || '');
       setRoundtripStatus(data.works ? 'works' : 'fails');
     }
   });
   roundtripWorker.addEventListener('error', () => {
     roundtripBusy = false;
+    setRoundtripDiff('');
     setRoundtripStatus('unknown', 'Roundtrip Check Error');
   });
   return roundtripWorker;
 }
 
-function updateRoundtripStatus(json) {
+function updateRoundtripStatus(source, input) {
   clearTimeout(roundtripTimer);
+  setRoundtripSource(source);
   const id = ++roundtripRequest;
   roundtripTimer = setTimeout(() => {
     roundtripBusy = true;
-    getRoundtripWorker().postMessage({id, json});
+    getRoundtripWorker().postMessage({id, source, input});
   }, 500);
 }
 
 function cancelRoundtripStatus() {
   clearTimeout(roundtripTimer);
   roundtripRequest++;
+  setRoundtripDiff('');
   if (roundtripWorker && roundtripBusy) {
     roundtripWorker.terminate();
     roundtripWorker = undefined;
@@ -194,7 +256,10 @@ function showResult(source, target, sourceError, targetError, result) {
   }
 }
 
-async function convertJsonToYaml(updateYSD = true) {
+async function convertJsonToYaml(
+  updateYSD = true,
+  checkRoundtrip = true,
+) {
   let json;
   try {
     json = normalizeJson(jsonEditor.value);
@@ -208,7 +273,7 @@ async function convertJsonToYaml(updateYSD = true) {
     return;
   }
   const id = ++conversionRequest;
-  updateRoundtripStatus(json);
+  if (checkRoundtrip) updateRoundtripStatus('json', json);
   const toYSD = await callWorker('json-schema-to-ysd', json);
   if (id !== conversionRequest) return;
   if (!toYSD.ok) {
@@ -230,17 +295,52 @@ async function convertJsonToYaml(updateYSD = true) {
 
 async function convertYamlToJson() {
   const id = ++conversionRequest;
-  ysdValue = yamlEditor.value;
-  const result = await callWorker('ysd-to-json-schema', yamlEditor.value);
+  const ysd = yamlEditor.value;
+  ysdValue = ysd;
+  const result = await callWorker('ysd-to-json-schema', ysd);
   if (id !== conversionRequest) return;
   showResult(yamlEditor, jsonEditor, yamlError, jsonError, result);
   if (result.ok) {
-    updateRoundtripStatus(result.value);
+    updateRoundtripStatus('ysd', ysd);
   } else {
     cancelRoundtripStatus();
     setRoundtripStatus('unknown', 'YAML Schema Error');
   }
   return result;
+}
+
+async function normalizeJsonSchema() {
+  if (!schemaWorkerReady || updating) return;
+  normalizeJsonButton.disabled = true;
+  const id = ++conversionRequest;
+  clearTimeout(timer);
+  clearTimeout(checkingTimer);
+  setRoundtripSource('json');
+  cancelRoundtripStatus();
+  setRoundtripStatus('checking');
+  try {
+    let json;
+    try {
+      json = normalizeJson(jsonEditor.value);
+    } catch (error) {
+      jsonEditor.classList.add('invalid');
+      jsonError.textContent = error.message;
+      setRoundtripStatus('unknown');
+      return;
+    }
+    const result = await callWorker('json-schema-normalize', json);
+    if (id !== conversionRequest) return;
+    if (!result.ok) {
+      jsonEditor.classList.add('invalid');
+      jsonError.textContent = result.error;
+      setRoundtripStatus('unknown', 'JSON Schema Normalize Error');
+      return;
+    }
+    setEditorValue(jsonEditor, result.value);
+    await convertJsonToYaml();
+  } finally {
+    normalizeJsonButton.disabled = !schemaWorkerReady;
+  }
 }
 
 function convertFrom(editor) {
@@ -254,7 +354,7 @@ async function showSample(ysd) {
   setEditorValue(yamlEditor, ysdValue);
   const result = await convertYamlToJson();
   if (yamlFormat === 'ysc' && result?.ok) {
-    await convertJsonToYaml(false);
+    await convertJsonToYaml(false, false);
   }
 }
 
@@ -265,7 +365,10 @@ async function showJsonSample(json) {
 
 async function loadSelectedSample() {
   sampleSelect.disabled = true;
+  normalizeJsonButton.disabled = true;
   const sample = sampleSources[sampleSelect.value] || sampleSources.person;
+  setRoundtripSource(sample.format);
+  setRoundtripStatus('checking');
   try {
     let source = sample.text;
     if (!source) {
@@ -286,6 +389,7 @@ async function loadSelectedSample() {
     errorElement.textContent = `Sample load error: ${error.message}`;
   } finally {
     sampleSelect.disabled = false;
+    normalizeJsonButton.disabled = !schemaWorkerReady;
   }
 }
 
@@ -299,10 +403,12 @@ function selectYamlFormat(format, remember = true) {
   yamlError.textContent = '';
   if (!schemaWorkerReady) return;
   if (format === 'ysd' && ysdValue) setEditorValue(yamlEditor, ysdValue);
-  else void convertJsonToYaml(false);
+  else void convertJsonToYaml(false, false);
 }
 
 function schedule(editor) {
+  const source = editor === jsonEditor ? 'json' : 'ysd';
+  setRoundtripSource(source);
   conversionRequest++;
   cancelRoundtripStatus();
   clearTimeout(timer);
@@ -315,12 +421,20 @@ function schedule(editor) {
 
 jsonEditor.addEventListener('input', () => schedule(jsonEditor));
 yamlEditor.addEventListener('input', () => schedule(yamlEditor));
+for (const indicator of roundtripStatuses) {
+  indicator.addEventListener('click', showRoundtripDiff);
+}
+roundtripDiffClose.addEventListener('click', () => {
+  roundtripDiffDialog.close();
+});
+normalizeJsonButton.addEventListener('click', () => {
+  void normalizeJsonSchema();
+});
 sampleSelect.value = loadSample();
 sampleSelect.addEventListener('change', () => {
   saveSample(sampleSelect.value);
   cancelRoundtripStatus();
   clearTimeout(checkingTimer);
-  setRoundtripStatus('checking');
   void loadSelectedSample();
 });
 for (const control of formatControls) {
@@ -334,6 +448,7 @@ selectYamlFormat(yamlFormat, false);
 schemaWorker.addEventListener('message', ({data}) => {
   if (data.type === 'ready') {
     schemaWorkerReady = true;
+    normalizeJsonButton.disabled = false;
     void loadSelectedSample();
     return;
   }

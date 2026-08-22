@@ -30,5 +30,6 @@
   "dependentRequired": {
     "postOfficeBox": [ "streetAddress" ],
     "extendedAddress": [ "streetAddress" ]
-  }
+  },
+  "additionalProperties": false
 }

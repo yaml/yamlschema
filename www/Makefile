@@ -40,8 +40,9 @@ LOCAL-YS := $(wildcard $(YAMLSCRIPT-DIR)/ys/bin/ys)
 GLOAT-ENV := $(if $(LOCAL-YS),GLOAT_YS=$(abspath $(LOCAL-YS)))
 
 build: $(SITE)/index.html $(SITE)/app.js $(SITE)/json.js \
-  $(SITE)/schema-worker.js $(SITE)/roundtrip-worker.js $(SITE)/style.css \
-  $(SITE)/values.ysd.yaml $(EXAMPLE-FILES) $(WASM-EXEC) $(WASM)
+  $(SITE)/schema-worker.js $(SITE)/roundtrip-worker.js \
+  $(SITE)/unified-diff.js $(SITE)/style.css $(SITE)/values.ysd.yaml \
+  $(EXAMPLE-FILES) $(WASM-EXEC) $(WASM)
 
 test: build $(NODE)
 	cd $(SITE) && $(NODE) ../test/smoke.mjs
@@ -81,6 +82,9 @@ $(SITE)/schema-worker.js: src/schema-worker.js | $(SITE)
 	cp $< $@
 
 $(SITE)/roundtrip-worker.js: src/roundtrip-worker.js | $(SITE)
+	cp $< $@
+
+$(SITE)/unified-diff.js: src/unified-diff.js | $(SITE)
 	cp $< $@
 
 $(SITE)/style.css: src/style.css | $(SITE)
