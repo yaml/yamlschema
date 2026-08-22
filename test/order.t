@@ -147,4 +147,85 @@ test::
     p10?
     .json
 
+- name: normalization-preserves-json-object-key-order
+  cmnd: |
+    sh -c '
+      bin/ysc -NC - |
+        jq -r "
+          \"properties \" + (.properties | keys_unsorted | join(\" \")),
+          \"required \" + (.required | join(\" \")),
+          \"default \" +
+            (.properties.data.default | keys_unsorted | join(\" \"))
+        "
+    '
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "z": {"type": "string"},
+        "a": {"type": "string"},
+        "m": {"type": "string"},
+        "y": {"type": "string"},
+        "b": {"type": "string"},
+        "x": {"type": "string"},
+        "c": {"type": "string"},
+        "w": {"type": "string"},
+        "d": {"type": "string"},
+        "v": {"type": "string"},
+        "data": {"default": {"z": 1, "a": 2, "m": 3}}
+      },
+      "required": ["m", "z", "a"]
+    }
+  want: |
+    properties z a m y b x c w d v data
+    required m z a
+    default z a m
+
+- name: succinct-to-json-property-order-over-eight-keys
+  cmnd: |
+    sh -c '
+      bin/ysc -t jsc - |
+        jq -r ".properties | keys_unsorted | join(\" \")"
+    '
+  stdi: |
+    z: +Str
+    a: +Str
+    m: +Str
+    y: +Str
+    b: +Str
+    x: +Str
+    c: +Str
+    w: +Str
+    d: +Str
+    v: +Str
+  want: |
+    z a m y b x c w d v
+
+- name: json-succinct-json-property-order-over-eight-keys
+  cmnd: |
+    sh -c '
+      bin/ysc -f jsc -t ysd - |
+        bin/ysc -f ysd -t jsc - |
+        jq -r ".properties | keys_unsorted | join(\" \")"
+    '
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "z": {"type": "string"},
+        "a": {"type": "string"},
+        "m": {"type": "string"},
+        "y": {"type": "string"},
+        "b": {"type": "string"},
+        "x": {"type": "string"},
+        "c": {"type": "string"},
+        "w": {"type": "string"},
+        "d": {"type": "string"},
+        "v": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  want: |
+    z a m y b x c w d v
+
 done:

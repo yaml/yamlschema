@@ -81,11 +81,6 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "bounded": {
-          "type": "number",
-          "minimum": 0.5,
-          "maximum": 1
-        },
         "lower": {
           "type": "integer",
           "minimum": 0
@@ -93,6 +88,11 @@ test::
         "upper": {
           "type": "integer",
           "maximum": -1
+        },
+        "bounded": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1
         }
       },
       "required": [

@@ -13,7 +13,9 @@ JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 WILDCARD-KEY =: '+Str'
 LEGACY-WILDCARD-KEY =: '+Str*'
 BUILT-IN-TYPE-NAMES =:
-  set: qw(Any Str Int Float Num Bool Null Map One All Not)
+  set: +[
+    'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
+    'Null', 'Map', 'One', 'All', 'Not']
 HELP =: |
   Usage: ysc (-t FORMAT | -o FILE) [INPUT]
          ysc -N, --norm [INPUT]
@@ -29,7 +31,7 @@ HELP =: |
     -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-    -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+    -R, --roundtrip       Check JSON Schema or YSD roundtrip.
     -q, --quiet           Suppress roundtrip output.
     -C, --compact         Emit compact JSON output.
         --help            Show this help text.
@@ -45,9 +47,13 @@ defn main(*args):
         throw: error
 
 EXPORT =::
+  json-schema-normalize: [str, str]
   json-schema-to-ysd: [str, str]
   json-schema-to-ysc: [str, str]
+  json-schema-roundtrip-report: [str, str]
   json-schema-roundtrip-works: [str, bool]
+  ysd-roundtrip-report: [str, str]
+  ysd-roundtrip-works: [str, bool]
   ysd-to-json-schema: [str, str]
 
 defn run-main(*args):
@@ -57,7 +63,7 @@ defn run-main(*args):
   path =: opts.input || '-'
   text =: (path == '-').if(IN path):read
   when opts.roundtrip:
-    exit: roundtrip-json-schema(text opts)
+    exit: roundtrip-schema(text opts)
   when opts.norm:
     normalize-json-schema-output: text opts
     exit: 0
@@ -65,16 +71,27 @@ defn run-main(*args):
   output =: convert-to(target text opts)
   emit-output: output opts.output
 
+defn json-schema-normalize(text):
+  schema =: load-json-schema(text false)
+  normalized-json-schema-text: schema {}
+
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
 
 defn json-schema-to-ysc(text):
-  opts =: +{'from' 'jsc'}
-  convert-to 'ysc.yaml': text opts
+  json-schema-to-ysc-text: text
 
 defn json-schema-roundtrip-works(text):
-  opts =: +{'quiet' true}
-  falsey?: run-json-schema-roundtrip(text opts)
+  boolean: json-schema-roundtrip-result(text false).works
+
+defn json-schema-roundtrip-report(text):
+  json/dump: json-schema-roundtrip-result(text false)
+
+defn ysd-roundtrip-works(text):
+  boolean: ysd-roundtrip-result(text false).works
+
+defn ysd-roundtrip-report(text):
+  json/dump: ysd-roundtrip-result(text false)
 
 defn ysd-to-json-schema(text):
   schema =: yamlschema-input-schema(text 'ysd.yaml' false)
@@ -211,9 +228,9 @@ defn validate-roundtrip-options(opts):
       usage: '-R/--roundtrip cannot be combined with -t/--to'
     when opts.output:
       usage: '-R/--roundtrip cannot be combined with -o/--output'
-    source =: input-format(opts) || 'schema.json'
-    when source != 'schema.json':
-      usage: '-R/--roundtrip requires JSON Schema input'
+    source =: normalize-format(opts.from)
+    when source.? && source.in?(['schema.json', 'ysd.yaml']).!:
+      usage: '-R/--roundtrip requires JSON Schema or YSD input'
 
 defn reject-old-file-extension(path):
   when path.? && path.ends?('.ysx.yaml'):
@@ -278,7 +295,7 @@ defn collapse-direct-type-entry(result entry):
     if passthrough-directive?(key):
       then: entry.1
       else: collapse-direct-types(entry.1)
-  result +: +{entry.0 value}
+  ordered-put: result entry.0 value
 
 defn infer-input-format(path):
   cond:
@@ -356,13 +373,20 @@ defn generated-comment?(value):
 defn json-output(value opts):
   value =: canonical-json-schema(value)
   if opts.compact:
-    json/dump(value)
-    pretty-json(value true)
+    json/dump: value
+    pretty-json: value
 
 defn map-put-if(result test key value):
   if test:
-    then: result + {key value}
+    then: ordered-put(result key value)
     else: result
+
+defn ordered-put(result key value):
+  merge-ordered-maps: result {key value}
+
+defn merge-ordered-maps(*maps):
+  args =: maps.mapcat(\(_.mapcat(a)))
+  array-map: args*
 
 defn normalize-json-schema-output(text opts):
   schema =: schema-input(text opts 'schema.json')
@@ -372,23 +396,63 @@ defn normalized-json-schema-text(schema opts):
   schema =: normalize-json-schema(schema true)
   json-output: schema opts
 
-defn roundtrip-json-schema(text opts):
+defn roundtrip-schema(text opts):
   try:
-    run-json-schema-roundtrip: text opts
+    run-schema-roundtrip: text opts
     catch Exception error:
       roundtrip-error: error opts
 
-defn run-json-schema-roundtrip(text opts):
+defn run-schema-roundtrip(text opts):
   report =: opts.quiet.!
+  source =: roundtrip-input-format(text opts)
+  result =: roundtrip-result(text source report)
+  if result.works:
+    roundtrip-match: opts
+    roundtrip-mismatch: result.original result.roundtripped opts
+
+defn roundtrip-input-format(text opts):
+  source =: normalize-format(opts.from)
+  if source:
+    then: source
+    else: (text =~ /^\s*\{/).if('schema.json' 'ysd.yaml')
+
+defn roundtrip-result(text source report):
+  case source:
+    'schema.json': json-schema-roundtrip-result(text report)
+    'ysd.yaml': ysd-roundtrip-result(text report)
+    else: usage('-R/--roundtrip requires JSON Schema or YSD input')
+
+defn json-schema-roundtrip-result(text report):
   schema =: load-json-schema(text report)
-  original =: normalized-json-schema-text(schema opts)
+  original =: normalized-json-schema-text(schema {})
   ysd =: convert(schema)
   roundtripped =:
     yamlschema-input-schema(ysd 'ysd.yaml' false)
-      .normalized-json-schema-text(opts)
-  if original == roundtripped:
-    roundtrip-match: opts
-    roundtrip-mismatch: original roundtripped opts
+      .normalized-json-schema-text({})
+  identity: +{'works' (original == roundtripped)
+              'original' original
+              'roundtripped' roundtripped}
+
+defn ysd-roundtrip-result(text report):
+  schema =: yamlschema-input-schema(text 'ysd.yaml' report)
+  original =: ysd-to-ysc-text(text)
+  json-schema =: json-output(schema {})
+  roundtripped =: json-schema-to-ysc-text(json-schema)
+  identity: +{'works' (original == roundtripped)
+              'original' original
+              'roundtripped' roundtripped}
+
+defn ysd-to-ysc-text(text):
+  data =: text:yaml/load
+  canonical-ysc-text: data 'ysd'
+
+defn json-schema-to-ysc-text(text):
+  schema =: load-json-schema(text false)
+  canonical-ysc-text: build-doc(schema) 'ysd'
+
+defn canonical-ysc-text(data source):
+  expanded =: expand-ysc(data source)
+  post-process yaml/dump(collapse-direct-types(expanded)): true
 
 defn roundtrip-match(opts):
   when-not opts.quiet:
@@ -444,20 +508,27 @@ defn normalize-json-map(value root?):
   result =: normalize-single-anyof-allof(result)
   if root?:
     then:
-      result +: +{'$schema' JSON-SCHEMA-DIALECT}
+      ordered-put: result '$schema' JSON-SCHEMA-DIALECT
     else: result
 
 defn normalize-json-entry(result entry):
   key =: entry.0
   value =: entry.1
-  if key.eq('additionalProperties') && value.eq(true):
+  unconstrained-additional =:
+    value.eq(true) || (map?(value) && empty?(value))
+  drop =:
+    (key.eq('additionalProperties') && unconstrained-additional) ||
+    (key.eq('dependentRequired') && map?(value) && empty?(value))
+  if drop:
     then: result
-    else: result + {key normalize-json-keyword-value(key value)}
+    else: ordered-put(result key normalize-json-keyword-value(key value))
 
 defn normalize-json-keyword-value(key value):
   cond:
     key.eq('required') && sequential?(value):
-      sort(value):vec
+      vec: value
+    key.eq('dependentRequired') && map?(value):
+      normalize-dependent-required: value
     single-schema-json-keyword?(key):
       normalize-json-schema: value false
     sequence-schema-json-keyword?(key) && sequential?(value):
@@ -466,18 +537,29 @@ defn normalize-json-keyword-value(key value):
       normalize-json-schema-mapping: value
     else: value
 
+defn normalize-dependent-required(value):
+  reduce normalize-dependent-required-entry: omap() value
+
+defn normalize-dependent-required-entry(result entry):
+  key required =: entry
+  required =: sequential?(required).if(vec(required) required)
+  ordered-put: result key required
+
 defn normalize-json-schema-mapping(value):
   reduce normalize-json-schema-mapping-entry: omap() value
 
 defn normalize-json-schema-mapping-entry(result entry):
-  result +: +{entry.0 normalize-json-schema(entry.1 false)}
+  ordered-put: result entry.0 normalize-json-schema(entry.1 false)
 
 defn normalize-definitions(result):
   if contains?(result 'definitions'):
     then:
-      defs =: (result.get('$defs') || {}) + result.get('definitions')
+      old-defs =: result.get('$defs') || omap()
+      defs =: merge-ordered-maps(
+        old-defs
+        result.get('definitions'))
       result =: dissoc(result 'definitions')
-      result +: +{'$defs' defs}
+      ordered-put: result '$defs' defs
     else: result
 
 defn normalize-ref(result):
@@ -485,7 +567,7 @@ defn normalize-ref(result):
     then:
       ref =: result.get('$ref')
       ref =: normalize-ref-value(ref)
-      result +: +{'$ref' ref}
+      ordered-put: result '$ref' ref
     else: result
 
 defn normalize-ref-value(ref):
@@ -499,7 +581,7 @@ defn normalize-single-ref-allof(result):
     else:
       reference =: result.allOf.0.'$ref'
       normalized =: dissoc(result 'allOf')
-      normalized +: +{'$ref' reference}
+      ordered-put: normalized '$ref' reference
 
 defn normalize-single-anyof-allof(result):
   if result.has?('anyOf') || singleton-anyof-allof?(result).!:
@@ -507,7 +589,7 @@ defn normalize-single-anyof-allof(result):
     else:
       alternatives =: result.allOf.0.anyOf
       normalized =: dissoc(result 'allOf')
-      normalized +: +{'anyOf' alternatives}
+      ordered-put: normalized 'anyOf' alternatives
 
 defn canonical-json-schema(value):
   cond:
@@ -526,73 +608,87 @@ defn canonical-json-map(value):
     sort(remove(\(preferred-json-schema-key?(_)) value:keys))
   reduce \(add-canonical-key(_1 _2 value)): result extra-keys
 
-defn canonical-json-map-keys(value):
-  preferred =:
-    filter(\(contains?(value _)) preferred-json-schema-keys())
-  extra =:
-    sort(remove(\(preferred-json-schema-key?(_)) value:keys))
-  preferred +: extra
-
 defn add-canonical-key(result key value):
   if contains?(value key):
-    result +: +{key canonical-json-schema(value.get(key))}
+    then:
+      child =: canonical-json-keyword-value(key value.$key)
+      ordered-put: result key child
     else: result
+
+defn canonical-json-keyword-value(key value):
+  cond:
+    single-schema-json-keyword?(key):
+      canonical-json-schema: value
+    sequence-schema-json-keyword?(key) && sequential?(value):
+      vec: value.map(canonical-json-schema)
+    mapping-schema-json-keyword?(key) && map?(value):
+      canonical-json-schema-mapping: value
+    else:
+      preserve-json-value: value
+
+defn canonical-json-schema-mapping(value):
+  reduce canonical-json-schema-mapping-entry: omap() value
+
+defn canonical-json-schema-mapping-entry(result entry):
+  ordered-put: result entry.0 canonical-json-schema(entry.1)
+
+defn preserve-json-value(value):
+  cond:
+    map?(value):
+      reduce preserve-json-entry: omap() value
+    sequential?(value):
+      vec: value.map(preserve-json-value)
+    else: value
+
+defn preserve-json-entry(result entry):
+  ordered-put: result entry.0 preserve-json-value(entry.1)
 
 defn preferred-json-schema-key?(key):
   preferred-json-schema-keys().has?(key)
 
 defn preferred-json-schema-keys():
   keys =: '$comment $id $schema title description type enum const default $ref'
-  keys +=: ' properties required additionalProperties'
+  keys +=: ' properties required dependentRequired additionalProperties'
   keys +=: ' items uniqueItems minItems maxItems'
   keys +=: ' minimum maximum minLength maxLength'
   keys +=: ' minProperties maxProperties $defs'
   keys: .split(' ')
 
-defn pretty-json(value schema-order=false):
-  pretty-value(value 0 schema-order)
+defn pretty-json(value):
+  pretty-value: value 0
 
-defn pretty-value(value level schema-order):
+defn pretty-value(value level):
   cond:
-    map?(value): pretty-map(value level schema-order)
-    value:vector?: pretty-array(value level schema-order)
+    map?(value): pretty-map(value level)
+    value:vector?: pretty-array(value level)
     else: pretty-scalar(value)
 
 defn pretty-scalar(value):
   json/dump(value).replace(/\\\// '/')
 
-defn pretty-map(value level schema-order):
+defn pretty-map(value level):
   if empty?(value):
     then: '{}'
     else:
       child =: level + 2
-      entries =:
-        if schema-order:
-          then:
-            map(\(pretty-map-schema-entry(value child schema-order _))
-                canonical-json-map-keys(value))
-          else:
-            map(\(pretty-map-entry(_ child schema-order)) value)
+      entries =: map(\(pretty-map-entry(_ child)) value)
       body =: join(",\n" entries)
       =>: "{\n$body\n$(indent(level))}"
 
-defn pretty-map-entry(entry level schema-order):
-  pretty-map-key: entry.0 entry.1 level schema-order
+defn pretty-map-entry(entry level):
+  pretty-map-key: entry.0 entry.1 level
 
-defn pretty-map-schema-entry(value level schema-order key):
-  pretty-map-key: key value.$key level schema-order
-
-defn pretty-map-key(key value level schema-order):
-  rendered =: pretty-value(value level schema-order)
+defn pretty-map-key(key value level):
+  rendered =: pretty-value(value level)
   =>: "$(indent(level))$(json/dump(key)): $rendered"
 
-defn pretty-array(value level schema-order):
+defn pretty-array(value level):
   if empty?(value):
     then: '[]'
     else:
       child =: level + 2
       entries =:
-        map(\("$(indent(child))$(pretty-value(_ child schema-order))")
+        map(\("$(indent(child))$(pretty-value(_ child))")
             value)
       body =: join(",\n" entries)
       =>: "[\n$body\n$(indent(level))]"
@@ -630,20 +726,20 @@ defn expand-doc-entry(result entry):
   key value =: entry
   key =: key:S
   cond:
-    key == '.need': reject-need-directive()
+    key == '.need': reject-misplaced-need-directive()
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     passthrough-directive?(key):
-      result +: +{key value}
+      ordered-put: result key value
     key =~ /^\./:
       expand-top-directive: result key value
     key == WILDCARD-KEY:
-      result +: +{key expand-type(value)}
+      ordered-put: result key expand-type(value)
     key =~ /^\+/:
-      result +: +{key expand-type(value)}
+      ordered-put: result key expand-type(value)
     else:
       add-expanded-field: result key value
 
@@ -660,7 +756,7 @@ defn expand-top-directive(result key value):
       '.open': validate-open-value(value)
       '.keys': expand-key-rules(value)
       else: value
-  result +: +{key normalized}
+  ordered-put: result key normalized
 
 defn expand-key-rules(value):
   when-not sequential?(value):
@@ -701,7 +797,7 @@ defn add-expanded-field(result key value):
   info =: parse-expanded-key(key)
   block =: expand-type(value)
   block =: canonicalize-type-reference(block)
-  result +: +{info.key block}
+  ordered-put: result info.key block
 
 defn parse-expanded-key(key):
   when key-list-suffix?(key):
@@ -743,7 +839,7 @@ defn expand-shape-entry(result entry):
   key =: entry.0:S
   cond:
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
-    key == WILDCARD-KEY: result + {key expand-type(entry.1)}
+    key == WILDCARD-KEY: ordered-put(result key expand-type(entry.1))
     else: add-expanded-field(result key entry.1)
 
 defn expand-explicit-type(value):
@@ -763,18 +859,17 @@ defn expand-explicit-entry(result entry):
   cond:
     key == '.type': result
     key == '.list': reject-list-directive()
-    key == '.need': reject-need-directive()
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     passthrough-directive?(key):
-      result +: +{key val}
+      ordered-put: result key val
     key =~ /^\./:
       expand-explicit-directive: result key val
     key == WILDCARD-KEY:
-      result +: +{key expand-type(val)}
+      ordered-put: result key expand-type(val)
     else:
       add-expanded-field: result key val
 
@@ -784,7 +879,7 @@ defn type-directive?(key):
      '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
      '.one', '.any', '.all', '.not',
-     '.title', '.desc', '.open', '.also', '.with', '.when']
+     '.title', '.desc', '.open', '.need', '.also', '.with', '.when']
   key: .in?(directives)
 
 defn expand-explicit-directive(result key value):
@@ -821,6 +916,7 @@ defn normalize-directive(key value):
     '.enum': inferred-directive(key value)
     '.const': inferred-directive(key value)
     '.open': +{key validate-open-value(value)}
+    '.need': +{key validate-need-value(value)}
     else: +{key value}
 
 defn validate-open-value(value):
@@ -828,67 +924,113 @@ defn validate-open-value(value):
     usage: 'yamlschema .open must be true or false'
   =>: value
 
-# `.open` is a lexical YSD default for mapping types. Canonical YSC makes
-# inherited openness explicit on each open shape, while closed shapes use the
-# canonical default and explicit wildcards remain explicit wildcards.
+# `.open` is a lexical YSD default for mapping types. Canonical YSC keeps
+# `.open: true` only at the document top. A local wildcard opens one mapping,
+# while `.open: false` closes a mapping and its nested default.
 defn resolve-open-doc(doc):
-  inherited =: doc.get('.open' false)
-  validate-open-value: inherited
-  =>: reduce(\(resolve-open-doc-entry(_1 _2 inherited)) omap() doc)
+  explicit =: contains?(doc '.open')
+  source-open =: doc.get('.open' false)
+  validate-open-value: source-open
+  wildcard =: contains?(doc WILDCARD-KEY)
+  when explicit && source-open.! && wildcard:
+    usage: 'yamlschema .open: false conflicts with an explicit +Str wildcard'
+  result =: reduce(
+    \(resolve-open-doc-entry(_1 _2 source-open source-open))
+    omap()
+    doc)
+  wildcard-last: result
 
-defn resolve-open-doc-entry(result entry inherited):
+defn resolve-open-doc-entry(result entry source-open output-open):
   key =: entry.0:S
   value =: entry.1
   cond:
     key == '.keys':
-      result + {key resolve-open-key-rules(value inherited)}
-    key =~ /^\./: result + {key value}
-    else: result + {key resolve-open-type(value inherited)}
+      ordered-put:
+        result key resolve-open-key-rules(value source-open output-open)
+    key == '.open':
+      if source-open:
+        then: ordered-put(result key true)
+        else: result
+    (key == WILDCARD-KEY) && source-open && wildcard-any?(value):
+      result
+    key =~ /^\./: ordered-put(result key value)
+    else:
+      ordered-put:
+        result key resolve-open-type(value source-open output-open)
 
-defn resolve-open-key-rules(rules inherited):
-  vec: rules.map(\(resolve-open-key-rule(_ inherited)))
+defn resolve-open-key-rules(rules source-open output-open):
+  vec: rules.map(
+    \(resolve-open-key-rule(_ source-open output-open)))
 
-defn resolve-open-key-rule(rule inherited):
+defn resolve-open-key-rule(rule source-open output-open):
   branches =: rule.'.any'.map(
-    \(resolve-open-key-branch(_ inherited))):vec
+    \(resolve-open-key-branch(_ source-open output-open))):vec
   =>: +{'.any' branches}
 
-defn resolve-open-key-branch(branch inherited):
+defn resolve-open-key-branch(branch source-open output-open):
   reduce:
-    \(resolve-open-key-branch-entry(_1 _2 inherited))
+    \(resolve-open-key-branch-entry(
+      _1 _2 source-open output-open))
     omap()
     branch
 
-defn resolve-open-key-branch-entry(result entry inherited):
-  result + {entry.0 resolve-open-type(entry.1 inherited)}
+defn resolve-open-key-branch-entry(result entry source-open output-open):
+  value =: resolve-open-type(entry.1 source-open output-open)
+  ordered-put: result entry.0 value
 
-defn resolve-open-type(value inherited):
+defn resolve-open-type(value source-open output-open):
   when-not map?(value):
     =>: value
   explicit =: contains?(value '.open')
-  local =:
+  local-open =:
     if explicit:
       then: value.'.open'
-      else: inherited
-  validate-open-value: local
+      else: source-open
+  validate-open-value: local-open
   wildcard =: contains?(value WILDCARD-KEY)
   when explicit && open-compatible-type?(value).!:
     usage: 'yamlschema .open requires an anonymous mapping type'
-  when explicit && local.! && wildcard:
+  when explicit && local-open.! && wildcard:
     usage: 'yamlschema .open: false conflicts with an explicit +Str wildcard'
   shape =: open-mapping-shape?(value)
-  child-open =:
+  child-source-open =:
     if shape:
-      then: local
-      else: inherited
+      then: local-open
+      else: source-open
+  close-output =: shape && local-open.! && output-open
+  child-output-open =: close-output.if(false output-open)
   result =: reduce(
-    \(resolve-open-entry(_1 _2 child-open)) omap() value)
+    \(resolve-open-entry(
+      _1 _2 child-source-open child-output-open))
+    omap()
+    value)
   result =: dissoc(result '.open')
-  result =:
-    if shape && local && wildcard.!:
-      then: result + {'.open' true}
-      else: result
+  result =: canonical-open-shape(
+    result shape local-open output-open wildcard)
   ordered-directives: result
+
+defn canonical-open-shape(result shape local-open output-open wildcard):
+  if-not shape:
+    then: result
+    else:
+      unconstrained =:
+        wildcard && wildcard-any?(result.$WILDCARD-KEY)
+      has-fields =: result:keys.some(
+        \((_ != WILDCARD-KEY) && (_:S !~ /^\./)))
+      result =:
+        if unconstrained && output-open && has-fields:
+          then: dissoc(result WILDCARD-KEY)
+          else: result
+      cond:
+        local-open && output-open.! && wildcard.!:
+          ordered-put: result WILDCARD-KEY {'.type' '+Any'}
+        local-open.! && output-open:
+          ordered-put: result '.open' false
+        else: result
+
+defn wildcard-any?(value):
+  (value == '+Any') ||
+    (map?(value) && (value.'.type' == '+Any') && (value.# == 1))
 
 defn open-mapping-shape?(value):
   empty?(value) ||
@@ -899,17 +1041,19 @@ defn open-compatible-type?(value):
   shaped =: value:keys.some(\(_ !~ /^\./))
   =>: reference.nil? || shaped || reference.in?(['+Map', '+Map[]'])
 
-defn resolve-open-entry(result entry inherited):
+defn resolve-open-entry(result entry source-open output-open):
   key =: entry.0:S
   value =: entry.1
   resolved =:
     cond:
       key.in?(['.one', '.any', '.all']):
-        vec: value.map(\(resolve-open-type(_ inherited)))
-      key.in?(['.item', '.not']): resolve-open-type(value inherited)
+        vec: value.map(
+          \(resolve-open-type(_ source-open output-open)))
+      key.in?(['.item', '.not']):
+        resolve-open-type: value source-open output-open
       key =~ /^\./: value
-      else: resolve-open-type(value inherited)
-  result +: +{key resolved}
+      else: resolve-open-type(value source-open output-open)
+  ordered-put: result key resolved
 
 defn expand-combinator-sequence(key value):
   when-not sequential?(value):
@@ -928,17 +1072,20 @@ defn merge-directives(left right context):
   when duplicates:seq:
     key =: sort(duplicates).0
     usage: "duplicate yamlschema directive: $key in $context"
-  ordered-directives: left + right
+  ordered-directives: merge-ordered-maps(left right)
 
 defn ordered-directives(value):
   order =:
-    +['.type', '.open', '.list', '.item',
+    +['.type', '.open', '.need', '.list', '.item',
      '.one', '.any', '.all', '.not',
      '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
      '.init', '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
-  reduce put-non-directive: result value
+  result =: reduce(put-non-directive result value)
+  if contains?(value WILDCARD-KEY):
+    then: ordered-put(result WILDCARD-KEY value.$WILDCARD-KEY)
+    else: result
 
 defn canonicalize-type-reference(value):
   value =: fold-list-type(value)
@@ -953,28 +1100,42 @@ defn fold-list-type(value):
       reference =: reference.ends?('[]').if(reference "$reference[]")
       result =: dissoc(value '.list')
       result =: dissoc(result '.type')
-      result +: +{'.type' reference}
+      ordered-put: result '.type' reference
     else: value
 
 defn put-present(result key value):
   if contains?(value key):
-    result +: +{key value.$key}
+    then: ordered-put(result key value.$key)
     else: result
 
 defn put-non-directive(result entry):
   key =: entry.0:S
-  if key =~ /^\./:
-    then:
-      if passthrough-directive?(key):
-        then: result + {key entry.1}
-        else: result
-    else: result + {key entry.1}
+  if key == WILDCARD-KEY:
+    then: result
+    else:
+      if key =~ /^\./:
+        then:
+          if passthrough-directive?(key):
+            then: ordered-put(result key entry.1)
+            else: result
+        else: ordered-put(result key entry.1)
+
+defn wildcard-last(value):
+  result =: reduce(put-non-wildcard omap() value)
+  if contains?(value WILDCARD-KEY):
+    then: ordered-put(result WILDCARD-KEY value.$WILDCARD-KEY)
+    else: result
+
+defn put-non-wildcard(result entry):
+  if entry.0:S == WILDCARD-KEY:
+    then: result
+    else: ordered-put(result entry.0 entry.1)
 
 defn reject-unknown-directive(key):
   usage: "unsupported yamlschema directive: $key"
 
-defn reject-need-directive():
-  usage: 'unsupported yamlschema directive: .need; use ? on optional keys'
+defn reject-misplaced-need-directive():
+  usage: 'yamlschema .need is only valid on a property definition'
 
 defn reject-list-directive():
   usage: 'unsupported yamlschema directive: .list; use [] on the type'
@@ -1197,6 +1358,11 @@ defn primary-block(token):
 defn expand-tight-token(result token):
   cond:
     type-symbol?(token): append-all-reference(result token)
+    need-token?(token):
+      merge-directives:
+        result compact-need-block(token) 'need clause'
+    token.starts?(':need'):
+      usage: "invalid yamlschema need clause: $token"
     token.starts?('=~'):
       merge-directives:
         result
@@ -1233,6 +1399,26 @@ defn expand-tight-token(result token):
         result {'.size' normalize-size(token)} 'size clause'
     else:
       usage: "invalid or out-of-order yamlschema clause: $token"
+
+defn need-token?(token):
+  token =~ /^:need\([^\)]*\)$/
+
+defn compact-need-block(token):
+  body =: token.replace(/^:need\(/).replace(/\)$/)
+  values =: body:empty?.if([] body.split(',').map(trim):vec)
+  when values.some(empty?):
+    usage: "invalid yamlschema need clause: $token"
+  identity: +{'.need' validate-need-value(values)}
+
+defn validate-need-value(value):
+  when-not sequential?(value):
+    usage: 'yamlschema .need requires a sequence of property names'
+  names =: vec(value)
+  when-not names.every?(string?):
+    usage: 'yamlschema .need property names must be strings'
+  when distinct(names):count != names.#:
+    usage: 'yamlschema .need property names must be unique'
+  =>: names
 
 defn append-all-reference(result token):
   branches =: result.'.all' || []
@@ -1360,6 +1546,8 @@ defn labeled-tight-block(token result):
     'all': structural-tight-label-error(name)
     'not': structural-tight-label-error(name)
     'with': structural-tight-label-error(name)
+    'need':
+      usage('unsupported yamlschema keyword:\ need; use :need(...)')
     'when': structural-tight-label-error(name)
     else: usage("unsupported yamlschema keyword $name")
 
@@ -1574,21 +1762,28 @@ defn ysc-to-schema(doc):
   result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
     .map-put-if(empty?(reqs).! 'required' reqs)
+    .map-put-if(empty?(state.dependent).!
+                'dependentRequired' state.dependent)
     .map-put-if(empty?(defs-val).! '$defs' defs-val)
   if state.wildcard:
     then:
       if state.additional == true:
         then: result
         else: result + {'additionalProperties' state.additional}
-    else: result + {'additionalProperties' false}
+    else:
+      if state.open:
+        then: result
+        else: result + {'additionalProperties' false}
 
 defn initial-ysc-doc-state(doc):
   result =: add-json-meta(omap() doc.'.json')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
-    defs: {}
-    props: {}
+    defs:: omap()
+    props:: omap()
     required: []
+    dependent:: omap()
+    open:: doc.get('.open' false)
     wildcard: false
     additional:
 
@@ -1603,9 +1798,10 @@ defn ysc-doc-step(state entry):
         additional:: wildcard-value-to-schema(value)
     key =~ /^\+/:
       name =: key.replace(/^\+/)
-      update-state: state 'defs' name ysc-value-to-schema(value)
+      schema =: ysc-value-to-schema(value state.open)
+      update-state: state 'defs' name schema
     key =~ /^\./:
-      result =: add-schema-meta(state.result key value)
+      result =: add-schema-meta(state.result key value state.open)
       state +: +{'result' result}
     legacy-directive?(key):
       reject-legacy-directive: key
@@ -1613,24 +1809,41 @@ defn ysc-doc-step(state entry):
       add-property-schema: state key value
 
 defn update-state(state slot key value):
-  state +: +{slot (state.$slot + {key value})}
+  state +: +{slot ordered-put(state.$slot key value)}
 
 defn add-property-schema(state key value):
   info =: parse-property-key(key)
-  schema =: ysc-value-to-schema(value)
+  has-need =: map?(value) && contains?(value '.need')
+  needs =: has-need.when(validate-need-value(value.'.need'))
+  schema-value =: has-need.if(without-property-need(value) value)
+  schema =: ysc-value-to-schema(schema-value state.open)
   state =: update-state(state 'props' info.name schema)
-  if info.required:
-    state +: +{'required' (state.required + info.name)}
-    else: state
+  state =:
+    if info.required:
+      then: state + {'required' (state.required + info.name)}
+      else: state
+  state =:
+    if has-need:
+      then: update-state(state 'dependent' info.name needs)
+      else: state
+  =>: state
 
-defn add-schema-meta(result key value):
+defn without-property-need(value):
+  reduce remove-property-need: omap() value
+
+defn remove-property-need(result entry):
+  if entry.0:S == '.need':
+    then: result
+    else: ordered-put(result entry.0 entry.1)
+
+defn add-schema-meta(result key value inherited-open=false):
   case key:
     '.json': result.add-json-meta(value)
     '.title': result + {'title' value}
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
     '.open': result
-    '.keys': add-key-rules-schema(result value)
+    '.keys': add-key-rules-schema(result value inherited-open)
     '.additionalProperties':
       reject-additional-properties: key
     else:
@@ -1638,8 +1851,9 @@ defn add-schema-meta(result key value):
         then: add-passthrough-schema-keyword(result key value)
         else: result
 
-defn add-key-rules-schema(result rules):
-  schemas =: rules.map(key-rule-to-schema):vec
+defn add-key-rules-schema(result rules inherited-open=false):
+  schemas =: rules.map(
+    \(key-rule-to-schema(_ inherited-open))):vec
   if count(schemas).eq(1):
     then:
       when result.has?('anyOf'):
@@ -1650,17 +1864,21 @@ defn add-key-rules-schema(result rules):
         usage: 'duplicate root allOf from yamlschema .keys'
       result +: +{'allOf' schemas}
 
-defn key-rule-to-schema(rule):
-  alternatives =: rule.'.any'.map(key-rule-branch-to-schema):vec
+defn key-rule-to-schema(rule inherited-open=false):
+  alternatives =: rule.'.any'.map(
+    \(key-rule-branch-to-schema(_ inherited-open))):vec
   =>: +{'anyOf' alternatives}
 
-defn key-rule-branch-to-schema(branch):
-  state =: reduce(ysc-object-step initial-object-state() branch)
+defn key-rule-branch-to-schema(branch inherited-open=false):
+  state =:
+    reduce(ysc-object-step initial-object-state(inherited-open) branch)
   result =: omap()
   result =: result.map-put-if(
     empty?(state.props).! 'properties' state.props)
-  result: .map-put-if(
+  result =: result.map-put-if(
     empty?(state.required).! 'required' state.required)
+  result: .map-put-if(
+    empty?(state.dependent).! 'dependentRequired' state.dependent)
 
 defn legacy-directive?(key):
   key =~ /^-/
@@ -1711,40 +1929,49 @@ defn parse-property-key(key):
     name:: k
     required:: required
 
-defn ysc-value-to-schema(value):
+defn ysc-value-to-schema(value inherited-open=false):
   if map?(value):
-    ysc-map-to-schema: value
+    ysc-map-to-schema: value inherited-open
     ysc-scalar-to-schema: value
 
-defn wildcard-value-to-schema(value):
-  schema =: ysc-value-to-schema(value)
+defn wildcard-value-to-schema(value inherited-open=false):
+  schema =: ysc-value-to-schema(value inherited-open)
   if empty?(schema):
     then: true
     else: schema
 
-defn ysc-map-to-schema(value):
+defn ysc-map-to-schema(value inherited-open=false):
   explicit =: some(\(_:S =~ /^\./) value:keys)
   explicit =: value:keys.some(\(/^\./))
   if explicit:
-    ysc-block-to-schema: value
-    ysc-object-to-schema: value
+    ysc-block-to-schema: value inherited-open
+    ysc-object-to-schema: value inherited-open
 
-defn ysc-object-to-schema(value):
-  state =: reduce(ysc-object-step initial-object-state() value)
+defn ysc-object-to-schema(value inherited-open=false):
+  state =:
+    reduce(ysc-object-step initial-object-state(inherited-open) value)
   reqs =: state.required
   result =: +{'type' 'object'}
   result =: map-put-if(result empty?(reqs).! 'required' reqs)
   result =: map-put-if(result empty?(state.props).! 'properties' state.props)
+  result =: map-put-if(
+    result empty?(state.dependent).!
+    'dependentRequired' state.dependent)
   if state.wildcard:
     then:
       if state.additional == true:
         then: result
         else: result + {'additionalProperties' state.additional}
-    else: result + {'additionalProperties' false}
+    else:
+      if state.open:
+        then: result
+        else: result + {'additionalProperties' false}
 
-defn initial-object-state()::
-  props: {}
+defn initial-object-state(open=false)::
+  props:: omap()
   required: []
+  dependent:: omap()
+  open:: open
   wildcard: false
   additional:
 
@@ -1755,19 +1982,22 @@ defn ysc-object-step(state entry):
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
-        additional:: wildcard-value-to-schema(entry.1)
+        additional:: wildcard-value-to-schema(entry.1 state.open)
     legacy-directive?(key):
       reject-legacy-directive: key
     else:
       add-property-schema: state key entry.1
 
-defn ysc-block-to-schema(value):
+defn ysc-block-to-schema(value inherited-open=false):
+  when contains?(value '.need'):
+    reject-misplaced-need-directive()
   reject-unexportable-directives: value
   list =: canonical-list-type?(value)
+  local-open =: value.get('.open' inherited-open)
   native-value =: without-passthrough-directives(value)
   item-value =: list.if(canonical-list-item(native-value) native-value)
-  item =: canonical-item-schema(item-value)
-  shape =: canonical-shape-schema(item-value)
+  item =: canonical-item-schema(item-value local-open)
+  shape =: canonical-shape-schema(item-value inherited-open)
   item =: shape.if(merge(item shape) item)
   result =:
     if list:
@@ -1783,7 +2013,7 @@ defn without-passthrough-directives(value):
 defn remove-passthrough-directive(result entry):
   if passthrough-directive?(entry.0:S):
     then: result
-    else: result + {entry.0 entry.1}
+    else: ordered-put(result entry.0 entry.1)
 
 defn canonical-list-type?(value):
   reference =: value.'.type'
@@ -1799,14 +2029,14 @@ defn reject-unexportable-directives(value):
     when contains?(value key):
       usage: "cannot export yamlschema directive to JSON Schema: $key"
 
-defn canonical-item-schema(value):
+defn canonical-item-schema(value inherited-open=false):
   result =:
     if value.has?('.type'):
       ysc-bare-scalar-to-schema: value.'.type'
       else: +{}
   result =:
     if contains?(value '.item'):
-      ysc-value-to-schema: value.'.item'
+      ysc-value-to-schema: value.'.item' inherited-open
       else: result
   result =: map-put-if(result contains?(value '.like')
     'pattern' value.'.like')
@@ -1820,7 +2050,7 @@ defn canonical-item-schema(value):
     if contains?(value '.range'):
       then: result + dissoc(range-to-schema(value.'.range') 'type')
       else: result
-  add-canonical-combinators: result value
+  add-canonical-combinators: result value inherited-open
 
 defn add-passthrough-schema-keywords(result value):
   reduce add-passthrough-schema-entry: result value
@@ -1839,18 +2069,23 @@ defn add-passthrough-schema-keyword(result directive value):
       C(58) ' ' directive)
   result +: +{keyword value}
 
-defn add-canonical-combinators(result value):
-  result =: add-canonical-combinator(result value '.one' 'oneOf')
-  result =: add-canonical-any(result value)
-  result =: add-canonical-combinator(result value '.all' 'allOf')
+defn add-canonical-combinators(result value inherited-open=false):
+  result =: add-canonical-combinator(
+    result value '.one' 'oneOf' inherited-open)
+  result =: add-canonical-any(result value inherited-open)
+  result =: add-canonical-combinator(
+    result value '.all' 'allOf' inherited-open)
   if contains?(value '.not'):
-    then: result + {'not' ysc-value-to-schema(value.'.not')}
+    then:
+      schema =: ysc-value-to-schema(value.'.not' inherited-open)
+      result +: +{'not' schema}
     else: result
 
-defn add-canonical-any(result value):
+defn add-canonical-any(result value inherited-open=false):
   if contains?(value '.any'):
     then:
-      schemas =: vec(value.'.any'.map(ysc-value-to-schema))
+      schemas =: value.'.any'.map(
+        \(ysc-value-to-schema(_ inherited-open))):vec
       types =: vec(schemas.map(simple-schema-type))
       type-union =: simple-type-union?(result types)
       if type-union:
@@ -1873,27 +2108,33 @@ defn simple-schema-type(schema):
   when simple:
     =>: schema.type
 
-defn add-canonical-combinator(result value directive keyword):
+defn add-canonical-combinator(result value directive keyword open=false):
   if contains?(value directive):
     then:
-      schemas =: vec(value.$directive.map(ysc-value-to-schema))
+      schemas =: value.$directive.map(
+        \(ysc-value-to-schema(_ open))):vec
       result +: +{keyword schemas}
     else: result
 
-defn canonical-shape-schema(value):
+defn canonical-shape-schema(value inherited-open=false):
   entries =: value.filter(\(_1.0:S !~ /^\./))
   when entries:seq || contains?(value '.open'):
-    state =: reduce(ysc-object-step initial-object-state() entries)
+    local-open =: value.get('.open' inherited-open)
+    state =:
+      reduce(ysc-object-step initial-object-state(local-open) entries)
     result =: +{'type' 'object'}
     result =: map-put-if(result state.props:seq 'properties' state.props)
     result =:
       map-put-if(result state.required:seq 'required' state.required)
+    result =:
+      map-put-if(result state.dependent:seq
+        'dependentRequired' state.dependent)
     cond:
       state.wildcard:
         if state.additional == true:
           then: result
           else: result + {'additionalProperties' state.additional}
-      value.'.open': result
+      local-open: result
       else: result + {'additionalProperties' false}
 
 defn canonical-list-schema(item value):
@@ -1946,9 +2187,9 @@ defn add-null-schema(result nullable):
     else: result
 
 defn initial-block-state()::
-  result: {}
+  result:: omap()
   item:
-  props: {}
+  props:: omap()
   required: []
   wildcard: false
   additional:
@@ -2119,7 +2360,7 @@ defn unsupported-json-schema-keywords():
     'propertyNames', 'if', 'then', 'else',
     'unevaluatedItems', 'unevaluatedProperties',
     'multipleOf', 'exclusiveMaximum', 'exclusiveMinimum',
-    'maxContains', 'minContains', 'dependentRequired',
+    'maxContains', 'minContains',
     'deprecated', 'readOnly', 'writeOnly', 'examples',
     'format', 'contentEncoding', 'contentMediaType', 'contentSchema']
 
@@ -2344,13 +2585,14 @@ defn supported-json-schema-dialect?(dialect):
 defn build-doc(schema):
   defs =: schema.'$defs' ||
           schema.definitions ||
-          {}
+          omap()
+  root-open =: json-unconstrained-open?(schema)
   result =: omap()
     .add-root-annotations(schema)
-    .add-import-open-default()
-    .add-defs(defs true)
-    .add-body(schema true)
-    .add-root-key-rules(schema true)
+    .add-import-open-default(root-open)
+    .add-defs(defs root-open)
+    .add-body(schema root-open)
+    .add-root-key-rules(schema root-open)
   add-json-schema-meta: result schema
 
 defn add-root-annotations(result schema):
@@ -2358,12 +2600,14 @@ defn add-root-annotations(result schema):
     .map-put-if(schema.title.? '.title' schema.title)
     .map-put-if(schema.description.? '.desc' schema.description)
 
-defn add-import-open-default(result):
-  result +: +{'.open' true}
+defn add-import-open-default(result root-open):
+  if root-open:
+    then: ordered-put(result '.open' true)
+    else: result
 
 defn add-json-schema-meta(result schema):
   if schema.'$id':
-    result +: +{'.json' json-id-meta(schema.'$id')}
+    ordered-put: result '.json' json-id-meta(schema.'$id')
     else: result
 
 defn json-id-meta(id)::
@@ -2376,24 +2620,38 @@ defn add-def-step(result entry inherited-open):
   name sub =: entry
   when name:S == 'Str':
     usage: 'JSON Schema definition name Str conflicts with the +Str wildcard'
-  result +: +{"+$name" build-value(sub inherited-open)}
+  ordered-put: result "+$name" build-value(sub inherited-open)
 
 defn add-body(result schema inherited-open):
+  validate-schema-dependent-required: schema
   if object-with-props?(schema):
     then:
       result =: add-properties(result schema inherited-open)
-      add-wildcard-entry: result schema inherited-open
+      add-root-wildcard-entry: result schema inherited-open
     else:
       if json-type(schema).eq('object') && typed-map-base(schema):
-        then: add-wildcard-entry(result schema inherited-open)
+        then: add-root-wildcard-entry(result schema inherited-open)
         else: result
+
+defn add-root-wildcard-entry(result schema inherited-open):
+  if json-typed-additional?(schema):
+    then: add-wildcard-entry(result schema inherited-open)
+    else: result
 
 defn add-properties(result schema inherited-open):
   props =: schema.properties
   required =: set(schema.required)
-  reduce \(add-property(_1 _2 required inherited-open)): result props
+  dependent =: validate-dependent-required(schema props)
+  reduce:
+    \(add-property(_1 _2 required dependent inherited-open))
+    result
+    props
 
-defn add-property(result entry required inherited-open):
+defn validate-schema-dependent-required(schema):
+  when contains?(schema 'dependentRequired'):
+    validate-dependent-required: schema (schema.properties || {})
+
+defn add-property(result entry required dependent inherited-open):
   name sub =: entry
   when name:S == WILDCARD-KEY:
     usage: 'JSON Schema property name +Str is reserved for the wildcard'
@@ -2404,7 +2662,43 @@ defn add-property(result entry required inherited-open):
     if array?:
       build-list-value(sub inherited-open)
       build-value(sub inherited-open)
-  result +: +{key value}
+  value =:
+    if contains?(dependent name):
+      then: add-property-need(value dependent.$name)
+      else: value
+  ordered-put: result key value
+
+defn validate-dependent-required(schema props):
+  value =: schema.dependentRequired
+  if value:nil?:
+    then: omap()
+    else:
+      when-not map?(value):
+        usage: 'JSON Schema dependentRequired must be an object'
+      reduce \(validate-dependent-required-entry(_1 _2 props)):
+        omap() value
+
+defn validate-dependent-required-entry(result entry props):
+  trigger required =: entry
+  when-not string?(trigger):
+    usage: 'JSON Schema dependentRequired triggers must be strings'
+  when-not contains?(props trigger):
+    usage: "dependentRequired trigger has no property declaration: $trigger"
+  names =: validate-need-value(required)
+  ordered-put: result trigger names
+
+defn add-property-need(value names):
+  if string?(value) && compact-need-names?(names):
+    then: "$value :need($(names.join(',')))"
+    else:
+      block =:
+        if map?(value):
+          then: value
+          else: +{'.type' value}
+      ordered-directives: block + {'.need' names}
+
+defn compact-need-names?(names):
+  names.every?(\(_ =~ /^[A-Za-z_$][A-Za-z0-9_.$\/-]*$/))
 
 defn add-root-key-rules(result schema inherited-open):
   alternatives =: root-key-anyof(schema)
@@ -2419,7 +2713,7 @@ defn add-root-key-rules(result schema inherited-open):
         \(build-root-key-branch(_ inherited-open))):vec
       rule =: +{'.any' branches}
       rules =: +[rule]
-      result +: +{'.keys' rules}
+      ordered-put: result '.keys' rules
     else: result
 
 defn root-key-anyof(schema):
@@ -2453,7 +2747,7 @@ defn build-root-key-branch-entry(result entry required inherited-open):
   name sub =: entry
   key =: key-for(name required.has?(name))
   value =: build-value(sub inherited-open)
-  result +: +{key value}
+  ordered-put: result key value
 
 defn build-list-value(schema inherited-open):
   item =: array-item-schema(schema)
@@ -2491,6 +2785,7 @@ defn append-list-suffix(type suffix):
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
 defn build-value(schema inherited-open=true):
+  validate-schema-dependent-required: schema
   scalar-schema =: schema-without-description(schema)
   scalar =: succinct-default-scalar(scalar-schema)
   description-scalar =: scalar || succinct-array-scalar(scalar-schema)
@@ -2558,14 +2853,14 @@ defn succinct-array-scalar(schema):
       =>: "$item$(list-suffix(schema))"
 
 defn build-properties-map(schema inherited-open):
-  local-open =: imported-local-open(schema inherited-open)
+  child-open =: imported-child-open(schema inherited-open)
   base =: schema-base-ref(schema)
   result =: map-put-if(omap() base.? '.type' base)
-  result =: add-open-override(result schema inherited-open local-open)
+  result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
-  result =: add-properties(result schema local-open)
-  add-wildcard-entry: result schema local-open
+  result =: add-properties(result schema child-open)
+  add-wildcard-entry: result schema inherited-open
 
 defn build-block-map(schema inherited-open=true):
   add-block(omap() schema inherited-open)
@@ -2580,19 +2875,20 @@ defn add-block(result schema inherited-open=true):
   is-array =: t.eq('array')
   pure-map =: t.eq('object') && object-with-props?(schema).!
   map-base =: pure-map.when(open-map-base(schema))
-  local-open =: imported-local-open(schema inherited-open)
-  result =: add-open-override(result schema inherited-open local-open)
+  map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
+  child-open =: imported-child-open(schema inherited-open)
+  result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result map-base '.type' map-base)
   result =:
     if schema.'$ref'.?:
-      then: result + {'.type' ref-sym(schema.'$ref')}
+      then: ordered-put(result '.type' ref-sym(schema.'$ref'))
       else: result
   result =: map-put-if(result has-type '.type' ts)
   result =: map-put-if(result is-array '.type' '+Any[]')
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
     if schema.has?('pattern'):
-      then: result + pattern-directive(schema.pattern)
+      then: merge-ordered-maps(result pattern-directive(schema.pattern))
       else: result
   result =:
     if schema.enum.?:
@@ -2600,8 +2896,8 @@ defn add-block(result schema inherited-open=true):
         result =:
           if result.has?('.type'):
             then: result
-            else: result + {'.type' json-infer-base(schema.enum)}
-        result +: +{'.enum' enum-block-list(schema.enum)}
+            else: ordered-put(result '.type' json-infer-base(schema.enum))
+        ordered-put: result '.enum' enum-block-list(schema.enum)
       else: result
   result =:
     if schema.const.?:
@@ -2609,53 +2905,53 @@ defn add-block(result schema inherited-open=true):
         result =:
           if result.has?('.type'):
             then: result
-            else: result + {'.type' json-base-for-value(schema.const)}
-        result +: +{'.const' literal-value(schema.const)}
+            else: ordered-put(result '.type' json-base-for-value(schema.const))
+        ordered-put: result '.const' literal-value(schema.const)
       else: result
   result =: map-put-if(result schema.uniqueItems '.uniq' true)
   result =:
     if contains?(schema 'default'):
-      then: result + {'.init' literal-value(schema.'default')}
+      then: ordered-put(result '.init' literal-value(schema.'default'))
       else: result
   result =: map-put-if(result schema.title.? '.title' schema.title)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: result.add-combinator-directive(
-    schema 'oneOf' '.one' local-open)
+    schema 'oneOf' '.one' child-open)
   result =: result.add-combinator-directive(
-    schema 'anyOf' '.any' local-open)
+    schema 'anyOf' '.any' child-open)
   result =: result.add-combinator-directive(
-    schema 'allOf' '.all' local-open)
+    schema 'allOf' '.all' child-open)
   result =:
     if schema.not.?:
-      then: result + {'.not' build-value(schema.not local-open)}
+      then: ordered-put(result '.not' build-value(schema.not child-open))
       else: result
   result =: result
     .add-numeric-range-directive(schema.minimum schema.maximum)
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
-    .add-array-items(is-array schema local-open)
+    .add-array-items(is-array schema child-open)
   result =:
     if t == 'object':
       then:
         if object-with-props?(schema):
           then:
-            result =: result.add-properties(schema local-open)
-            add-wildcard-entry: result schema local-open
+            result =: result.add-properties(schema child-open)
+            add-wildcard-entry: result schema inherited-open
           else:
             map-base.if(result
-              add-wildcard-entry(result schema local-open))
+              add-wildcard-entry(result schema inherited-open))
       else: result
   add-passthrough-directives: result schema
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
-    (result + {'.size' size-pair(lo hi)})
-    result
+    then: ordered-put(result '.size' size-pair(lo hi))
+    else: result
 
 defn add-numeric-range-directive(result lo hi):
   if lo.? || hi.?:
-    then: result + {'.range' range-token(lo hi)}
+    then: ordered-put(result '.range' range-token(lo hi))
     else: result
 
 defn add-array-items(result is-array schema inherited-open):
@@ -2663,10 +2959,10 @@ defn add-array-items(result is-array schema inherited-open):
     then:
       items =: schema.items
       item-scalar =: succinct-scalar(items)
-      result +:
-        if item-scalar: +
-          {'.type' "$item-scalar[]"}
-          {'.item' build-block-map(items inherited-open)}
+      if item-scalar:
+        then: ordered-put(result '.type' "$item-scalar[]")
+        else:
+          ordered-put: result '.item' build-block-map(items inherited-open)
     else: result
 
 defn additional-properties-value(schema inherited-open):
@@ -2680,28 +2976,48 @@ defn typed-map-base(schema):
   value-type: .when("+Map{$value-type}")
 
 defn open-map-base(schema):
-  if contains?(schema 'additionalProperties'):
-    then: typed-map-base(schema)
-    else: nil
+  when contains?(schema 'additionalProperties'):
+    typed-map-base: schema
 
-defn imported-local-open(schema inherited-open):
-  if json-type(schema).eq('object'):
-    then:
-      if contains?(schema 'additionalProperties'):
-        then:
-          if schema.get('additionalProperties') == false:
-            then: false
-            else: inherited-open
-        else: true
-    else: inherited-open
+defn imported-child-open(schema inherited-open):
+  close =: json-closed?(schema) && inherited-open
+  close: .if(false inherited-open)
 
-defn add-open-override(result schema inherited-open local-open):
-  differs =: local-open != inherited-open
-  implicit =: contains?(schema 'additionalProperties').!
-  closed =: schema.get('additionalProperties') == false
-  if json-type(schema).eq('object') && differs && (implicit || closed):
-    then: result + {'.open' local-open}
+defn add-open-override(result schema inherited-open):
+  if json-closed?(schema) && inherited-open:
+    then: ordered-put(result '.open' false)
     else: result
+
+defn json-object-schema?(schema):
+  cond:
+    map?(schema).!: false
+    json-type(schema) == 'object': true
+    map?(schema.properties): true
+    else: contains?(schema 'additionalProperties')
+
+defn json-unconstrained-open?(schema):
+  cond:
+    json-object-schema?(schema).!: false
+    contains?(schema 'additionalProperties').!: true
+    else:
+      value =: schema.get('additionalProperties')
+      cond:
+        value == true: true
+        map?(value): empty?(value)
+        else: false
+
+defn json-closed?(schema):
+  cond:
+    json-object-schema?(schema).!: false
+    contains?(schema 'additionalProperties').!: false
+    else: schema.get('additionalProperties') == false
+
+defn json-typed-additional?(schema):
+  cond:
+    json-object-schema?(schema).!: false
+    contains?(schema 'additionalProperties').!: false
+    json-closed?(schema): false
+    else: json-unconstrained-open?(schema).!
 
 defn map-value-type-ref(schema):
   when contains?(schema 'additionalProperties'):
@@ -2717,19 +3033,24 @@ defn map-value-type-ref(schema):
               type-sym: value.type
 
 defn add-wildcard-entry(result schema inherited-open):
-  has-additional =: contains?(schema 'additionalProperties')
-  open =: has-additional && (schema.get('additionalProperties') != false)
-  if open:
+  typed =: json-typed-additional?(schema)
+  local-open =: json-unconstrained-open?(schema)
+  pure-open =: local-open && object-with-props?(schema).!
+  if typed || (local-open && (inherited-open.! || pure-open)):
     then:
-      result + {WILDCARD-KEY
-        additional-properties-value(schema inherited-open)}
+      ordered-put:
+        result
+        WILDCARD-KEY
+        typed.if(
+          additional-properties-value(schema inherited-open)
+          '+Any')
     else: result
 
 defn add-combinator-directive(result schema keyword directive inherited-open):
   if schema.has?(keyword):
     then:
       values =: schema.$keyword.map(\(build-value(_ inherited-open)))
-      result +: +{directive vec(values)}
+      ordered-put: result directive vec(values)
     else: result
 
 # Preserve unsupported JSON Schema keywords verbatim as dotted directives.
@@ -2747,7 +3068,7 @@ defn add-passthrough-directives(result schema):
 defn add-passthrough-directive-entry(result entry):
   key =: entry.0:S
   if unsupported-json-schema-keyword?(key):
-    then: result + {".$key" entry.1}
+    then: ordered-put(result ".$key" entry.1)
     else: result
 
 # --------------------------------------------------------------------
@@ -2783,9 +3104,8 @@ defn succinct-nonnull-scalar(schema):
       type-only-scalar(schema)
 
 defn type-only-scalar(schema):
-  if schema.type == 'object':
-    then: '+Map{+Any}'
-    else: type-sym(schema.type)
+  when schema.type != 'object':
+    type-sym: schema.type
 
 defn key-set(schema):
   schema:keys:set
@@ -2793,10 +3113,15 @@ defn key-set(schema):
 defn typed-map-only?(schema):
   allowed =: set(qw(type additionalProperties))
   object-type =: schema.type:nil? || schema.type.eq('object')
-  object-type &&:
-    schema.has?('additionalProperties') &&
-    key-set(schema).every?(\(allowed.has?(_))) &&
-    typed-map-base(schema).?
+  base =: typed-map-base(schema)
+  valid =:
+    and:
+      schema.has?('additionalProperties')
+      key-set(schema).every?(\(allowed.has?(_)))
+      base.?
+      base.eq('+Map{+Any}').!
+  result =: object-type && valid
+  =>: result
 
 defn only-ref?(schema):
   key-set(schema) ==: \{'$ref'}
@@ -3337,6 +3662,7 @@ defn append-ysd-clause-token(state token):
 
 defn post-process(text format-flow=false):
   lines =: text:lines
+  lines =: format-flow-sequences(lines true)
   lines =: format-flow.if(format-flow-sequences(lines) lines)
   lines =: insert-blank-after-defs(lines)
   join "\n": lines
@@ -3344,8 +3670,9 @@ defn post-process(text format-flow=false):
 # Rewrite selected block-style scalar directives as compact flow sequences.
 # Buffer one candidate at a time so nested collection and multiline scalar
 # members can be left exactly as yaml/dump emitted them.
-defn format-flow-sequences(lines):
-  state =: reduce(format-flow-line initial-flow-format-state() lines)
+defn format-flow-sequences(lines need-only=false):
+  state =: reduce(\(format-flow-line(_1 _2 need-only))
+                   initial-flow-format-state() lines)
   =>: finish-flow-candidate(state).result
 
 defn initial-flow-format-state()::
@@ -3355,20 +3682,21 @@ defn initial-flow-format-state()::
   items: []
   original: []
 
-defn format-flow-line(state line):
+defn format-flow-line(state line need-only):
   if state.original:seq:
-    then: continue-flow-candidate(state line)
-    else: start-flow-candidate(state line)
+    then: continue-flow-candidate(state line need-only)
+    else: start-flow-candidate(state line need-only)
 
-defn start-flow-candidate(state line):
-  match =: re-matches(/^([ ]*)(\.(?:enum|range|size)):$/ line)
+defn start-flow-candidate(state line need-only):
+  match =: re-matches(/^([ ]*)(\.(?:enum|need|range|size)):$/ line)
+  match =: (match && need-only && (match.2 != '.need')).if(nil match)
   if match:
     then: state + {
       'indent' match.1, 'directive' match.2,
       'items' [], 'original' [line]}
     else: state + {'result' (state.result + line)}
 
-defn continue-flow-candidate(state line):
+defn continue-flow-candidate(state line need-only):
   item =: re-matches(/^([ ]*)- (.*)$/ line)
   if item && (item.1 == state.indent):
     then: state + {
@@ -3376,8 +3704,10 @@ defn continue-flow-candidate(state line):
       'original' (state.original + line)}
     else:
       if line-indent(line).# > state.indent.#:
-        then: start-flow-candidate(flush-flow-original(state) line)
-        else: start-flow-candidate(finish-flow-candidate(state) line)
+        then:
+          start-flow-candidate(flush-flow-original(state) line need-only)
+        else:
+          start-flow-candidate(finish-flow-candidate(state) line need-only)
 
 defn line-indent(line):
   =>: re-matches(/^([ ]*).*$/ line).1

@@ -13,8 +13,10 @@ contact.schema.json
 The roundtrip goal is semantic equivalence, not byte-for-byte equality.
 JSON Schema has many equivalent ways to express the same constraint, and
 yamlschema has both succinct and explicit forms.
-A roundtripped JSON Schema may be normalized, reordered, or expanded, while
-still validating the same data.
+A roundtripped JSON Schema may normalize schema keyword positions or expand
+equivalent forms while still validating the same data.
+Property names, definition names, and arbitrary JSON object members retain
+their input order through conversion and normalization.
 
 
 ## Roundtrip Model
@@ -613,33 +615,37 @@ Explicit JSON Schema values import as follows:
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `additionalProperties: true` | `+Map{+Any}` |
+| `additionalProperties: true` | Inherited openness or `+Str: +Any` |
 | `additionalProperties: {"type":"string"}` | `+Map{+Str}` |
 | `additionalProperties: {"$ref":"..."}` | `+Map{+name}` |
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | No wildcard |
 
-Generated YSD starts with `.open: true`, matching JSON Schema's default that
-undeclared object properties are allowed.
-A shaped mapping with omitted `additionalProperties` inherits that setting.
-A nested `additionalProperties: false` becomes `.open: false`; a mapping
-nested below that closed scope is locally reopened when its own JSON Schema
-omits `additionalProperties`.
+Generated YSD starts with `.open: true` only when the root object permits
+undeclared properties.
+Otherwise mappings are closed by default.
+A shaped mapping with omitted `additionalProperties` is open in JSON Schema.
+Under a closed YSD default, the importer represents that local openness with
+a final `+Str: +Any` wildcard.
+Under an open YSD default, `additionalProperties: false` becomes
+`.open: false`.
 
 On export, an open shape omits `additionalProperties`, while a closed shape
 gets `additionalProperties: false`.
 An explicit `+Str: +Any` also omits `additionalProperties`, since the JSON
 Schema default has the same semantics; other wildcard values emit the
 corresponding schema.
-The root yamlschema document remains closed without a wildcard: top-level
-`.open` is the lexical default for the types defined beneath it.
+Top-level `.open` controls the root mapping as well as the mapping shapes
+defined beneath it.
 
-Canonical YSC does not depend on surrounding lexical state.
-Expansion places `.open: true` on each inherited open mapping shape and uses
-the ordinary closed default for the rest.
+Canonical YSC keeps `.open: true` only at the top.
+It preserves `.open: false` where an open inherited default must be closed,
+and uses a final `+Str: +Any` wildcard where a closed inherited default must
+be opened.
 
 An incomplete `+Map` requires sibling properties.
-Pure open objects use `+Map{+Any}`.
+The importer emits a wildcard block for pure unconstrained open objects.
+The `+Map{+Any}` shorthand remains valid input.
 
 When named properties coexist with `additionalProperties`, the importer emits
 an explicit wildcard after the named properties:
@@ -704,6 +710,34 @@ Inside combinators, it is preserved as a `.required` interop directive:
 ```
 
 
+## Property Dependencies
+
+JSON Schema `dependentRequired` maps to a property-local `:need(...)` clause:
+
+```yaml
+postOfficeBox?: +Str :need(streetAddress)
+extendedAddress?: +Str :need(streetAddress)
+```
+
+The annotated property is the trigger.
+Its dependency names are sibling properties that must also be present.
+Multiple names are comma separated, and `:need()` preserves an empty list.
+
+When a property value already needs an explicit block, or a dependency name
+is not safe in a tight scalar, use `.need` with a flow sequence:
+
+```yaml
+extendedAddress?:
+  .type: +Str
+  .need: [streetAddress]
+```
+
+Dependency targets do not need declarations in the same object.
+For now, importing JSON Schema requires every `dependentRequired` trigger to
+exist in the same `properties` map.
+Supporting undeclared triggers needs a future object-level representation.
+
+
 ## Unsupported or Open JSON Schema Features
 
 The converter keeps unsupported keywords as same-named dotted directives and
@@ -725,7 +759,6 @@ Open design areas include:
 | JSON Schema | Possible yamlschema direction |
 | --- | --- |
 | `if` / `then` / `else` | `.when` |
-| `dependentRequired` | `.with` |
 | `dependentSchemas` | Extended `.with` or conditional schema |
 | `patternProperties` | Regex keys |
 | `propertyNames` | Key constraints |
@@ -749,10 +782,11 @@ Likely out of scope or JSON Schema-specific:
 
 Semantic roundtrip does not preserve every textual detail:
 
-- JSON object key order may change.
+- JSON object key order is preserved where the conversion retains the object.
 - Whitespace and comments in JSON Schema are not preserved.
 - Equivalent JSON Schema spellings may normalize to one spelling.
-- Explicit `additionalProperties: true` normalizes to omission.
+- Explicit `additionalProperties: true` and an empty schema normalize to
+  omission.
 - `definitions` should export back as `$defs`.
 - Succinct yamlschema may expand to explicit yamlschema before JSON
   generation.
@@ -763,13 +797,25 @@ Semantic roundtrip does not preserve every textual detail:
 Lossless source-preserving roundtrip would require storing source metadata in
 addition to the schema semantics.
 
-Use `-R` to compare normalized JSON Schema before and after the serialized YSD
-roundtrip:
+Use `-R` to roundtrip either JSON Schema or YSD through the other format:
 
 ```sh
 ysc -R values.schema.json
 ysc -Rq values.schema.json
+ysc -R values.ysd.yaml
+ysc -Rq values.ysd.yaml
 ```
+
+For JSON Schema input, `ysc` compares normalized JSON Schema before and after
+conversion through YSD.
+For YSD input, it compares canonical YSD before and after conversion through
+JSON Schema.
+Canonical YSD expands lexical defaults, normalizes equivalent open-map forms,
+preserves mapping key order, and retains YAML-specific type distinctions.
+
+An explicit `-f` selects the input format.
+Without `-f`, a first non-whitespace character of `{` selects JSON Schema;
+anything else selects YSD.
 
 The first command prints `OK` or a unified diff.
 The quiet form prints nothing.
@@ -780,17 +826,22 @@ This is a normalized structural comparison, not proof of validation
 equivalence.
 
 
-## Implementation Checklist
+## Roundtrip Paths
 
-For full bidirectional roundtrip support:
+JSON Schema roundtripping follows this path:
 
 1. Parse JSON Schema into explicit yamlschema.
 2. Render explicit yamlschema as succinct syntax where safe.
 3. Parse succinct yamlschema back to explicit yamlschema.
 4. Generate JSON Schema from explicit yamlschema.
 5. Normalize both JSON Schema documents.
-6. Compare validation behavior, not raw source text.
+6. Compare the normalized documents.
 
-The existing `bin/ysc` covers step 1 for the direct mappings listed above.
-It does some of step 2 by emitting succinct forms where possible.
-It also covers step 4 for the same direct mapping subset with `ysc -t jsc`.
+YSD roundtripping reverses that path:
+
+1. Parse and canonicalize the original YSD.
+2. Generate JSON Schema from the YSD.
+3. Parse the generated JSON Schema.
+4. Render it back to YSD.
+5. Canonicalize the generated YSD.
+6. Compare the canonical documents.

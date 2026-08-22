@@ -33,7 +33,6 @@ test::
     ysc: warning: unsupported JSON Schema keyword "format" at /properties/choice/if/properties/kind/format
     ysc: warning: unsupported JSON Schema keyword "then" at /properties/choice/then
     # Converted from JSON Schema
-    .open: true
     price?:
       .type: +Num
       .multipleOf: 0.5
@@ -59,7 +58,7 @@ test::
     }
   want: |
     ysc: warning: unsupported JSON Schema keyword "multipleOf" at /properties/price/multipleOf
-    {".open":true,"price?":{".type":"+Num",".multipleOf":0.5}}
+    {"price?":{".type":"+Num",".multipleOf":0.5}}
 
 - name: passthrough-roundtrip-from-expanded-yaml
   cmnd: sh -c 'bin/ysc -f yscy -t jsc -C - 2>&1'
@@ -81,7 +80,7 @@ test::
     ysc: warning: unsupported JSON Schema keyword "if" at /properties/choice/if
     ysc: warning: unsupported JSON Schema keyword "format" at /properties/choice/if/properties/kind/format
     ysc: warning: unsupported JSON Schema keyword "then" at /properties/choice/then
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"choice":{"if":{"properties":{"kind":{"format":"uuid"}}},"then":{"required":["value"]}},"price":{"type":"number","exclusiveMinimum":0,"multipleOf":0.5}},"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"price":{"type":"number","exclusiveMinimum":0,"multipleOf":0.5},"choice":{"if":{"properties":{"kind":{"format":"uuid"}}},"then":{"required":["value"]}}},"additionalProperties":false}
 
 - name: passthrough-array-and-item-keywords-stay-at-their-levels
   cmnd: |
@@ -119,7 +118,6 @@ test::
     ysc: warning: unsupported JSON Schema keyword "format" at /properties/emails/items/format
     ysc: warning: unsupported JSON Schema keyword "contains" at /properties/emails/contains
     ysc: warning: unsupported JSON Schema keyword "minContains" at /properties/emails/minContains
-    .open: true
     emails?:
       .type: +Any[]
       .item:
@@ -148,7 +146,6 @@ test::
     ysc: warning: unsupported JSON Schema keyword "multipleOf" at /properties/a~1b~0c/multipleOf
     ysc: warning: unsupported JSON Schema keyword "multipleOf" at /properties/other/multipleOf
     # Converted from JSON Schema
-    .open: true
     a/b~c?:
       .multipleOf: 2
     other?:

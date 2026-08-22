@@ -100,6 +100,7 @@ ysc -t jsc -C contact.ysd.yaml
 ysc -N contact.ysd.yaml
 ysc -N legacy.schema.json
 ysc -R contact.schema.json
+ysc -R contact.ysd.yaml
 ```
 
 ## Converter Usage
@@ -123,6 +124,14 @@ or from a file path:
 ysc -t ysd contact.schema.json
 ysc -t jsc contact.ysd.yaml
 ```
+
+For `-R`, an explicit `-f` takes precedence.
+Without `-f`, input whose first non-whitespace character is `{` is treated as
+JSON Schema; all other input is treated as YSD.
+For YSD input, `-R` compares the expanded YSC from `ysd -> ysc` with the
+expanded YSC from `ysd -> jsc -> ysc`.
+The reported diff is therefore a YSC diff.
+For JSON Schema input, `-R` continues to compare normalized JSON Schema.
 
 CLI information:
 

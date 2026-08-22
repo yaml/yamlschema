@@ -72,7 +72,9 @@ It is not implemented yet.
 The current one-reference form is shorthand for `+Map{+Str,+Value}` and
 therefore fixes keys to strings.
 
-`.open` changes the lexical default for mapping shapes defined beneath it:
+Mappings are closed by default.
+Top-level `.open: true` changes the default for the document mapping and every
+mapping shape defined beneath it:
 
 ```yaml
 .open: true
@@ -85,17 +87,15 @@ server:
   host: +Str
 ```
 
-Here `+person` is open, while `server` and every mapping shape nested beneath
-it are closed unless locally reopened.
-The document object itself remains closed unless it has an explicit `+Str`
-wildcard; top-level `.open` controls the types defined in the document, not
-the document container.
+Here the document and `+person` are open, while `server` and every mapping
+shape nested beneath it are closed unless locally reopened.
 
 A nested `.open` must be Boolean and overrides the inherited value.
 An explicit `+Str` wildcard controls the current shape directly.
 Combining `.open: false` with such a wildcard is an error.
-Canonical YSC materializes inherited open shapes with `.open: true`; absence
-continues to mean closed.
+Canonical YSC keeps `.open: true` only at the document top.
+It uses `.open: false` to close a shape under an open default and a final
+`+Str: +Any` wildcard to open a shape under a closed default.
 
 
 ## Key/Value Pair Constraints
@@ -383,6 +383,8 @@ mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
   They are `type`, `match`, `find`, `const`, `range`, `size`, `item`, `solo`,
   `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
 - `enum:[...]` is the compact enum form.
+- `:need(name1,name2)` lists sibling properties required when this property
+  is present.
   Structural `.one`, `.any`, `.all`, `.not`, `.with`, and `.when` values
   remain explicit.
 
@@ -477,7 +479,7 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .item .one .any .all .not .like
+.type .need .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
@@ -495,7 +497,10 @@ constrained lists use forms such as `.type: +Str[]` with `.size` or `.uniq`.
 list-constraint model; it does not mean "convert this type into a list."
 
 Unknown directives are errors.
-`.need` is reserved while requiredness is represented by the property key.
+`.need` is valid only in a property definition and contains a sequence of
+sibling property names.
+For example, `.need: [password]` on `user` means that the presence of `user`
+requires `password`.
 `.also`, `.with`, and `.when` may be retained in explicit yamlschema, but an
 export that cannot represent one fails rather than silently discarding it.
 `.pick` and the former `.oneof`, `.anyof`, and `.allof` names are rejected

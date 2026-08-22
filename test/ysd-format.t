@@ -89,10 +89,12 @@ test::
     # Converted from JSON Schema
     .open: true
     harborComponent?:
-      config?: +Map{+Any}
-        "Primary component config. For env-driven components (core, exporter, trivy)
-        it is flattened to env vars via toEnvVars. For file-driven components
-        (registry, jobservice) it is the config file body passed through verbatim."
+      config?:
+        .desc: Primary component config. For env-driven components (core, exporter,
+          trivy) it is flattened to env vars via toEnvVars. For file-driven
+          components (registry, jobservice) it is the config file body passed
+          through verbatim.
+        +Str: +Any
 
 - name: long-desc-pair-wraps-at-whitespace
   cmnd: bin/ysc -t ysd -
@@ -115,7 +117,8 @@ test::
       .desc: BYO Secret references for storage credentials. The chart injects
         REGISTRY_STORAGE_<BACKEND>_<KEY> env vars on both the registry and
         registryctl containers (distribution honors these env overrides).
-      s3?: +Map{+Any}
+      s3?:
+        +Str: +Any
 
 - name: wrapped-desc-pairs-retain-quoted-and-spaced-values
   cmnd: |

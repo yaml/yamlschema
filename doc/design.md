@@ -74,7 +74,17 @@ email?: +Str     # optional
 
 The optional marker is part of the key syntax.
 The optional marker remains on the key in the canonical explicit model.
-`.need` is reserved until requiredness has a separate final design.
+
+A property can require sibling properties when it is present:
+
+```yaml
+postOfficeBox?: +Str :need(streetAddress)
+extendedAddress?: +Str :need(streetAddress)
+```
+
+This relationship is directional.
+For example, `extendedAddress` requires `streetAddress`, but the reverse is
+not implied.
 
 
 ### Constraints Refine Types
@@ -149,7 +159,7 @@ The design keeps directive names short and regular.
 
 | Directive | Meaning |
 | --- | --- |
-| `.need` | Reserved; currently rejected in favor of key-side `?` |
+| `.need` | Sibling properties required when this property is present |
 | `.type` | Complete built-in or named type expression |
 | `.like` | Canonical raw regex pattern; implies string |
 | `.match` | YSD whole-string regex; canonicalization adds `^` and `$` |
@@ -195,6 +205,7 @@ order.
 The scalar labels are `type`, `match`, `find`, `const`, `range`, `size`,
 `item`, `solo`, `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
 `enum:[...]` uses the compact enum grammar.
+`:need(name1,name2)` is the property dependency clause.
 Structural `.one`, `.any`, `.all`, `.not`, `.with`, and `.when` values remain
 explicit.
 
@@ -453,14 +464,29 @@ One `.keys` rule exports directly as `anyOf`.
 Multiple rules all apply and export as members of `allOf`, preserving their
 order.
 
-Other presence relationships fit the same ordered rule model:
+Property dependencies are attached directly to the triggering property:
+
+```yaml
+user?: +Str :need(password)
+token?:
+  .type: +Str
+  .need: [expires, issuer]
+```
+
+The compact form is used when every dependency name is safe in a tight
+scalar.
+The explicit form supports arbitrary property names.
+An empty dependency list is valid, and dependency targets do not need to be
+declared in the same mapping.
+JSON Schema imports currently require each `dependentRequired` trigger to be
+declared in the same `properties` map.
+
+Other presence relationships may fit the ordered rule model:
 
 ```yaml
 .keys:
 - .one: [host, socket, url]
 - .excl: [debug, quiet]
-- .with:
-    user: [password]
 - .when: key1
   .then: [key2]
   .else: [key3]
@@ -468,7 +494,6 @@ Other presence relationships fit the same ordered rule model:
 
 These name-list forms are planned but are not accepted yet.
 `.one` would require exactly one property, `.excl` would permit at most one,
-and `.with` would declare dependent required properties.
 `.when` tests whether its property is present; `.then` and `.else` select
 additional required properties.
 For example, the last rule corresponds to JSON Schema `if` with `required:
@@ -801,6 +826,8 @@ same canonical model.
 The converter can also generate `.schema.json` from `.ysd.yaml` for the same
 direct mapping subset.
 The `.schema.json` target emits JSON Schema Draft 2020-12.
+Canonical JSON output orders schema keywords but preserves the input order of
+property names, definition names, and arbitrary JSON object members.
 The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by the target and is not encoded in
@@ -816,7 +843,7 @@ yamlschema.
 | `type: "object"` | `+Map{+Any}` or a nested mapping shape |
 | `properties` | Bare mapping keys |
 | `required` | Default required keys; omitted names get `?` |
-| `additionalProperties: true` | `+Map{+Any}` |
+| `additionalProperties: true` | Inherited openness or `+Str: +Any` |
 | simple schema-valued `additionalProperties` | `+Map{+Type}` |
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | Closed mapping; no wildcard |
@@ -835,6 +862,15 @@ yamlschema.
 | `$id` | `.json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | `$ref` | `+name` symbol reference |
+
+Mappings are closed by default.
+Top-level `.open: true` opens the document mapping and establishes the
+inherited default for nested mappings.
+Generated YSD uses `.open: false` only to close a mapping under that open
+default, and uses a final `+Str: +Any` wildcard to open a mapping under a
+closed default.
+Generated JSON Schema omits `additionalProperties` for open mappings and
+emits `additionalProperties: false` for closed mappings.
 
 Example:
 
@@ -909,7 +945,7 @@ Current passthrough keywords include:
 $anchor $dynamicRef $dynamicAnchor $vocabulary $comment
 prefixItems contains patternProperties dependentSchemas propertyNames
 if then else unevaluatedItems unevaluatedProperties multipleOf
-exclusiveMaximum exclusiveMinimum maxContains minContains dependentRequired
+exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
 contentEncoding contentMediaType contentSchema
 ```
@@ -921,6 +957,7 @@ Implemented or directly represented by the design:
 
 - Scalar built-ins.
 - Required and optional object properties.
+- Property-local dependent required constraints.
 - Nested object properties.
 - Closed shaped mappings and typed wildcard keys.
 - Regex patterns.
@@ -936,7 +973,7 @@ Implemented or directly represented by the design:
 Still open or incomplete:
 
 - `if` / `then` / `else`.
-- Dependency constraints.
+- Dependency schemas and conditional constraints.
 - Regex property names and pattern properties.
 - Positional list schemas.
 - `contains`, `minContains`, and `maxContains`.

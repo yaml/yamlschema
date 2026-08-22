@@ -35,7 +35,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .open: true
+    {}
 
 - name: open-object
   cmnd: bin/ysc -t ysd.yaml -
@@ -47,7 +47,6 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    +Str: +Any
 
 - name: typed-wildcard
   cmnd: bin/ysc -t ysd.yaml -
@@ -64,7 +63,6 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .open: true
     fixed?: +Int
     +Str: +Str 1+
 

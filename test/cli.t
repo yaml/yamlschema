@@ -21,7 +21,7 @@ test::
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-      -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+      -R, --roundtrip       Check JSON Schema or YSD roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --help            Show this help text.
@@ -44,7 +44,7 @@ test::
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-      -R, --roundtrip       Check JSON Schema roundtrip through YSD.
+      -R, --roundtrip       Check JSON Schema or YSD roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --help            Show this help text.
@@ -110,6 +110,7 @@ test::
       "additionalProperties": true,
       "properties": {
         "open": {"type": "object", "additionalProperties": true},
+        "empty": {"type": "object", "additionalProperties": {}},
         "closed": {"type": "object", "additionalProperties": false},
         "typed": {
           "type": "object",
@@ -125,7 +126,7 @@ test::
       }
     }
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"closed":{"type":"object","additionalProperties":false},"data":{"default":{"$ref":"#\/definitions\/x","additionalProperties":true,"definitions":{"x":{"type":"string"}}}},"open":{"type":"object"},"typed":{"type":"object","additionalProperties":{"type":"string"}}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"open":{"type":"object"},"empty":{"type":"object"},"closed":{"type":"object","additionalProperties":false},"typed":{"type":"object","additionalProperties":{"type":"string"}},"data":{"default":{"additionalProperties":true,"definitions":{"x":{"type":"string"}},"$ref":"#\/definitions\/x"}}}}
 
 - name: norm-canonicalizes-single-ref-allof
   cmnd: bin/ysc -NC
@@ -167,6 +168,68 @@ test::
     }
   want: |
     OK
+
+- name: roundtrip-detects-json-content
+  cmnd: bin/ysc --roundtrip -
+  stdi: |
+
+      {
+        "type": "object",
+        "additionalProperties": false
+      }
+  want: |
+    OK
+
+- name: roundtrip-detects-ysd-content
+  cmnd: bin/ysc --roundtrip -
+  stdi: |
+    .title: Person
+    .open: true
+    age?: +Int 0..
+    name: +Str
+  want: |
+    OK
+
+- name: roundtrip-content-over-file-extension
+  cmnd: |
+    sh -c '
+      file=$(mktemp --suffix=.schema.json)
+      printf "%s\n" ".title: Person" ".open: true" \
+        "name: +Str" > "$file"
+      bin/ysc -R "$file"
+      status=$?
+      rm "$file"
+      exit "$status"
+    '
+  want: |
+    OK
+
+- name: roundtrip-explicit-format-precedence
+  cmnd: bin/ysc --roundtrip -f ysd -
+  stdi: |
+    {.open: true, name: +Str}
+  want: |
+    OK
+
+- name: ysd-roundtrip-mismatch
+  cmnd: |
+    sh -c '
+      output=$(printf "%s\n" ".open: true" "value: +Float 0.." |
+        bin/ysc -R -f ysd - 2>/dev/null)
+      status=$?
+      test "$status" -eq 1
+      printf "status=%s\n%s\n" "$status" "$output"
+    '
+  want: |
+    status=1
+    --- original
+    +++ roundtrip
+    @@ -1,4 +1,4 @@
+     .open: true
+     value:
+    -  .type: +Float
+    +  .type: +Num
+       .range: [0]
 
 - name: roundtrip-mismatch
   cmnd: |
@@ -215,7 +278,12 @@ test::
   cmnd: |
     sh -c '
       dir=$(mktemp -d)
-      ln -s "$(command -v ys-0)" "$dir/ys-0"
+      ys=$(command -v ys-0)
+      case "$ys" in
+        /*) ;;
+        *) ys=$(pwd)/$ys ;;
+      esac
+      ln -s "$ys" "$dir/ys-0"
       ln -s "$(command -v bash)" "$dir/bash"
       ln -s "$(command -v diff)" "$dir/diff"
       ln -s "$(command -v mktemp)" "$dir/mktemp"
@@ -251,17 +319,17 @@ test::
   want: |
     0 1 2
 
-- name: roundtrip-requires-json-schema
+- name: roundtrip-rejects-other-input-format
   cmnd: |
     sh -c '
       output=$(printf "%s\n" "foo: +Str" |
-        bin/ysc -R -f ysd - 2>&1)
+        bin/ysc -R -f yscy - 2>&1)
       status=$?
       test "$status" -eq 2
-      printf "%s\n" "$output" | sed -n 1p
+      printf "%s\n" "$output" | perl -ne "print if $. == 1"
     '
   want: |
-    ysc: -R/--roundtrip requires JSON Schema input
+    ysc: -R/--roundtrip requires JSON Schema or YSD input
 
 - name: reject-roundtrip-option-conflicts
   cmnd: |
@@ -313,7 +381,6 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .open: true
 
     +alpha: +Str
 

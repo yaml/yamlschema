@@ -25,7 +25,7 @@ test::
     n: +Num
     b: +Bool
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"b":{"type":"boolean"},"i":{"type":"integer"},"n":{"type":"number"},"s":{"type":"string"}},"required":["s","i","n","b"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"s":{"type":"string"},"i":{"type":"integer"},"n":{"type":"number"},"b":{"type":"boolean"}},"required":["s","i","n","b"],"additionalProperties":false}
 
 - name: refs-and-regex-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
@@ -35,7 +35,7 @@ test::
     host: +Str
     admin?: +email
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"admin":{"$ref":"#\/$defs\/email"},"host":{"type":"string"}},"required":["host"],"additionalProperties":false,"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"host":{"type":"string"},"admin":{"$ref":"#\/$defs\/email"}},"required":["host"],"additionalProperties":false,"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
 
 - name: match-find-and-regex-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
@@ -45,7 +45,7 @@ test::
     found: find:"abc"
     short: /abc/
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"alias":{"type":"string","pattern":"^xyz$"},"found":{"type":"string","pattern":"abc"},"full":{"type":"string","pattern":"^abc$"},"short":{"type":"string","pattern":"abc"}},"required":["full","alias","found","short"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"full":{"type":"string","pattern":"^abc$"},"alias":{"type":"string","pattern":"^xyz$"},"found":{"type":"string","pattern":"abc"},"short":{"type":"string","pattern":"abc"}},"required":["full","alias","found","short"],"additionalProperties":false}
 
 - name: defs-only-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
@@ -93,7 +93,7 @@ test::
     age: 0..
     debt: ..-1
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"age":{"type":"integer","minimum":0},"debt":{"type":"integer","maximum":-1},"port":{"type":"integer","minimum":1,"maximum":65535}},"required":["port","age","debt"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"port":{"type":"integer","minimum":1,"maximum":65535},"age":{"type":"integer","minimum":0},"debt":{"type":"integer","maximum":-1}},"required":["port","age","debt"],"additionalProperties":false}
 
 - name: annotations-to-schema.json
   cmnd: bin/ysc -t schema.json -C -
@@ -144,7 +144,7 @@ test::
         .type: +Str
         .size: 1-20
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"data":{"type":"object"},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}},"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false}},"required":["server","data","labels"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"server":{"type":"object","properties":{"port":{"type":"integer"}},"required":["port"],"additionalProperties":false},"data":{"type":"object"},"labels":{"type":"object","properties":{"fixed":{"type":"string"}},"additionalProperties":{"type":"string","minLength":1,"maxLength":20}}},"required":["server","data","labels"],"additionalProperties":false}
 
 - name: reject-additional-properties-directive
   cmnd: |

@@ -17,7 +17,7 @@ test::
   want: |
     {"any":{"+Str":"+Any"},"strings":{".null":true,"+Str":"+Str"},"custom":{
     "+Str":"+types\/value"},"many":{".type":"+Map[]","+Str":"+Str"},"hybrid"
-    :{"+Str":"+Str","fixed?":"+Str"}}
+    :{"fixed?":"+Str","+Str":"+Str"}}
 
 - name: typed-map-to-json-schema
   cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
@@ -30,10 +30,10 @@ test::
     many: +Map{+Str}[]
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"any":{"type":"object"},"custom":{"type":"object","
-    additionalProperties":{"$ref":"#\/$defs\/flag"}},"many":{"type":"array",
-    "items":{"type":"object","additionalProperties":{"type":"string"}}},"str
-    ings":{"type":"object","additionalProperties":{"type":"string"}}},"requi
+    bject","properties":{"any":{"type":"object"},"strings":{"type":"object",
+    "additionalProperties":{"type":"string"}},"custom":{"type":"object","add
+    itionalProperties":{"$ref":"#\/$defs\/flag"}},"many":{"type":"array","it
+    ems":{"type":"object","additionalProperties":{"type":"string"}}}},"requi
     red":["any","strings","custom","many"],"additionalProperties":false,"$de
     fs":{"flag":{"type":"boolean"}}}
 
@@ -73,7 +73,9 @@ test::
 
     +flag: +Bool
 
-    config?: +Map{+Any} "Primary component config."
+    config?:
+      .desc: Primary component config.
+      +Str: +Any
     labels?: +Map{+Str}
     custom?: +Map{+flag}
     hybrid?:
@@ -183,8 +185,10 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    implicit?: +Map{+Any}
-    explicit?: +Map{+Any}
+    implicit?:
+      +Str: +Any
+    explicit?:
+      +Str: +Any
     closed?:
       .open: false
 
@@ -206,11 +210,15 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    startup?: +Map{+Any}~
+    startup?:
+      .null: true
+      +Str: +Any
     probes?:
       .null: true
       .desc: Container probes.
-      liveness?: +Map{+Any}~
+      liveness?:
+        .null: true
+        +Str: +Any
 
 - name: nullable-any-map-to-json-schema
   cmnd: bin/ysc -t schema.json -C -

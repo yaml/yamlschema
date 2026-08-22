@@ -21,32 +21,6 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "dbRepository": {
-          "description": "Repositories for the vulnerability DB",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "escaped": {
-          "description": "this: that # the other",
-          "type": "string"
-        },
-        "folded": {
-          "description": "Description folded by YAML",
-          "type": "string"
-        },
-        "literal": {
-          "description": "foo\\ bar and foo\\nbar and foo\\tbar",
-          "type": "string"
-        },
-        "possessive": {
-          "description": "James'",
-          "type": "string"
-        },
-        "quoted": {
-          "const": "Description"
-        },
         "repository": {
           "description": "Repository path without registry host",
           "type": "string"
@@ -54,6 +28,32 @@ test::
         "right": {
           "description": "This isn't wrong",
           "type": "string"
+        },
+        "folded": {
+          "description": "Description folded by YAML",
+          "type": "string"
+        },
+        "possessive": {
+          "description": "James'",
+          "type": "string"
+        },
+        "escaped": {
+          "description": "this: that # the other",
+          "type": "string"
+        },
+        "literal": {
+          "description": "foo\\ bar and foo\\nbar and foo\\tbar",
+          "type": "string"
+        },
+        "dbRepository": {
+          "description": "Repositories for the vulnerability DB",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "quoted": {
+          "const": "Description"
         }
       },
       "required": [

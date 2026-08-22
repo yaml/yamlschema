@@ -43,18 +43,18 @@ test::
     # Converted from JSON Schema
     .title: Open rules
     .desc: Open object test
-    .open: true
 
     +person:
       name?: +Str
+      +Str: +Any
 
     +closed:
-      .open: false
       child?:
-        .open: true
         flag?: +Bool
+        +Str: +Any
 
-    explicitAny?: +Map{+Any}
+    explicitAny?:
+      +Str: +Any
     explicitStr?: +Map{+Str}
 
 - name: expanded-form-resolves-inherited-open-state
@@ -72,10 +72,10 @@ test::
   want: |
     .open: true
     +person:
-      .open: true
       name: +Str
 
     closed:
+      .open: false
       child:
         flag: +Bool
     wildcard:
@@ -88,8 +88,7 @@ test::
         jq -r ".additionalProperties,
           (.\"\u0024defs\".person | has(\"additionalProperties\")),
           .properties.closed.additionalProperties,
-          (.properties.closed.properties.child |
-            has(\"additionalProperties\")),
+          .properties.closed.properties.child.additionalProperties,
           .properties.wildcard.additionalProperties"
     '
   stdi: |
@@ -103,11 +102,28 @@ test::
     wildcard:
       +Str: +Any
   want: |
-    false
-    false
-    false
-    true
     null
+    false
+    false
+    false
+    null
+
+- name: nested-open-canonicalizes-to-local-wildcard
+  cmnd: bin/ysc -t yscy -
+  stdi: |
+    .open: true
+    closed:
+      .open: false
+      reopened:
+        .open: true
+        value: +Str
+  want: |
+    .open: true
+    closed:
+      .open: false
+      reopened:
+        value: +Str
+        +Str: +Any
 
 - name: open-validation-errors
   cmnd: |

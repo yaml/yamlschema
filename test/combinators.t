@@ -36,8 +36,18 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
-        "all": {
-          "allOf": [
+        "one": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        },
+        "any": {
+          "anyOf": [
             {
               "$ref": "#/$defs/foo"
             },
@@ -46,8 +56,8 @@ test::
             }
           ]
         },
-        "any": {
-          "anyOf": [
+        "all": {
+          "allOf": [
             {
               "$ref": "#/$defs/foo"
             },
@@ -74,16 +84,6 @@ test::
               "integer"
             ]
           }
-        },
-        "one": {
-          "oneOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "integer"
-            }
-          ]
         },
         "values": {
           "type": "array",
@@ -179,7 +179,7 @@ test::
       .desc: Component
       local?: +Int
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}},"additionalProperties":false,"$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}},"$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}}}
 
 - name: primitive-any-is-json-type-union
   cmnd: bin/ysc -t schema.json -C -
@@ -187,7 +187,7 @@ test::
     value: +Any(+Str,+Int)
     nullable: +Any(+Str,+Int)~
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"nullable":{"type":["string","integer","null"]},"value":{"type":["string","integer"]}},"required":["value","nullable"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"value":{"type":["string","integer"]},"nullable":{"type":["string","integer","null"]}},"required":["value","nullable"],"additionalProperties":false}
 
 - name: json-type-union-to-compact-any
   cmnd: bin/ysc -t ysd.yaml -

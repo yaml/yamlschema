@@ -296,6 +296,9 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
+        "version": {
+          "const": "User"
+        },
         "flag": {
           "type": [
             "boolean",
@@ -315,9 +318,6 @@ test::
               "minItems": 1
             }
           ]
-        },
-        "version": {
-          "const": "User"
         }
       },
       "required": [
@@ -336,15 +336,14 @@ test::
   want: |
     ysc: duplicate yamlschema directive: .like in directive .find
 
-- name: reject-need
-  cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+- name: explicit-need
+  cmnd: bin/ysc -t jsc -C -
   stdi: |
     foo:
-      .need: true
       .type: +Str
+      .need: [bar]
   want: |
-    ysc: unsupported yamlschema directive: .need; use ? on optional keys
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"dependentRequired":{"foo":["bar"]},"additionalProperties":false}
 
 - name: reject-list-directive
   cmnd: |
