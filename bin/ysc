@@ -875,7 +875,7 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.type', '.like', '.match', '.find', '.enum', '.const',
+    +['.type', '.xref', '.like', '.match', '.find', '.enum', '.const',
      '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
      '.one', '.any', '.all', '.not',
@@ -904,6 +904,7 @@ defn add-implied-directive-base(normalized key value result):
 
 defn normalize-directive(key value):
   case key:
+    '.xref': +{key validate-external-reference(value)}
     '.like': +{key value:S}
     '.match': +{'.like' anchored-pattern(regex-pattern(value))}
     '.find': +{'.like' regex-pattern(value)}
@@ -922,6 +923,11 @@ defn normalize-directive(key value):
 defn validate-open-value(value):
   when-not boolean?(value):
     usage: 'yamlschema .open must be true or false'
+  =>: value
+
+defn validate-external-reference(value):
+  when-not string?(value):
+    usage: 'yamlschema .xref must be a string'
   =>: value
 
 # `.open` is a lexical YSD default for mapping types. Canonical YSC keeps
@@ -1076,7 +1082,7 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.type', '.open', '.need', '.list', '.item',
+    +['.type', '.xref', '.open', '.need', '.list', '.item',
      '.one', '.any', '.all', '.not',
      '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
@@ -1181,7 +1187,8 @@ defn tight-tokens(value):
   pattern =:
     re-pattern:
       str: +
-        '\+(?:One|Any|All|Not)\([^\)]*\)(?:\[[^\]]*\])?~?'
+        '\+Ref\([^\)]*\)(?:\[[^\]]*\])?~?'
+        '|\+(?:One|Any|All|Not)\([^\)]*\)(?:\[[^\]]*\])?~?'
         '|\+Map\{[^\}]*\}(?:\[[^\]]*\])?~?'
         '|\+[A-Za-z_][A-Za-z0-9_\/-]*\[[^\]]*\]~?'
         '|(?:[A-Za-z]+:|=~|==|=)?"[^"]*"'
@@ -1199,7 +1206,8 @@ defn tight-tokens(value):
 defn base-primary-token?(token):
   normal =:
     token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\{[^\}]*\})?(?:\[[^\]]*\])?~?$/
-  primary =: compact-combinator-token?(token) ||
+  primary =: external-ref-form?(token) ||
+    compact-combinator-token?(token) ||
     typed-map-primary-token?(token) || normal
   primary ||: token.starts?('type:')
 
@@ -1231,6 +1239,7 @@ defn parse-primary(token):
     /^(?:type:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
   map-match =: re-matches(pattern token)
   cond:
+    external-ref-form?(token): external-ref-primary(token null)
     old-compact-combinator-token?(token):
       reject-old-compact-combinator(token)
     old-map-parameter-token?(token): reject-old-map-parameters(token)
@@ -1239,6 +1248,21 @@ defn parse-primary(token):
     map-match: typed-map-primary(map-match null)
     map-parameter-token?(token): reject-map-parameters(token)
     else: normal-primary(token null)
+
+defn external-ref-form?(token):
+  token =~ /^\+Ref\(.*\)(?:\[[^\]]*\])?~?$/
+
+defn external-ref-primary(token null):
+  match =: re-matches(/^\+Ref\(([^\)]*)\)(\[[^\]]*\])?$/ token)
+  when match.!:
+    usage: 'invalid external reference; use +Ref(reference)'
+  reference =: match.1
+  when reference:empty?:
+    usage: 'compact external reference cannot be empty; use .xref'
+  when reference =~ /\s/:
+    usage: 'compact external reference cannot contain whitespace; use .xref'
+  =>: +{'block' {'.xref' reference},
+        'suffix' match.2, 'null' null}
 
 defn old-map-parameter-token?(token):
   pattern =:
@@ -1328,6 +1352,8 @@ defn typed-map-block(value-type):
 
 defn primary-block(token):
   cond:
+    token.starts?('+Ref'):
+      usage: 'invalid external reference; use +Ref(reference) or .xref'
     token.starts?('type:'): labeled-type-block(token)
     token.starts?('=~'):
       +{'.type' '+Str', '.like'
@@ -2034,6 +2060,8 @@ defn canonical-item-schema(value inherited-open=false):
     if value.has?('.type'):
       ysc-bare-scalar-to-schema: value.'.type'
       else: +{}
+  result =: map-put-if(result contains?(value '.xref')
+    '$ref' value.'.xref')
   result =:
     if contains?(value '.item'):
       ysc-value-to-schema: value.'.item' inherited-open
@@ -2856,6 +2884,7 @@ defn build-properties-map(schema inherited-open):
   child-open =: imported-child-open(schema inherited-open)
   base =: schema-base-ref(schema)
   result =: map-put-if(omap() base.? '.type' base)
+  result =: add-external-ref-directive(result schema)
   result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
@@ -2880,11 +2909,16 @@ defn add-block(result schema inherited-open=true):
   result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result map-base '.type' map-base)
   result =:
-    if schema.'$ref'.?:
-      then: ordered-put(result '.type' ref-sym(schema.'$ref'))
+    if contains?(schema '$ref'):
+      then:
+        reference =: local-ref-sym(schema.'$ref')
+        if reference:
+          then: ordered-put(result '.type' reference)
+          else: result
       else: result
   result =: map-put-if(result has-type '.type' ts)
   result =: map-put-if(result is-array '.type' '+Any[]')
+  result =: add-external-ref-directive(result schema)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
     if schema.has?('pattern'):
@@ -3027,7 +3061,7 @@ defn map-value-type-ref(schema):
       map?(value):
         cond:
           empty?(value): '+Any'
-          only-ref?(value): ref-sym(value.'$ref')
+          only-ref?(value): local-ref-sym(value.'$ref')
           type-only?(value):
             when value.type != 'array':
               type-sym: value.type
@@ -3086,12 +3120,13 @@ defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
     typed-map-only?(schema): typed-map-base(schema)
-    only-singleton-ref-allof?(schema): ref-sym(schema.allOf.0.'$ref')
+    only-singleton-ref-allof?(schema):
+      reference-scalar(schema.allOf.0.'$ref')
     base-allof-only?(schema): compact-base-allof-scalar(schema)
     combinator-only?(schema): compact-combinator-scalar(schema)
     type-union-only?(schema): compact-type-union-scalar(schema)
     schema.has?('$ref'):
-      only-ref?(schema).when(ref-sym(schema.'$ref'))
+      only-ref?(schema).when(reference-scalar(schema.'$ref'))
     schema.has?('const'):
       only-const?(schema).when(compact-const-scalar(schema.const))
     schema.has?('enum'):
@@ -3148,8 +3183,8 @@ defn only-singleton-ref-allof?(schema):
 
 defn schema-base-ref(schema):
   cond:
-    schema.'$ref'.?: ref-sym(schema.'$ref')
-    singleton-ref-allof?(schema): ref-sym(schema.allOf.0.'$ref')
+    contains?(schema '$ref'): local-ref-sym(schema.'$ref')
+    singleton-ref-allof?(schema): local-ref-sym(schema.allOf.0.'$ref')
 
 defn schema-type-ref(schema):
   typed =:
@@ -3158,7 +3193,7 @@ defn schema-type-ref(schema):
       else: false
   cond:
     empty?(schema): '+Any'
-    only-ref?(schema): ref-sym(schema.'$ref')
+    only-ref?(schema): local-ref-sym(schema.'$ref')
     typed: type-sym(schema.type)
 
 defn combinator-only?(schema):
@@ -3417,8 +3452,33 @@ defn type-sym(t):
       else: '+Any'
     else: '+Any'
 
-defn ref-sym(ref):
-  str '+': ref.split('/').$
+defn local-ref-sym(ref):
+  reference =: validate-external-reference(ref)
+  match =:
+    re-matches:
+      /^#\/(?:\$defs|definitions)\/([a-z_][A-Za-z0-9_-]*)$/
+      reference
+  when match:
+    =>: "+$(match.1)"
+
+defn reference-scalar(ref):
+  reference =: validate-external-reference(ref)
+  local =: local-ref-sym(reference)
+  if local:
+    then: local
+    else:
+      compact =: reference:seq && (reference !~ /[\s\)]/)
+      when compact:
+        =>: "+Ref($reference)"
+
+defn add-external-ref-directive(result schema):
+  if contains?(schema '$ref'):
+    then:
+      reference =: validate-external-reference(schema.'$ref')
+      if local-ref-sym(reference):
+        then: result
+        else: ordered-put(result '.xref' reference)
+    else: result
 
 defn range-scalar(schema):
   token =: range-token(schema.minimum schema.maximum)

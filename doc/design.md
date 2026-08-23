@@ -161,6 +161,7 @@ The design keeps directive names short and regular.
 | --- | --- |
 | `.need` | Sibling properties required when this property is present |
 | `.type` | Complete built-in or named type expression |
+| `.xref` | Exact external JSON Schema `$ref` string |
 | `.like` | Canonical raw regex pattern; implies string |
 | `.match` | YSD whole-string regex; canonicalization adds `^` and `$` |
 | `.find` | YSD regex search; canonicalization preserves the pattern |
@@ -611,6 +612,11 @@ Emit an unrefined built-in or named reference as a `+Type` scalar when it is
 the type's entire value.
 Use `.type` when the reference or complete tight type expression shares a
 mapping with annotations, constraints, or shape entries.
+Emit an external reference as `+Ref(reference)` when its exact string is
+non-empty and contains neither whitespace nor `)`.
+Use `.xref` for the canonical form, unsafe compact strings, and external
+references with sibling constraints.
+External references are opaque strings and are never fetched or resolved.
 
 
 ## Schema Combinators
@@ -861,7 +867,8 @@ yamlschema.
 | `title` | `.title` |
 | `$id` | `.json.$id` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
-| `$ref` | `+name` symbol reference |
+| local `$ref` | `+name` symbol reference |
+| other `$ref` | `+Ref(reference)` or `.xref` |
 
 Mappings are closed by default.
 Top-level `.open: true` opens the document mapping and establishes the

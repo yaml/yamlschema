@@ -555,6 +555,10 @@ Roundtrip notes:
 
 - `$defs` and older `definitions` both import as `+name`.
 - A local reference such as `#/$defs/email` imports as `+email`.
+- Every other `$ref` imports as `+Ref(reference)` when the exact reference is
+  safe in the compact grammar, or as `.xref: reference` otherwise.
+- `.xref` preserves the exact reference string without fetching or resolving
+  it and can be combined with sibling constraints.
 - A singleton `allOf` containing only a reference normalizes to a sibling
   `$ref` under Draft 2020-12.
 - A singleton `allOf` containing only an `anyOf` normalizes to a sibling
@@ -562,7 +566,19 @@ Roundtrip notes:
 - A referenced mapping refined by local properties puts `+name` under `.type`
   and keeps those property definitions as siblings.
 - Exporting back to JSON Schema should prefer `$defs`.
-- Namespaced yamlschema symbols can map to external `$ref` URIs.
+
+For example, an external reference can stay succinct:
+
+```yaml
+author: +Ref(https://example.com/user-profile.schema.json)
+```
+
+Its canonical form is:
+
+```yaml
+author:
+  .xref: https://example.com/user-profile.schema.json
+```
 
 
 ## Nested Objects

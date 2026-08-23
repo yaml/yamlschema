@@ -38,6 +38,32 @@ The key names the type and references use the same slug:
 resources?: +resources
 ```
 
+Local references name definitions with `+name`.
+External JSON Schema references use `+Ref(...)` and preserve the reference
+text without fetching or resolving it:
+
+```yaml
+author: +Ref(https://example.com/user-profile.schema.json)
+profile?: +Ref(../schemas/profile.json#/$defs/profile)
+```
+
+The compact form requires a non-empty reference without whitespace or `)`.
+It accepts the normal list and nullable suffixes, such as `+Ref(#item)[]` and
+`+Ref(profile.json)~`.
+Use the canonical `.xref` directive for every other reference string or when
+the reference has sibling constraints:
+
+```yaml
+author:
+  .xref: https://example.com/user-profile.schema.json
+  .desc: An externally defined author
+empty:
+  .xref: ''
+```
+
+`.xref` accepts any string and exports it unchanged as JSON Schema `$ref`.
+It is separate from `.from`, which imports schemas or namespaces.
+
 Anonymous mapping shapes need no `.type` marker.
 Shaped mappings are closed by default; key-side `+Str` admits otherwise
 unmatched string keys:
@@ -479,7 +505,7 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .need .item .one .any .all .not .like
+.type .xref .open .need .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```
@@ -487,6 +513,8 @@ Canonical directives are emitted in this order:
 An unrefined built-in or named reference is emitted directly as a `+Type`
 scalar.
 This is the compact form of a mapping whose only pair would be `.type: +Type`.
+An external reference may similarly use `+Ref(...)`; its canonical form is
+`.xref` rather than `.type`.
 When annotations, validation constraints, or shape entries share the mapping,
 the reference or complete tight expression remains under `.type`.
 

@@ -365,6 +365,20 @@ for (const name of exampleFiles) {
       throw new Error('address dependencies are missing from YSD');
     }
   }
+  if (name === 'blog-post') {
+    if (roundtrip.value !== true) {
+      throw new Error(`blog-post did not roundtrip: ${JSON.stringify(
+        roundtrip,
+      )}`);
+    }
+    if (
+      !converted.value.includes(
+        'author: +Ref(https://example.com/user-profile.schema.json)',
+      )
+    ) {
+      throw new Error('blog-post external author reference is missing');
+    }
+  }
 }
 
 const initialYSD = `.title: Person
