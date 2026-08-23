@@ -92,6 +92,8 @@ For local development, source the repo `.rc` file to put `bin/` on your
 After that, the converter can be run as `ysc`:
 
 ```sh
+ysc contact.schema.json
+ysc contact.ysd.yaml
 ysc -t ysd contact.schema.json
 ysc -t yscj contact.ysd.yaml
 ysc -t yscy contact.ysd.yaml
@@ -106,8 +108,8 @@ ysc -R contact.ysd.yaml
 ## Converter Usage
 
 The current converter script is `ysc`.
-It requires `-t` / `--to`, `-o` / `--output`, `-N` / `--norm`, or `-R` /
-`--roundtrip`.
+With no action option, it converts JSON Schema to YSD and yamlschema to JSON
+Schema on standard output.
 Input defaults to stdin.
 Use `-` explicitly to read JSON Schema or yamlschema from stdin.
 Supply `-f` / `--from` when stdin does not make the input format unambiguous:
@@ -121,6 +123,8 @@ ysc -f ysd -NC - < contact.ysd.yaml
 or from a file path:
 
 ```sh
+ysc contact.schema.json
+ysc contact.ysd.yaml
 ysc -t ysd contact.schema.json
 ysc -t jsc contact.ysd.yaml
 ```

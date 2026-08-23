@@ -924,8 +924,8 @@ tags: +Str[1+,!]
 
 1. Read JSON Schema or yamlschema from an input path, or from stdin by
    default.
-2. Require `-t` / `--to`, `-o` / `--output`, `-N` / `--norm`, or `-R` /
-   `--roundtrip`.
+2. Default to YSD for JSON Schema input and JSON Schema for YSD or YSC input
+   when no action option is supplied.
 3. Use `-t ysd` to parse JSON Schema and emit succinct yamlschema.
 4. Use `-t yscy` or `-t yscj` to emit fully expanded yamlschema as YAML or
    JSON.

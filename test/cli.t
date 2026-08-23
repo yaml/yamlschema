@@ -7,7 +7,8 @@ test::
 - name: no-args
   cmnd: bin/ysc
   want: |
-    Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+    Usage: ysc [INPUT]
+           ysc (-t FORMAT | -o FILE) [INPUT]
            ysc -N, --norm [INPUT]
            ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
@@ -18,6 +19,7 @@ test::
 
     Options:
       -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+                            Defaults based on the input format.
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
@@ -30,7 +32,8 @@ test::
 - name: help
   cmnd: bin/ysc --help
   want: |
-    Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+    Usage: ysc [INPUT]
+           ysc (-t FORMAT | -o FILE) [INPUT]
            ysc -N, --norm [INPUT]
            ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
@@ -41,6 +44,7 @@ test::
 
     Options:
       -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+                            Defaults based on the input format.
       -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
@@ -58,6 +62,40 @@ test::
     '
   want: |
     ysc VERSION
+
+- name: file-input-defaults-to-ysd
+  cmnd: |
+    sh -c '
+      bin/ysc www/src/examples/device-type.schema.json |
+        perl -ne "print if $. <= 3"
+    '
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    deviceType: +Str
+
+- name: yamlschema-files-default-to-json-schema
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      trap "rm -r \"$dir\"" EXIT
+      printf "%s\n" "name: +Str" > "$dir/values.ysd.yaml"
+      printf "%s\n" "name: +Str" > "$dir/values.ysc.yaml"
+      printf "%s\n" "{\"name\":\"+Str\"}" > "$dir/values.ysc.json"
+      for file in values.ysd.yaml values.ysc.yaml values.ysc.json; do
+        bin/ysc "$dir/$file" | perl -ne "print if $. <= 3"
+      done
+    '
+  want: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
 
 - name: reject-removed-format-options
   cmnd: |

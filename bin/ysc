@@ -17,7 +17,8 @@ BUILT-IN-TYPE-NAMES =:
     'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
     'Null', 'Map', 'One', 'All', 'Not']
 HELP =: |
-  Usage: ysc (-t FORMAT | -o FILE) [INPUT]
+  Usage: ysc [INPUT]
+         ysc (-t FORMAT | -o FILE) [INPUT]
          ysc -N, --norm [INPUT]
          ysc -R, --roundtrip [-q, --quiet] [INPUT]
 
@@ -28,6 +29,7 @@ HELP =: |
 
   Options:
     -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
+                          Defaults based on the input format.
     -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -N, --norm            Normalize input to draft 2020-12 JSON Schema.
@@ -130,12 +132,6 @@ defn parse-args(args):
   opts-val =: state.opts
   when opts-val.quiet && opts-val.roundtrip.!:
     usage: '-q/--quiet requires -R/--roundtrip'
-  when opts-val.to.!:
-    when opts-val.output.!:
-      when opts-val.norm.!:
-        when opts-val.roundtrip.!:
-          usage:
-            'expected -t/--to, -o/--output, -N/--norm, or -R/--roundtrip'
   if inputs-val.# == 1:
     opts-val +: +{'input' inputs-val.0}
     else: opts-val
@@ -193,7 +189,12 @@ defn handle-input(state arg):
 
 defn output-format(opts):
   fmt =: normalize-format(opts.to) || infer-output-format(opts.output)
-  fmt ||: 'ysd.yaml'
+  fmt ||: default-output-format(opts)
+
+defn default-output-format(opts):
+  source =: input-format(opts)
+  source: .in?(['ysd.yaml', 'ysc.yaml', 'ysc.json'])
+    .if('schema.json' 'ysd.yaml')
 
 defn normalize-format(fmt):
   case fmt:
