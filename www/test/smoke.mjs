@@ -240,10 +240,31 @@ if (
   throw new Error('roundtrip diff does not close from its backdrop');
 }
 if (
-  !appSource.includes('setRoundtripSource(sample.format)') ||
+  !appSource.includes('setRoundtripSource(side)') ||
   !appSource.includes('indicator.dataset.roundtripSource')
 ) {
   throw new Error('roundtrip status does not follow the source pane');
+}
+if (
+  !appSource.includes("person: {url: 'examples/person.ysd.yaml?v=1'}") ||
+  !appSource.includes("'harbor-next': {url: 'values.ysd.yaml?v=2'}") ||
+  !appSource.includes("if (side === 'json') await showJsonSample(content)") ||
+  !appSource.includes('else await showSample(content)')
+) {
+  throw new Error('packaged examples do not convert from their own side');
+}
+if (
+  !appSource.includes("ysd: 'yamlschema.sample.ysd'") ||
+  !appSource.includes("json: 'yamlschema.sample.json'") ||
+  !appSource.includes('yamlschema.sample-source')
+) {
+  throw new Error('example selector choices are not persistent');
+}
+if (
+  !appSource.includes("if (current !== side) other.value = ''") ||
+  !appSource.includes('selectSampleSource(initialSampleSource)')
+) {
+  throw new Error('inactive example selector is not cleared');
 }
 if (
   !appSource.includes("callWorker('json-schema-normalize', json)") ||
@@ -312,16 +333,32 @@ for (const source of ['ysd', 'json']) {
   }
 }
 if (indexHTML.includes('<optgroup')) {
-  throw new Error('sample selector is not flat');
+  throw new Error('example selectors are not flat');
 }
-const sampleOrder = ['person', ...exampleFiles, 'harbor-next'];
-let previousSample = -1;
-for (const name of sampleOrder) {
-  const position = indexHTML.indexOf(`value="${name}"`);
-  if (position <= previousSample) {
-    throw new Error(`sample selector order is wrong at ${name}`);
+const yamlSelectHTML = indexHTML.match(
+  /<select id="yaml-sample-select"[\s\S]*?<\/select>/,
+)?.[0] || '';
+const jsonSelectHTML = indexHTML.match(
+  /<select id="json-sample-select"[\s\S]*?<\/select>/,
+)?.[0] || '';
+for (const selectHTML of [yamlSelectHTML, jsonSelectHTML]) {
+  if (!selectHTML.includes(
+    '<option value="" disabled selected>Choose a schema</option>',
+  )) {
+    throw new Error('example selector placeholder is missing');
   }
-  previousSample = position;
+}
+for (const name of ['person', 'harbor-next']) {
+  if (!yamlSelectHTML.includes(`value="${name}"`)) {
+    throw new Error(`${name} is missing from the YAMLSchema selector`);
+  }
+  if (jsonSelectHTML.includes(`value="${name}"`)) {
+    throw new Error(`${name} is incorrectly in the JSON Schema selector`);
+  }
+}
+if (yamlSelectHTML.indexOf('value="person"') >
+    yamlSelectHTML.indexOf('value="harbor-next"')) {
+  throw new Error('YAMLSchema example order is wrong');
 }
 if (
   !indexHTML.includes('id="roundtrip-diff-dialog"') ||
@@ -330,8 +367,11 @@ if (
   throw new Error('roundtrip diff dialog is missing');
 }
 for (const name of exampleFiles) {
-  if (!indexHTML.includes(`value="${name}"`)) {
-    throw new Error(`${name} is missing from the sample selector`);
+  if (!jsonSelectHTML.includes(`value="${name}"`)) {
+    throw new Error(`${name} is missing from the JSON Schema selector`);
+  }
+  if (yamlSelectHTML.includes(`value="${name}"`)) {
+    throw new Error(`${name} is incorrectly in the YAMLSchema selector`);
   }
   const text = await readFile(`examples/${name}.schema.json`, 'utf8');
   const schema = JSON.parse(text);
@@ -399,9 +439,7 @@ for (const name of exampleFiles) {
   }
 }
 
-const initialYSD = `.title: Person
-age?: +Int 0..
-name: +Str`;
+const initialYSD = await readFile('examples/person.ysd.yaml', 'utf8');
 const initialResult = globalThis.gloat.exports['ysd-to-json-schema'](
   initialYSD,
 );
@@ -434,6 +472,20 @@ if (!initialRoundtrip.ok || initialRoundtrip.value !== true) {
   )}`);
 }
 
+const formatResult = globalThis.gloat.exports['ysd-to-json-schema'](
+  'dateOfBirth: +JSONSchema/date',
+);
+const formatJSON = formatResult.ok ? JSON.parse(formatResult.value) : {};
+if (
+  !formatResult.ok ||
+  formatJSON.properties?.dateOfBirth?.type !== 'string' ||
+  formatJSON.properties?.dateOfBirth?.format !== 'date'
+) {
+  throw new Error(`qualified format conversion failed: ${JSON.stringify(
+    formatResult,
+  )}`);
+}
+
 const harborYSD = await readFile('values.ysd.yaml', 'utf8');
 const harborResult = globalThis.gloat.exports['ysd-to-json-schema'](
   harborYSD,
@@ -446,6 +498,17 @@ if (!harborResult.ok) {
 const harborJSON = JSON.parse(harborResult.value);
 if (harborJSON.title !== 'Harbor Next Helm Chart Values') {
   throw new Error(`unexpected Harbor Next title: ${harborJSON.title}`);
+}
+const harborYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](
+  harborResult.value,
+);
+if (
+  !harborYSDC.ok ||
+  !harborYSDC.value.includes('.range: [1, 100]')
+) {
+  throw new Error(`Harbor Next YSDC ranges are not compact: ${JSON.stringify(
+    harborYSDC,
+  )}`);
 }
 const harborKeys = Object.keys(harborJSON).slice(0, 6).join(',');
 const expectedHarborKeys = '$id,$schema,title,description,type,properties';

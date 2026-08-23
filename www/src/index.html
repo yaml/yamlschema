@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>YAMLSchema converter</title>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <main>
@@ -13,22 +13,6 @@
         <h1>YAMLSchema converter</h1>
         <p>Edit either schema and the other side updates automatically.</p>
       </div>
-      <select id="sample-select" aria-label="Sample schema" disabled>
-        <option value="person">Person</option>
-        <option value="address">Address</option>
-        <option value="blog-post">Blog Post</option>
-        <option value="calendar">Calendar</option>
-        <option value="device-type">Device Type</option>
-        <option value="ecommerce-system">Ecommerce System</option>
-        <option value="geographical-location">
-          Geographical Location
-        </option>
-        <option value="health-record">Health Record</option>
-        <option value="job-posting">Job Posting</option>
-        <option value="movie">Movie</option>
-        <option value="user-profile">User Profile</option>
-        <option value="harbor-next">Harbor Next Helm Chart Values</option>
-      </select>
     </header>
     <section class="editors" aria-label="Schema converter">
       <article>
@@ -49,6 +33,14 @@
               YSDC
             </label>
           </div>
+          <select id="yaml-sample-select" class="sample-select"
+                  aria-label="YAML Schema example" disabled>
+            <option value="" disabled selected>Choose a schema</option>
+            <option value="person">Person</option>
+            <option value="harbor-next">
+              Harbor Next Helm Chart Values
+            </option>
+          </select>
         </div>
         <textarea id="yaml-schema" spellcheck="false"></textarea>
         <p class="error" id="yaml-error" aria-live="polite"></p>
@@ -62,6 +54,22 @@
           <label class="editor-title" for="json-schema">JSON Schema</label>
           <button type="button" id="normalize-json"
                   title="Normalize JSON Schema" disabled>Normalize</button>
+          <select id="json-sample-select" class="sample-select"
+                  aria-label="JSON Schema example" disabled>
+            <option value="" disabled selected>Choose a schema</option>
+            <option value="address">Address</option>
+            <option value="blog-post">Blog Post</option>
+            <option value="calendar">Calendar</option>
+            <option value="device-type">Device Type</option>
+            <option value="ecommerce-system">Ecommerce System</option>
+            <option value="geographical-location">
+              Geographical Location
+            </option>
+            <option value="health-record">Health Record</option>
+            <option value="job-posting">Job Posting</option>
+            <option value="movie">Movie</option>
+            <option value="user-profile">User Profile</option>
+          </select>
         </div>
         <textarea id="json-schema" spellcheck="false"></textarea>
         <p class="error" id="json-error" aria-live="polite"></p>
@@ -77,6 +85,6 @@
       <pre id="roundtrip-diff" tabindex="0"></pre>
     </dialog>
   </main>
-  <script type="module" src="app.js?v=37"></script>
+  <script type="module" src="app.js?v=41"></script>
 </body>
 </html>

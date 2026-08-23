@@ -1,0 +1,3 @@
+.title: Person
+age?: +Int 0..
+name: +Str

@@ -16,10 +16,6 @@ main {
 }
 
 header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 2rem;
   margin-bottom: 1.5rem;
 }
 
@@ -32,9 +28,10 @@ header p {
   color: #66665f;
 }
 
-#sample-select {
-  min-width: 16rem;
-  margin-top: 0.25rem;
+.sample-select {
+  min-width: 10rem;
+  max-width: 48%;
+  margin-left: auto;
   padding: 0.35rem 0.5rem;
   font: inherit;
 }
@@ -244,16 +241,6 @@ textarea.readonly {
 @media (max-width: 760px) {
   main {
     padding: 1rem;
-  }
-
-  header {
-    align-items: start;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  #sample-select {
-    width: 100%;
   }
 
   .editors {

@@ -4,7 +4,8 @@ const jsonEditor = document.querySelector('#json-schema');
 const yamlEditor = document.querySelector('#yaml-schema');
 const jsonError = document.querySelector('#json-error');
 const yamlError = document.querySelector('#yaml-error');
-const sampleSelect = document.querySelector('#sample-select');
+const yamlSampleSelect = document.querySelector('#yaml-sample-select');
+const jsonSampleSelect = document.querySelector('#json-sample-select');
 const normalizeJsonButton = document.querySelector('#normalize-json');
 const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
 const roundtripDiffDialog = document.querySelector(
@@ -16,44 +17,36 @@ const formatControls = document.querySelectorAll(
   'input[name="yaml-format"]',
 );
 const formatStorageKey = 'yamlschema.yaml-format';
-const sampleStorageKey = 'yamlschema.sample';
-
-const personYSD = `.title: Person
-age?: +Int 0..
-name: +Str`;
+const legacySampleStorageKey = 'yamlschema.sample';
+const sampleSourceStorageKey = 'yamlschema.sample-source';
+const sampleStorageKeys = {
+  ysd: 'yamlschema.sample.ysd',
+  json: 'yamlschema.sample.json',
+};
+const sampleSelects = {
+  ysd: yamlSampleSelect,
+  json: jsonSampleSelect,
+};
 const sampleSources = {
-  person: {format: 'ysd', text: personYSD},
-  'harbor-next': {format: 'ysd', url: 'values.ysd.yaml?v=2'},
-  address: {format: 'json', url: 'examples/address.schema.json?v=1'},
-  'blog-post': {
-    format: 'json',
-    url: 'examples/blog-post.schema.json?v=1',
+  ysd: {
+    person: {url: 'examples/person.ysd.yaml?v=1'},
+    'harbor-next': {url: 'values.ysd.yaml?v=2'},
   },
-  calendar: {format: 'json', url: 'examples/calendar.schema.json?v=2'},
-  'device-type': {
-    format: 'json',
-    url: 'examples/device-type.schema.json?v=2',
-  },
-  'ecommerce-system': {
-    format: 'json',
-    url: 'examples/ecommerce-system.schema.json?v=1',
-  },
-  'geographical-location': {
-    format: 'json',
-    url: 'examples/geographical-location.schema.json?v=1',
-  },
-  'health-record': {
-    format: 'json',
-    url: 'examples/health-record.schema.json?v=1',
-  },
-  'job-posting': {
-    format: 'json',
-    url: 'examples/job-posting.schema.json?v=1',
-  },
-  movie: {format: 'json', url: 'examples/movie.schema.json?v=2'},
-  'user-profile': {
-    format: 'json',
-    url: 'examples/user-profile.schema.json?v=1',
+  json: {
+    address: {url: 'examples/address.schema.json?v=1'},
+    'blog-post': {url: 'examples/blog-post.schema.json?v=1'},
+    calendar: {url: 'examples/calendar.schema.json?v=2'},
+    'device-type': {url: 'examples/device-type.schema.json?v=2'},
+    'ecommerce-system': {
+      url: 'examples/ecommerce-system.schema.json?v=1',
+    },
+    'geographical-location': {
+      url: 'examples/geographical-location.schema.json?v=1',
+    },
+    'health-record': {url: 'examples/health-record.schema.json?v=1'},
+    'job-posting': {url: 'examples/job-posting.schema.json?v=1'},
+    movie: {url: 'examples/movie.schema.json?v=2'},
+    'user-profile': {url: 'examples/user-profile.schema.json?v=1'},
   },
 };
 
@@ -72,7 +65,7 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=13');
+const schemaWorker = new Worker('schema-worker.js?v=15');
 
 function loadYamlFormat() {
   try {
@@ -90,20 +83,45 @@ function saveYamlFormat(format) {
   }
 }
 
-function loadSample() {
+function defaultSample(source) {
+  return source === 'json' ? 'address' : 'person';
+}
+
+function loadSample(source) {
   try {
-    const sample = localStorage.getItem(sampleStorageKey);
-    return Object.hasOwn(sampleSources, sample) ? sample : 'person';
+    const sample = localStorage.getItem(sampleStorageKeys[source]);
+    if (Object.hasOwn(sampleSources[source], sample)) return sample;
+    const legacy = localStorage.getItem(legacySampleStorageKey);
+    if (Object.hasOwn(sampleSources[source], legacy)) return legacy;
+    return defaultSample(source);
   } catch {
-    return 'person';
+    return defaultSample(source);
   }
 }
 
-function saveSample(sample) {
+function loadSampleSource() {
   try {
-    localStorage.setItem(sampleStorageKey, sample);
+    const source = localStorage.getItem(sampleSourceStorageKey);
+    if (Object.hasOwn(sampleSources, source)) return source;
+    const legacy = localStorage.getItem(legacySampleStorageKey);
+    return Object.hasOwn(sampleSources.json, legacy) ? 'json' : 'ysd';
   } catch {
-    // The selector still works when storage is unavailable.
+    return 'ysd';
+  }
+}
+
+function saveSample(source, sample) {
+  try {
+    localStorage.setItem(sampleStorageKeys[source], sample);
+    localStorage.setItem(sampleSourceStorageKey, source);
+  } catch {
+    // The selectors still work when storage is unavailable.
+  }
+}
+
+function selectSampleSource(source) {
+  for (const [current, select] of Object.entries(sampleSelects)) {
+    select.value = current === source ? loadSample(current) : '';
   }
 }
 
@@ -217,7 +235,7 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=14');
+  roundtripWorker = new Worker('roundtrip-worker.js?v=16');
   roundtripWorker.addEventListener('message', ({data}) => {
     if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;
@@ -412,32 +430,42 @@ async function showJsonSample(json) {
   await convertJsonToYaml();
 }
 
-async function loadSelectedSample() {
-  sampleSelect.disabled = true;
+async function loadSelectedSample(side = loadSampleSource()) {
+  for (const select of Object.values(sampleSelects)) {
+    select.disabled = true;
+  }
   normalizeJsonButton.disabled = true;
-  const sample = sampleSources[sampleSelect.value] || sampleSources.person;
-  setRoundtripSource(sample.format);
+  const select = sampleSelects[side];
+  const sources = sampleSources[side];
+  const sample = sources[select.value] || sources[defaultSample(side)];
+  select.value = select.value || defaultSample(side);
+  for (const [current, other] of Object.entries(sampleSelects)) {
+    if (current !== side) other.value = '';
+  }
+  setRoundtripSource(side);
   setRoundtripStatus('checking');
   try {
-    let source = sample.text;
-    if (!source) {
+    let content = sample.text;
+    if (!content) {
       const response = await fetch(sample.url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      source = await response.text();
+      content = await response.text();
     }
-    if (sample.format === 'json') await showJsonSample(source);
-    else await showSample(source);
+    if (side === 'json') await showJsonSample(content);
+    else await showSample(content);
   } catch (error) {
     cancelRoundtripStatus();
     setRoundtripStatus('unknown', 'Sample Load Error');
-    const editor = sample.format === 'json' ? jsonEditor : yamlEditor;
-    const errorElement = sample.format === 'json' ? jsonError : yamlError;
+    const editor = side === 'json' ? jsonEditor : yamlEditor;
+    const errorElement = side === 'json' ? jsonError : yamlError;
     editor.classList.add('invalid');
     errorElement.textContent = `Sample load error: ${error.message}`;
   } finally {
-    sampleSelect.disabled = false;
+    for (const current of Object.values(sampleSelects)) {
+      current.disabled = false;
+    }
     normalizeJsonButton.disabled = !schemaWorkerReady;
   }
 }
@@ -485,13 +513,16 @@ roundtripDiffClose.addEventListener('click', () => {
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();
 });
-sampleSelect.value = loadSample();
-sampleSelect.addEventListener('change', () => {
-  saveSample(sampleSelect.value);
-  cancelRoundtripStatus();
-  clearTimeout(checkingTimer);
-  void loadSelectedSample();
-});
+const initialSampleSource = loadSampleSource();
+selectSampleSource(initialSampleSource);
+for (const [source, select] of Object.entries(sampleSelects)) {
+  select.addEventListener('change', () => {
+    saveSample(source, select.value);
+    cancelRoundtripStatus();
+    clearTimeout(checkingTimer);
+    void loadSelectedSample(source);
+  });
+}
 for (const control of formatControls) {
   control.checked = control.value === yamlFormat;
   control.addEventListener('change', () => {
