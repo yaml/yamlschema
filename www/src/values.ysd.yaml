@@ -1,4 +1,5 @@
 # Converted from JSON Schema
+.ysid: https://github.com/container-registry/harbor-next/deploy/chart/values.ysd.yaml
 .title: Harbor Next Helm Chart Values
 .desc: Schema for Harbor Next Helm chart values.yaml validation
 
@@ -572,5 +573,3 @@ extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
 - .any:
   - harborAdminPassword: +Str 8+
   - existingSecretAdminPassword: +Str 1+
-.json:
-  $id: https://github.com/container-registry/harbor-next/deploy/chart/values.schema.json

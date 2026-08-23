@@ -470,23 +470,34 @@ if (!harborRoundtrip.ok || harborRoundtrip.value !== true) {
 }
 
 const json = JSON.stringify({
+  $id: 'https://example.com/person.schema.json',
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   required: ['name'],
   properties: {name: {type: 'string'}},
 });
 const toYSD = globalThis.gloat.exports['json-schema-to-ysd'](json);
-if (!toYSD.ok || !toYSD.value.includes('name:')) {
+if (!toYSD.ok ||
+    !toYSD.value.startsWith(
+      '# Converted from JSON Schema\n' +
+      '.ysid: https://example.com/person.ysd.yaml\n',
+    ) ||
+    !toYSD.value.includes('name:')) {
   throw new Error(`JSON to YSD failed: ${JSON.stringify(toYSD)}`);
 }
 
 const toJSON = globalThis.gloat.exports['ysd-to-json-schema'](toYSD.value);
-if (!toJSON.ok || JSON.parse(toJSON.value).type !== 'object') {
+if (!toJSON.ok ||
+    JSON.parse(toJSON.value).$id !==
+      'https://example.com/person.schema.json' ||
+    JSON.parse(toJSON.value).type !== 'object') {
   throw new Error(`YSD to JSON failed: ${JSON.stringify(toJSON)}`);
 }
 
 const toYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](json);
-const expectedYSDC = '.open: true\nname: +Str';
+const expectedYSDC =
+  '.ysid: https://example.com/person.ysd.yaml\n' +
+  '.open: true\nname: +Str';
 if (!toYSDC.ok || toYSDC.value !== expectedYSDC) {
   throw new Error(`JSON to YSDC failed: ${JSON.stringify(toYSDC)}`);
 }

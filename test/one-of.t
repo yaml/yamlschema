@@ -41,6 +41,7 @@ test::
 - name: root-one-to-json-schema
   cmnd: bin/ysd -t schema.json -
   stdi: |
+    .ysid: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
     .one:
@@ -50,8 +51,6 @@ test::
     - .xref: https://example.com/laptop.schema.json
       deviceType?:
         .const: laptop
-    .json:
-      $id: https://example.com/device.schema.json
   want: |
     {
       "$id": "https://example.com/device.schema.json",
@@ -112,6 +111,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
+    .ysid: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
     .one:
@@ -119,8 +119,6 @@ test::
       deviceType?: +Str ==smartphone
     - .xref: https://example.com/laptop.schema.json
       deviceType?: +Str ==laptop
-    .json:
-      $id: https://example.com/device.schema.json
 
 - name: root-one-roundtrip
   cmnd: sh -c 'bin/ysd -Rq - && echo OK'

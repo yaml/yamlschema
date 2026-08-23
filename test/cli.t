@@ -74,10 +74,11 @@ test::
   cmnd: |
     sh -c '
       bin/ysd www/src/examples/device-type.schema.json |
-        perl -ne "print if $. <= 3"
+        perl -ne "print if $. <= 4"
     '
   want: |
     # Converted from JSON Schema
+    .ysid: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
 

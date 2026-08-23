@@ -23,7 +23,7 @@ age?: +Int 0..
 name: +Str`;
 const sampleSources = {
   person: {format: 'ysd', text: personYSD},
-  'harbor-next': {format: 'ysd', url: 'values.ysd.yaml?v=1'},
+  'harbor-next': {format: 'ysd', url: 'values.ysd.yaml?v=2'},
   address: {format: 'json', url: 'examples/address.schema.json?v=1'},
   'blog-post': {
     format: 'json',
@@ -72,7 +72,7 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=10');
+const schemaWorker = new Worker('schema-worker.js?v=11');
 
 function loadYamlFormat() {
   try {

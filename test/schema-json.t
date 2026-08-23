@@ -98,14 +98,13 @@ test::
 - name: annotations-to-schema.json
   cmnd: bin/ysd -t schema.json -C -
   stdi: |
+    .ysid: https://example.com/arrays.ysd.yaml
     .title: Arrays
     .desc: Arrays of strings and objects
     name:
       .type: +Str
       .title: Full name
       .desc: Display name.
-    .json:
-      $id: https://example.com/arrays.schema.json
   want: |
     {"$id":"https:\/\/example.com\/arrays.schema.json","$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","title":"Arrays","description":"Arrays of strings and objects","type":"object","properties":{"name":{"title":"Full name","description":"Display name.","type":"string"}},"required":["name"],"additionalProperties":false}
 

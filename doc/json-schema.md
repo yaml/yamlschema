@@ -501,9 +501,17 @@ schema metadata.
 
 | JSON Schema | yamlschema |
 | --- | --- |
-| `$id` | `.json.$id` |
+| `$id` | `.ysid` |
 | `title` | `.title` |
 | `description` | Trailing `"description"` or `.desc` |
+
+`.ysid` is the first mapping entry in generated yamlschema.
+YSD and both YSDC serializations use `.ysd.yaml` to identify the source YSD
+document.
+JSON Schema uses `.schema.json`.
+Conversion replaces one of those recognized suffixes or appends the target
+suffix when none is present.
+Query strings and fragments are preserved.
 
 
 ## Definitions and References

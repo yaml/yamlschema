@@ -114,11 +114,13 @@ defn convert-to(target text opts):
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
       expanded =: expand-ysdc(data expansion-source(opts))
+      expanded =: canonicalize-document-ysid(expanded)
       canonical-json-output: collapse-direct-types(expanded) opts
     'ysdc.yaml':
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
       expanded =: expand-ysdc(data expansion-source(opts))
+      expanded =: canonicalize-document-ysid(expanded)
       post-process yaml/dump(collapse-direct-types(expanded)): true
     else:
       usage: "unsupported output format: $target"
@@ -458,10 +460,11 @@ defn ysd-to-ysdc-text(text):
 
 defn json-schema-to-ysdc-text(text):
   schema =: load-json-schema(text false)
-  canonical-ysdc-text: build-doc(schema) 'ysd'
+  canonical-ysdc-text: build-doc(schema) 'ysdc'
 
 defn canonical-ysdc-text(data source):
   expanded =: expand-ysdc(data source)
+  expanded =: canonicalize-document-ysid(expanded)
   post-process yaml/dump(collapse-direct-types(expanded)): true
 
 defn roundtrip-match(opts):
@@ -518,8 +521,46 @@ defn normalize-json-map(value root?):
   result =: normalize-single-anyof-allof(result)
   if root?:
     then:
+      result =: normalize-root-json-id(result)
       ordered-put: result '$schema' JSON-SCHEMA-DIALECT
     else: result
+
+defn normalize-root-json-id(result):
+  if result.has?('$id'):
+    then:
+      id =: canonical-document-id(result.'$id' 'jsc' 'JSON Schema $id')
+      result: .put('$id' id)
+    else: result
+
+defn canonicalize-document-ysid(doc):
+  if doc.has?('.ysid'):
+    then:
+      id =: canonical-document-id(doc.'.ysid' 'ysd' '.ysid')
+      first =: +{'.ysid' id}
+      rest =:
+        reduce remove-document-ysid: omap() doc
+      merge-ordered-maps: first rest
+    else: doc
+
+defn remove-document-ysid(result entry):
+  if entry.0:S == '.ysid':
+    then: result
+    else: ordered-put(result entry.0 entry.1)
+
+defn canonical-document-id(value target label):
+  when string?(value).! || (value == ''):
+    usage: "$label must be a non-empty string"
+  path =: value.replace(/[?#].*$/ '')
+  suffix =: value.replace(/^[^?#]*/ '')
+  base =: path.replace(/\.(?:schema\.json|ysd\.yaml|ysdc\.yaml)$/ '')
+  =>: "$base.$(document-id-extension(target))$suffix"
+
+defn document-id-extension(target):
+  case target:
+    'ysd': 'ysd.yaml'
+    'jsc': 'schema.json'
+    else:
+      usage: "unsupported document ID target: $target"
 
 defn normalize-json-entry(result entry):
   key =: entry.0
@@ -715,6 +756,7 @@ defn expand-ysdc(doc source='ysd'):
     usage: 'expected yamlschema mapping'
   validate-regex-directives: doc source
   expanded =: reduce(expand-doc-entry omap() doc)
+  expanded =: canonicalize-document-ysid(expanded)
   resolve-open-doc: expanded
 
 defn validate-regex-directives(value source):
@@ -738,6 +780,7 @@ defn expand-doc-entry(result entry):
   cond:
     key == '.need': reject-misplaced-need-directive()
     key == '.Name': reject-title-directive(key)
+    key == '.json': reject-json-meta()
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
@@ -755,7 +798,7 @@ defn expand-doc-entry(result entry):
 
 defn top-directive?(key):
   key.in?([
-    '.from', '.name', '.root', '.json', '.title', '.desc', '.open',
+    '.ysid', '.from', '.name', '.root', '.title', '.desc', '.open',
     '.one', '.keys'])
 
 defn expand-top-directive(result key value):
@@ -763,6 +806,7 @@ defn expand-top-directive(result key value):
     reject-unknown-directive: key
   normalized =:
     case key:
+      '.ysid': canonical-document-id(value 'ysd' '.ysid')
       '.open': validate-open-value(value)
       '.one': expand-combinator-sequence(key value)
       '.keys': expand-key-rules(value)
@@ -1818,7 +1862,7 @@ defn ysdc-to-schema(doc):
         else: result + {'additionalProperties' false}
 
 defn initial-ysdc-doc-state(doc):
-  result =: add-json-meta(omap() doc.'.json')
+  result =: add-ysid-meta(omap() doc.'.ysid')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
     defs:: omap()
@@ -1880,7 +1924,7 @@ defn remove-property-need(result entry):
 
 defn add-schema-meta(result key value inherited-open=false):
   case key:
-    '.json': result.add-json-meta(value)
+    '.ysid': result
     '.title': result + {'title' value}
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
@@ -1977,6 +2021,9 @@ defn reject-legacy-wildcard():
 defn reject-title-directive(key):
   usage: "unsupported yamlschema directive: $key; use .title"
 
+defn reject-json-meta():
+  usage: 'unsupported yamlschema directive: .json; use .ysid'
+
 defn renamed-directive?(key):
   key.in?(['.base', '.titl', '.just', '.only', '.mini', '.maxi',
            '.pick', '.oneof', '.anyof', '.allof'])
@@ -1989,10 +2036,12 @@ defn reject-renamed-directive(key):
       '.oneof' '.one', '.anyof' '.any', '.allof' '.all'}
   usage: "unsupported yamlschema directive: $key; use $(replacements.$key)"
 
-defn add-json-meta(result value):
-  if map?(value) && value.'$id':
-    result +: +{'$id' value.'$id'}
-    else: result
+defn add-ysid-meta(result value):
+  if value:nil?:
+    then: result
+    else:
+      id =: canonical-document-id(value 'jsc' '.ysid')
+      result +: +{'$id' id}
 
 defn parse-property-key(key):
   when key-list-suffix?(key):
@@ -2666,13 +2715,21 @@ defn build-doc(schema):
           omap()
   root-open =: json-unconstrained-open?(schema)
   result =: omap()
+    .add-document-ysid(schema)
     .add-root-annotations(schema)
     .add-import-open-default(root-open)
     .add-defs(defs root-open)
     .add-body(schema root-open)
     .add-root-one(schema)
     .add-root-key-rules(schema root-open)
-  add-json-schema-meta: result schema
+  =>: result
+
+defn add-document-ysid(result schema):
+  if schema.'$id':
+    then:
+      id =: canonical-document-id(schema.'$id' 'ysd' 'JSON Schema $id')
+      ordered-put: result '.ysid' id
+    else: result
 
 defn add-root-annotations(result schema):
   result:
@@ -2683,14 +2740,6 @@ defn add-import-open-default(result root-open):
   if root-open:
     then: ordered-put(result '.open' true)
     else: result
-
-defn add-json-schema-meta(result schema):
-  if schema.'$id':
-    ordered-put: result '.json' json-id-meta(schema.'$id')
-    else: result
-
-defn json-id-meta(id)::
-  $id:: id
 
 defn add-defs(result defs inherited-open):
   reduce \(add-def-step(_1 _2 inherited-open)): result defs

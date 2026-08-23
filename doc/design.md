@@ -199,7 +199,7 @@ Meta directives are top-level schema metadata:
 | `.from` | Import schemas or namespaces |
 | `.name` | Name of a document schema |
 | `.root` | Primary exported root type |
-| `.json` | JSON Schema interop metadata |
+| `.ysid` | Representation-aware document identity |
 | `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
 | `.open` | Lexical default for mapping types defined in the document |
@@ -873,7 +873,7 @@ yamlschema.
 | `default` | `.init` |
 | `description` | Trailing `"description"` or `.desc` |
 | `title` | `.title` |
-| `$id` | `.json.$id` |
+| `$id` | `.ysid` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | local `$ref` | `+name` symbol reference |
 | other `$ref` | `+Ref(reference)` or `.xref` |

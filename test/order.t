@@ -123,6 +123,7 @@ test::
       }
     }
   want: |
+    .ysid
     .title
     .open
     +d1
@@ -145,7 +146,6 @@ test::
     p8?
     p9?
     p10?
-    .json
 
 - name: normalization-preserves-json-object-key-order
   cmnd: |

@@ -6,6 +6,17 @@ YSD Canonical (YSDC) model, serialized as `.ysdc.yaml` or `.ysdc.json`.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
+The optional top-level `.ysid` is a non-empty document identity string:
+
+```yaml
+.ysid: https://example.com/contact.ysd.yaml
+```
+
+Generated output places `.ysid` first, although input may place it anywhere.
+YSD and YSDC use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
+Conversion replaces a recognized suffix and appends the target suffix when
+none is present.
+
 
 ## Types in Mappings
 

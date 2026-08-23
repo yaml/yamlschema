@@ -60,6 +60,12 @@ yamlschema uses these file extensions:
 - `.ysdc.json` is the YSD Canonical form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
+The optional top-level `.ysid` identifies the human-maintained YSD document.
+Its suffix is `.ysd.yaml` in YSD and both YSDC serializations.
+The corresponding JSON Schema `$id` uses `.schema.json`.
+The converter replaces a recognized representation suffix and appends the
+target suffix when none is present.
+
 Typical flow:
 
 ```text
