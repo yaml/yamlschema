@@ -3972,19 +3972,27 @@ defn format-flow-line(state line need-only):
     else: start-flow-candidate(state line need-only)
 
 defn start-flow-candidate(state line need-only):
-  match =: re-matches(/^([ ]*)(\.(?:enum|need|range|size)):$/ line)
-  match =: (match && need-only && (match.2 != '.need')).if(nil match)
+  trimmed =: line:trim
+  directive =: trimmed.ends?(':').if(trimmed:chop nil)
+  match =: directive &&
+    directive.in?(['.enum' '.need' '.range' '.size'])
+  match =: (match && need-only && (directive != '.need')).if(nil match)
   if match:
     then: state + {
-      'indent' match.1, 'directive' match.2,
+      'indent' line-indent(line), 'directive' directive,
       'items' [], 'original' [line]}
     else: state + {'result' (state.result + line)}
 
 defn continue-flow-candidate(state line need-only):
-  item =: re-matches(/^([ ]*)- (.*)$/ line)
-  if item && (item.1 == state.indent):
+  prefix =: "$(state.indent)- "
+  indented-prefix =: "$(state.indent)  - "
+  item-prefix =:
+    if line.starts?(prefix):
+      then: prefix
+      else: line.starts?(indented-prefix).if(indented-prefix nil)
+  if item-prefix:
     then: state + {
-      'items' (state.items + item.2),
+      'items' (state.items + join(drop(item-prefix.# line))),
       'original' (state.original + line)}
     else:
       if line-indent(line).# > state.indent.#:
@@ -3994,7 +4002,8 @@ defn continue-flow-candidate(state line need-only):
           start-flow-candidate(finish-flow-candidate(state) line need-only)
 
 defn line-indent(line):
-  =>: re-matches(/^([ ]*).*$/ line).1
+  trimmed =: line:trim
+  join: take(index(line trimmed) line)
 
 defn flush-flow-original(state):
   reset-flow-candidate:
@@ -4019,17 +4028,24 @@ defn inline-scalar-sequence?(items):
   =>: items:seq && items.every?(inline-yaml-scalar?)
 
 defn inline-yaml-scalar?(text):
-  value =: text:yaml/load
-  =>: map?(value).! && sequential?(value).!
+  quoted =: text.starts?("'") || text.starts?('"')
+  if quoted:
+    then: true
+    else:
+      structured =:
+        text.starts?('[') || text.starts?('{') ||
+        text.starts?('- ') || text.starts?('? ') ||
+        text.starts?('|') || text.starts?('>') ||
+        some?(index(text ':\ '))
+      falsey?: structured
 
 # A block-style plain scalar may contain flow collection punctuation. Quote
 # those strings before moving them between `[` and `]`.
 defn flow-sequence-item(text):
-  value =: text:yaml/load
-  unsafe =: string?(value) && (value =~ /[\[\]\{\},:#]/)
+  unsafe =: text =~ /[\[\]\{\},:#]/
   quoted =: text.starts?("'") || text.starts?('"')
   if unsafe && quoted.!:
-    then: single-quoted-yaml(value)
+    then: single-quoted-yaml(text)
     else: text
 
 defn single-quoted-yaml(value):
