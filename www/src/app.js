@@ -29,7 +29,7 @@ const sampleSources = {
     format: 'json',
     url: 'examples/blog-post.schema.json?v=1',
   },
-  calendar: {format: 'json', url: 'examples/calendar.schema.json?v=1'},
+  calendar: {format: 'json', url: 'examples/calendar.schema.json?v=2'},
   'device-type': {
     format: 'json',
     url: 'examples/device-type.schema.json?v=1',
@@ -50,7 +50,7 @@ const sampleSources = {
     format: 'json',
     url: 'examples/job-posting.schema.json?v=1',
   },
-  movie: {format: 'json', url: 'examples/movie.schema.json?v=1'},
+  movie: {format: 'json', url: 'examples/movie.schema.json?v=2'},
   'user-profile': {
     format: 'json',
     url: 'examples/user-profile.schema.json?v=1',
