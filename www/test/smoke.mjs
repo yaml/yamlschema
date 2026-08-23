@@ -203,6 +203,43 @@ if (
   throw new Error('roundtrip direction does not follow the edited pane');
 }
 if (
+  !appSource.includes(
+    "jsonEditor.addEventListener('focus', () => roundtripOnFocus(jsonEditor))",
+  ) ||
+  !appSource.includes(
+    "yamlEditor.addEventListener('focus', () => roundtripOnFocus(yamlEditor))",
+  ) ||
+  !appSource.includes("updateRoundtripStatus('json', json, 0)") ||
+  !appSource.includes("updateRoundtripStatus('ysd', yamlEditor.value, 0)")
+) {
+  throw new Error('focusing an editor does not start its roundtrip check');
+}
+if (
+  !appSource.includes("setEditorValue(yamlEditor, 'Generating YSC...')") ||
+  !appSource.includes("yamlFormat === 'ysc' ? 'YSC' : 'YSD'") ||
+  !appSource.includes('showGeneratingYamlSchema();') ||
+  !appSource.includes('const conversion = convertYamlToJson();') ||
+  !appSource.includes('showGeneratingYSC();')
+) {
+  throw new Error('old YAML remains visible while YSD or YSC is generated');
+}
+if (
+  !appSource.includes(
+    "setEditorValue(jsonEditor, 'Generating JSON Schema...')",
+  ) ||
+  !appSource.includes('showGeneratingJSONSchema();')
+) {
+  throw new Error('old JSON remains visible while JSON is being generated');
+}
+if (
+  !appSource.includes(
+    "roundtripDiffDialog.addEventListener('click', closeDiffFromBackdrop)",
+  ) ||
+  !appSource.includes('roundtripDiffDialog.getBoundingClientRect()')
+) {
+  throw new Error('roundtrip diff does not close from its backdrop');
+}
+if (
   !appSource.includes('setRoundtripSource(sample.format)') ||
   !appSource.includes('indicator.dataset.roundtripSource')
 ) {
@@ -219,6 +256,9 @@ if (
   !styleSource.includes('visibility: hidden')
 ) {
   throw new Error('inactive roundtrip status is not hidden');
+}
+if (!styleSource.includes('font-weight: 900')) {
+  throw new Error('roundtrip status indicator is not strongly weighted');
 }
 const roundtripWorkerSource = await readFile(
   '../src/roundtrip-worker.js',

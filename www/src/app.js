@@ -113,6 +113,21 @@ function setEditorValue(editor, value) {
   updating = false;
 }
 
+function showGeneratingYSC() {
+  if (yamlFormat === 'ysc') {
+    setEditorValue(yamlEditor, 'Generating YSC...');
+  }
+}
+
+function showGeneratingYamlSchema() {
+  const name = yamlFormat === 'ysc' ? 'YSC' : 'YSD';
+  setEditorValue(yamlEditor, `Generating ${name}...`);
+}
+
+function showGeneratingJSONSchema() {
+  setEditorValue(jsonEditor, 'Generating JSON Schema...');
+}
+
 function setRoundtripStatus(status, alternateTitle) {
   if (status !== 'checking') clearTimeout(checkingTimer);
   const states = {
@@ -222,14 +237,14 @@ function getRoundtripWorker() {
   return roundtripWorker;
 }
 
-function updateRoundtripStatus(source, input) {
+function updateRoundtripStatus(source, input, delay = 500) {
   clearTimeout(roundtripTimer);
   setRoundtripSource(source);
   const id = ++roundtripRequest;
   roundtripTimer = setTimeout(() => {
     roundtripBusy = true;
     getRoundtripWorker().postMessage({id, source, input});
-  }, 500);
+  }, delay);
 }
 
 function cancelRoundtripStatus() {
@@ -273,6 +288,7 @@ async function convertJsonToYaml(
     return;
   }
   const id = ++conversionRequest;
+  showGeneratingYamlSchema();
   if (checkRoundtrip) updateRoundtripStatus('json', json);
   const toYSD = await callWorker('json-schema-to-ysd', json);
   if (id !== conversionRequest) return;
@@ -297,6 +313,7 @@ async function convertYamlToJson() {
   const id = ++conversionRequest;
   const ysd = yamlEditor.value;
   ysdValue = ysd;
+  showGeneratingJSONSchema();
   const result = await callWorker('ysd-to-json-schema', ysd);
   if (id !== conversionRequest) return;
   showResult(yamlEditor, jsonEditor, yamlError, jsonError, result);
@@ -349,10 +366,42 @@ function convertFrom(editor) {
   else if (yamlFormat === 'ysd') void convertYamlToJson();
 }
 
+function roundtripOnFocus(editor) {
+  if (!schemaWorkerReady || updating) return;
+  if (editor === yamlEditor && yamlFormat !== 'ysd') return;
+  const source = editor === jsonEditor ? 'json' : 'ysd';
+  cancelRoundtripStatus();
+  clearTimeout(checkingTimer);
+  setRoundtripSource(source);
+  setRoundtripStatus('checking');
+  if (editor === yamlEditor) {
+    updateRoundtripStatus('ysd', yamlEditor.value, 0);
+    return;
+  }
+  try {
+    const json = normalizeJson(jsonEditor.value);
+    updateRoundtripStatus('json', json, 0);
+  } catch {
+    setRoundtripStatus('unknown');
+  }
+}
+
+function closeDiffFromBackdrop(event) {
+  if (event.target !== roundtripDiffDialog) return;
+  const bounds = roundtripDiffDialog.getBoundingClientRect();
+  const outside = event.clientX < bounds.left ||
+    event.clientX > bounds.right ||
+    event.clientY < bounds.top ||
+    event.clientY > bounds.bottom;
+  if (outside) roundtripDiffDialog.close();
+}
+
 async function showSample(ysd) {
   ysdValue = ysd;
   setEditorValue(yamlEditor, ysdValue);
-  const result = await convertYamlToJson();
+  const conversion = convertYamlToJson();
+  showGeneratingYSC();
+  const result = await conversion;
   if (yamlFormat === 'ysc' && result?.ok) {
     await convertJsonToYaml(false, false);
   }
@@ -403,7 +452,10 @@ function selectYamlFormat(format, remember = true) {
   yamlError.textContent = '';
   if (!schemaWorkerReady) return;
   if (format === 'ysd' && ysdValue) setEditorValue(yamlEditor, ysdValue);
-  else void convertJsonToYaml(false, false);
+  else {
+    showGeneratingYSC();
+    void convertJsonToYaml(false, false);
+  }
 }
 
 function schedule(editor) {
@@ -421,9 +473,12 @@ function schedule(editor) {
 
 jsonEditor.addEventListener('input', () => schedule(jsonEditor));
 yamlEditor.addEventListener('input', () => schedule(yamlEditor));
+jsonEditor.addEventListener('focus', () => roundtripOnFocus(jsonEditor));
+yamlEditor.addEventListener('focus', () => roundtripOnFocus(yamlEditor));
 for (const indicator of roundtripStatuses) {
   indicator.addEventListener('click', showRoundtripDiff);
 }
+roundtripDiffDialog.addEventListener('click', closeDiffFromBackdrop);
 roundtripDiffClose.addEventListener('click', () => {
   roundtripDiffDialog.close();
 });
