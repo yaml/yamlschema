@@ -11,7 +11,6 @@
 VERSION =: '0.1.2'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 WILDCARD-KEY =: '+Str'
-LEGACY-WILDCARD-KEY =: '+Str*'
 BUILT-IN-TYPE-NAMES =:
   set: +[
     'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
@@ -196,7 +195,9 @@ defn handle-input(state arg):
     state +: +{'inputs' (state.inputs + arg)}
 
 defn output-format(opts):
-  fmt =: normalize-format(opts.to) || infer-output-format(opts.output)
+  fmt =:
+    normalize-format(opts.to) ||
+    infer-output-format(opts.output)
   fmt ||: default-output-format(opts)
 
 defn default-output-format(opts):
@@ -273,20 +274,23 @@ defn yamlschema-input-schema(text source report=true):
   data =: text:yaml/load
   when report:
     warn-yamlschema-passthrough: data
-  expanded =: expand-ysdc(data expansion-source-format(source))
+  expanded =: data.expand-ysdc(expansion-source-format(source))
   when report:
     warn-yamlschema-float-export: expanded
   ysdc-to-schema: expanded
 
 defn input-format(opts):
-  normalize-format(opts.from) || infer-input-format(opts.input)
+  normalize-format(opts.from) ||
+  infer-input-format(opts.input)
 
 defn warn-canonical-input-passthrough(data opts):
   when input-format(opts) != 'schema.json':
     warn-yamlschema-passthrough: data
 
 defn expansion-source(opts):
-  source =: normalize-format(opts.from) || infer-input-format(opts.input)
+  source =:
+    normalize-format(opts.from) ||
+    infer-input-format(opts.input)
   expansion-source-format: source
 
 defn expansion-source-format(source):
@@ -703,13 +707,13 @@ defn preferred-json-schema-key?(key):
   preferred-json-schema-keys().has?(key)
 
 defn preferred-json-schema-keys():
-  keys =: '$comment $id $schema $anchor title description'
-  keys +=: ' type format enum const default $ref'
-  keys +=: ' properties required dependentRequired additionalProperties'
-  keys +=: ' items uniqueItems minItems maxItems'
-  keys +=: ' minimum maximum minLength maxLength'
-  keys +=: ' minProperties maxProperties $defs'
-  keys: .split(' ')
+  split _ ' ':
+    '$comment $id $schema $anchor title description
+    type format enum const default $ref
+    properties required dependentRequired additionalProperties
+    items uniqueItems minItems maxItems
+    minimum maximum minLength maxLength
+    minProperties maxProperties $defs'
 
 defn pretty-json(value):
   pretty-value: value 0
@@ -790,7 +794,6 @@ defn expand-doc-entry(result entry):
     key == '.json': reject-json-meta()
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
-    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     passthrough-directive?(key):
       ordered-put: result key value
@@ -805,8 +808,8 @@ defn expand-doc-entry(result entry):
 
 defn top-directive?(key):
   key.in?([
-    '.ysid', '.from', '.name', '.root', '.title', '.desc', '.open',
-    '.one', '.keys'])
+    '.ysid', '.from', '.name', '.root', '.title',
+    '.desc', '.open', '.one', '.keys'])
 
 defn expand-top-directive(result key value):
   when-not top-directive?(key):
@@ -901,7 +904,6 @@ defn expand-shape-type(value):
 defn expand-shape-entry(result entry):
   key =: entry.0:S
   cond:
-    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     key == WILDCARD-KEY: ordered-put(result key expand-type(entry.1))
     else: add-expanded-field(result key entry.1)
 
@@ -925,7 +927,6 @@ defn expand-explicit-entry(result entry):
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
-    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     legacy-directive?(key): reject-legacy-directive(key)
     passthrough-directive?(key):
       ordered-put: result key val
@@ -938,11 +939,12 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.name', '.type', '.xref', '.like', '.match', '.find', '.enum', '.const',
-     '.range', '.size',
-     '.list', '.item', '.solo', '.uniq', '.null', '.init',
-     '.one', '.any', '.all', '.not',
-     '.title', '.desc', '.open', '.need', '.also', '.with', '.when']
+    +['.name', '.type', '.xref', '.like', '.match',
+      '.find', '.enum', '.const', '.range', '.size',
+      '.list', '.item', '.solo', '.uniq', '.null',
+      '.init', '.one', '.any', '.all', '.not',
+      '.title', '.desc', '.open', '.need', '.also',
+      '.with', '.when']
   key: .in?(directives)
 
 defn expand-explicit-directive(result key value):
@@ -1187,11 +1189,11 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.name', '.type', '.xref', '.open', '.need', '.list', '.item',
-     '.one', '.any', '.all', '.not',
-     '.like', '.enum', '.const',
-     '.range', '.size', '.solo', '.uniq', '.null',
-     '.init', '.title', '.desc', '.also', '.with', '.when']
+    +['.name', '.type', '.xref', '.open', '.need',
+      '.list', '.item', '.one', '.any', '.all',
+      '.not', '.like', '.enum', '.const', '.range',
+      '.size', '.solo', '.uniq', '.null', '.init',
+      '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
   result =: reduce(put-non-directive result value)
   if contains?(value WILDCARD-KEY):
@@ -1946,7 +1948,6 @@ defn ysdc-doc-step(state entry):
   key =: entry.0:S
   value =: entry.1
   cond:
-    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
@@ -2085,9 +2086,6 @@ defn reject-legacy-directive(key):
 defn reject-additional-properties(key):
   usage: "unsupported yamlschema directive: $key; use +Str"
 
-defn reject-legacy-wildcard():
-  usage: 'unsupported yamlschema wildcard: +Str*; use +Str'
-
 defn reject-title-directive(key):
   usage: "unsupported yamlschema directive: $key; use .title"
 
@@ -2173,7 +2171,6 @@ defn initial-object-state(open=false)::
 defn ysdc-object-step(state entry):
   key =: entry.0:S
   cond:
-    key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
@@ -2430,7 +2427,6 @@ defn ysdc-block-step(state entry):
       reject-additional-properties: key
     else:
       cond:
-        key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
         key == WILDCARD-KEY:
           state +::
             wildcard:: true

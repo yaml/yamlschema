@@ -163,15 +163,6 @@ test::
   want: |
     ysd: incomplete +Map type requires key/value pairs
 
-- name: legacy-wildcard-is-rejected
-  cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
-  stdi: |
-    bad:
-      +Str*: +Any
-  want: |
-    ysd: unsupported yamlschema wildcard: +Str*; use +Str
-
 - name: pure-object-generation
   cmnd: bin/ysd -t ysd.yaml -
   stdi: |
