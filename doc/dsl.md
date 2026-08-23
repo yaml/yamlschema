@@ -485,6 +485,23 @@ value:
   - name: +Str
 ```
 
+At the document root, `.one` constrains the root value in addition to its
+declared properties:
+
+```yaml
+deviceType: +Str
+.one:
+- .xref: https://example.com/smartphone.schema.json
+  deviceType?: +Str ==smartphone
+- .xref: https://example.com/laptop.schema.json
+  deviceType?: +Str ==laptop
+```
+
+Root branches are partial constraints, not standalone closed object types.
+An optional property constrains that property when present without requiring
+it again inside the branch.
+Directives such as `.xref` apply alongside the branch properties.
+
 
 ## Canonical Expansion
 

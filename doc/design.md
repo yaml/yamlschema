@@ -185,6 +185,12 @@ The design keeps directive names short and regular.
 | `.with` | Co-dependent keys |
 | `.when` | Conditional requirement or constraint |
 
+`.one` may also occur at the document root.
+Its mapping branches are partial root constraints, so branch properties do
+not imply a closed object schema.
+This lets an external `.xref` and a discriminating property constraint apply
+as siblings in one branch.
+
 Meta directives are top-level schema metadata:
 
 | Directive | Meaning |
@@ -196,6 +202,7 @@ Meta directives are top-level schema metadata:
 | `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
 | `.open` | Lexical default for mapping types defined in the document |
+| `.one` | Exactly one partial root constraint must match |
 
 
 ## Succinct Values

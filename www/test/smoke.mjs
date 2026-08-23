@@ -379,6 +379,24 @@ for (const name of exampleFiles) {
       throw new Error('blog-post external author reference is missing');
     }
   }
+  if (name === 'device-type') {
+    if (roundtrip.value !== true) {
+      throw new Error(`device-type did not roundtrip: ${JSON.stringify(
+        roundtrip,
+      )}`);
+    }
+    for (const expected of [
+      '.one:',
+      '.xref: https://example.com/smartphone.schema.json',
+      'deviceType?: +Str ==smartphone',
+      '.xref: https://example.com/laptop.schema.json',
+      'deviceType?: +Str ==laptop',
+    ]) {
+      if (!converted.value.includes(expected)) {
+        throw new Error(`device-type YSD is missing: ${expected}`);
+      }
+    }
+  }
 }
 
 const initialYSD = `.title: Person

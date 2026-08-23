@@ -701,6 +701,22 @@ When every `+Any(...)` branch is a simple built-in type, JSON Schema output
 uses a `type` array.
 References and richer alternatives use `anyOf`.
 
+A root `oneOf` imports as document-level `.one`.
+Its branches are partial root constraints, so they export without an implied
+`type: object` or `additionalProperties` keyword:
+
+```yaml
+deviceType: +Str
+.one:
+- .xref: https://example.com/smartphone.schema.json
+  deviceType?: +Str ==smartphone
+- .xref: https://example.com/laptop.schema.json
+  deviceType?: +Str ==laptop
+```
+
+The `.xref` and `deviceType` constraint in each branch are siblings in the
+corresponding JSON Schema `oneOf` member.
+
 Root `anyOf` branches made only from `properties` and `required` import as an
 ordered `.keys` rule:
 

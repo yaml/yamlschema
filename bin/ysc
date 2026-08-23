@@ -746,7 +746,7 @@ defn expand-doc-entry(result entry):
 defn top-directive?(key):
   key.in?([
     '.from', '.name', '.root', '.json', '.title', '.desc', '.open',
-    '.keys'])
+    '.one', '.keys'])
 
 defn expand-top-directive(result key value):
   when-not top-directive?(key):
@@ -754,6 +754,7 @@ defn expand-top-directive(result key value):
   normalized =:
     case key:
       '.open': validate-open-value(value)
+      '.one': expand-combinator-sequence(key value)
       '.keys': expand-key-rules(value)
       else: value
   ordered-put: result key normalized
@@ -950,6 +951,8 @@ defn resolve-open-doc-entry(result entry source-open output-open):
   key =: entry.0:S
   value =: entry.1
   cond:
+    key == '.one':
+      ordered-put: result key resolve-open-root-one(value)
     key == '.keys':
       ordered-put:
         result key resolve-open-key-rules(value source-open output-open)
@@ -963,6 +966,9 @@ defn resolve-open-doc-entry(result entry source-open output-open):
     else:
       ordered-put:
         result key resolve-open-type(value source-open output-open)
+
+defn resolve-open-root-one(branches):
+  vec: branches.map(\(resolve-open-type(_ true true)))
 
 defn resolve-open-key-rules(rules source-open output-open):
   vec: rules.map(
@@ -1869,6 +1875,7 @@ defn add-schema-meta(result key value inherited-open=false):
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
     '.open': result
+    '.one': add-root-one-schema(result value)
     '.keys': add-key-rules-schema(result value inherited-open)
     '.additionalProperties':
       reject-additional-properties: key
@@ -1876,6 +1883,47 @@ defn add-schema-meta(result key value inherited-open=false):
       if passthrough-directive?(key):
         then: add-passthrough-schema-keyword(result key value)
         else: result
+
+defn add-root-one-schema(result branches):
+  when result.has?('oneOf'):
+    usage: 'duplicate root oneOf from yamlschema .one'
+  schemas =: branches.map(root-one-branch-to-schema):vec
+  result +: +{'oneOf' schemas}
+
+defn root-one-branch-to-schema(branch):
+  when-not map?(branch):
+    =>: ysc-value-to-schema branch true
+  parts =: reduce(split-root-one-branch root-one-branch-parts() branch)
+  directives =: parts.directives
+  result =:
+    if empty?(directives):
+      then: omap()
+      else: ysc-block-to-schema(directives true)
+  partial =: partial-object-schema(parts.fields true)
+  merge-ordered-maps: result partial
+
+defn root-one-branch-parts()::
+  directives:: omap()
+  fields:: omap()
+
+defn split-root-one-branch(parts entry):
+  key =: entry.0:S
+  slot =: key.starts?('.').if('directives' 'fields')
+  parts +: +{slot ordered-put(parts.$slot key entry.1)}
+
+defn partial-object-schema(fields inherited-open=false):
+  state =:
+    reduce(ysc-object-step initial-object-state(inherited-open) fields)
+  result =: omap()
+  result =: result.map-put-if(
+    empty?(state.props).! 'properties' state.props)
+  result =: result.map-put-if(
+    empty?(state.required).! 'required' state.required)
+  result =: result.map-put-if(
+    empty?(state.dependent).! 'dependentRequired' state.dependent)
+  if state.wildcard && (state.additional != true):
+    then: result + {'additionalProperties' state.additional}
+    else: result
 
 defn add-key-rules-schema(result rules inherited-open=false):
   schemas =: rules.map(
@@ -1896,15 +1944,7 @@ defn key-rule-to-schema(rule inherited-open=false):
   =>: +{'anyOf' alternatives}
 
 defn key-rule-branch-to-schema(branch inherited-open=false):
-  state =:
-    reduce(ysc-object-step initial-object-state(inherited-open) branch)
-  result =: omap()
-  result =: result.map-put-if(
-    empty?(state.props).! 'properties' state.props)
-  result =: result.map-put-if(
-    empty?(state.required).! 'required' state.required)
-  result: .map-put-if(
-    empty?(state.dependent).! 'dependentRequired' state.dependent)
+  partial-object-schema: branch inherited-open
 
 defn legacy-directive?(key):
   key =~ /^-/
@@ -2620,6 +2660,7 @@ defn build-doc(schema):
     .add-import-open-default(root-open)
     .add-defs(defs root-open)
     .add-body(schema root-open)
+    .add-root-one(schema)
     .add-root-key-rules(schema root-open)
   add-json-schema-meta: result schema
 
@@ -2660,6 +2701,13 @@ defn add-body(result schema inherited-open):
       if json-type(schema).eq('object') && typed-map-base(schema):
         then: add-root-wildcard-entry(result schema inherited-open)
         else: result
+
+defn add-root-one(result schema):
+  if schema.oneOf.?:
+    then:
+      branches =: schema.oneOf.map(\(build-value(_ true))):vec
+      ordered-put: result '.one' branches
+    else: result
 
 defn add-root-wildcard-entry(result schema inherited-open):
   if json-typed-additional?(schema):

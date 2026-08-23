@@ -32,7 +32,7 @@ const sampleSources = {
   calendar: {format: 'json', url: 'examples/calendar.schema.json?v=2'},
   'device-type': {
     format: 'json',
-    url: 'examples/device-type.schema.json?v=1',
+    url: 'examples/device-type.schema.json?v=2',
   },
   'ecommerce-system': {
     format: 'json',
@@ -72,7 +72,7 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=8');
+const schemaWorker = new Worker('schema-worker.js?v=9');
 
 function loadYamlFormat() {
   try {
@@ -217,7 +217,7 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=10');
+  roundtripWorker = new Worker('roundtrip-worker.js?v=11');
   roundtripWorker.addEventListener('message', ({data}) => {
     if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;
