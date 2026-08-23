@@ -231,6 +231,28 @@ JSON Schema has no float-only numeric type.
 Exporting `+Float` therefore emits `type: "number"` and a warning for that
 loss of precision.
 
+Draft 2020-12 string formats use qualified YAMLSchema types:
+
+```yaml
+dateOfBirth: +JSONSchema/date
+createdAt: +JSONSchema/date-time
+contact?: +JSONSchema/email
+```
+
+The complete supported set is:
+
+```text
+date-time date time duration email idn-email hostname idn-hostname
+ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
+json-pointer relative-json-pointer regex
+```
+
+Each `+JSONSchema/name` type exports as JSON Schema `type: string` with
+`format: name`.
+Normal nullable and list suffixes apply, for example
+`+JSONSchema/date-time~` and `+JSONSchema/email[]`.
+Unknown qualified format names are rejected.
+
 Bare `+Map` is intentionally incomplete.
 It must have sibling property definitions, as in `person`, and its `.type`
 marker disappears during canonical expansion because the mapping shape already

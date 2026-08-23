@@ -16,6 +16,11 @@ BUILT-IN-TYPE-NAMES =:
   set: +[
     'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
     'Null', 'Map', 'One', 'All', 'Not']
+JSON-SCHEMA-FORMATS =:
+  set: qw(
+    date-time date time duration email idn-email hostname idn-hostname
+    ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
+    json-pointer relative-json-pointer regex)
 HELP =: |
   Usage: ysd [INPUT]
          ysd (-t FORMAT | -o FILE) [INPUT]
@@ -699,7 +704,7 @@ defn preferred-json-schema-key?(key):
 
 defn preferred-json-schema-keys():
   keys =: '$comment $id $schema $anchor title description'
-  keys +=: ' type enum const default $ref'
+  keys +=: ' type format enum const default $ref'
   keys +=: ' properties required dependentRequired additionalProperties'
   keys +=: ' items uniqueItems minItems maxItems'
   keys +=: ' minimum maximum minLength maxLength'
@@ -1560,11 +1565,28 @@ defn slash-delimited-token?(token):
 defn type-symbol?(token):
   valid =: token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
   when valid:
-    when token =~ /^\+[A-Z]/:
-      name =: token.replace(/^\+/)
-      when-not BUILT-IN-TYPE-NAMES.has?(name):
-        usage: "unknown yamlschema built-in type: $token"
+    if token.starts?('+JSONSchema/'):
+      then: validate-json-schema-format-type(token)
+      else:
+        when token =~ /^\+[A-Z]/:
+          name =: token.replace(/^\+/)
+          when-not BUILT-IN-TYPE-NAMES.has?(name):
+            usage: "unknown yamlschema built-in type: $token"
   =>: valid
+
+defn validate-json-schema-format-type(type):
+  format =: type.replace(/^\+JSONSchema\//)
+  when-not JSON-SCHEMA-FORMATS.has?(format):
+    usage: "unknown JSON Schema format type: $type"
+  =>: type
+
+defn json-schema-format-type?(type):
+  string?(type) &&
+    type.starts?('+JSONSchema/') &&
+    JSON-SCHEMA-FORMATS.has?(type.replace(/^\+JSONSchema\//))
+
+defn json-schema-format-name(type):
+  validate-json-schema-format-type(type).replace(/^\+JSONSchema\//)
 
 defn direct-type-symbol?(token):
   list-pattern =:
@@ -2467,6 +2489,8 @@ defn ysdc-bare-scalar-to-schema(value):
   cond:
     value-list-scalar?(s):
       value-list-to-schema(s)
+    json-schema-format-type?(s):
+      +{'type' 'string', 'format' json-schema-format-name(s)}
     s == '+Str': +{'type' 'string'}
     s == '+Int': +{'type' 'integer'}
     s == '+Num': +{'type' 'number'}
@@ -2570,7 +2594,8 @@ defn warn-unsupported-json-schema(value path=''):
       key child =: entry
       key =: key:S
       child-path =: json-pointer-child(path key)
-      when unsupported-json-schema-keyword?(key):
+      native-format =: (key == 'format') && native-json-format?(value)
+      when unsupported-json-schema-keyword?(key) && native-format.!:
         warn-unsupported-json-schema-keyword: key child-path
       warn-json-schema-children: key child child-path
 
@@ -3060,7 +3085,8 @@ defn build-block-map(schema inherited-open=true):
 # properties when present.
 defn add-block(result schema inherited-open=true):
   t =: json-type(schema)
-  ts =: type-sym(t)
+  ts =: native-json-format-type(schema)
+  ts ||=: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
   pure-map =: t.eq('object') && object-with-props?(schema).!
@@ -3224,6 +3250,8 @@ defn map-value-type-ref(schema):
         cond:
           empty?(value): '+Any'
           only-ref?(value): local-ref-sym(value.'$ref')
+          native-json-format-only?(value):
+            native-json-format-type: value
           type-only?(value):
             when value.type != 'array':
               type-sym: value.type
@@ -3259,11 +3287,12 @@ defn add-passthrough-directives(result schema):
     if schema.required.? && empty?(schema.properties):
       then: result + {'.required' schema.required}
       else: result
-  reduce add-passthrough-directive-entry: result schema
+  reduce \(add-passthrough-directive-entry(_1 _2 schema)): result schema
 
-defn add-passthrough-directive-entry(result entry):
+defn add-passthrough-directive-entry(result entry schema):
   key =: entry.0:S
-  if unsupported-json-schema-keyword?(key):
+  native-format =: (key == 'format') && native-json-format?(schema)
+  if unsupported-json-schema-keyword?(key) && native-format.!:
     then: ordered-put(result ".$key" entry.1)
     else: result
 
@@ -3281,6 +3310,7 @@ defn succinct-scalar(schema):
 defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
+    native-json-format-only?(schema): native-json-format-type(schema)
     typed-map-only?(schema): typed-map-base(schema)
     only-singleton-ref-allof?(schema):
       reference-scalar(schema.allOf.0.'$ref')
@@ -3356,6 +3386,7 @@ defn schema-type-ref(schema):
   cond:
     empty?(schema): '+Any'
     only-ref?(schema): local-ref-sym(schema.'$ref')
+    native-json-format-only?(schema): native-json-format-type(schema)
     typed: type-sym(schema.type)
 
 defn combinator-only?(schema):
@@ -3550,6 +3581,29 @@ defn size-scalar(lo hi):
 defn object-with-props?(schema):
   map?(schema) &&
   schema.has?('properties')
+
+defn native-json-format?(schema):
+  format =: schema.format
+  t =: schema.type
+  string-type =:
+    cond:
+      t == 'string': true
+      sequential?(t): vec(remove(\(_ == 'null') t)).eq(['string'])
+      else: false
+  and:
+    string-type
+    string?(format)
+    JSON-SCHEMA-FORMATS.has?(format)
+
+defn native-json-format-only?(schema):
+  allowed =: set(qw(type format))
+  and:
+    native-json-format?(schema)
+    key-set(schema).every?(\(allowed.has?(_)))
+
+defn native-json-format-type(schema):
+  when native-json-format?(schema):
+    =>: "+JSONSchema/$(schema.format)"
 
 defn schema-annotations?(schema):
   schema.has?('description') ||

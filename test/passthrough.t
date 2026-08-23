@@ -115,18 +115,13 @@ test::
       "additionalProperties": false
     }
   want: |
-    ysd: warning: unsupported JSON Schema keyword "format" at /properties/emails/items/format
     ysd: warning: unsupported JSON Schema keyword "contains" at /properties/emails/contains
     ysd: warning: unsupported JSON Schema keyword "minContains" at /properties/emails/minContains
     emails?:
-      .type: +Any[]
-      .item:
-        .type: +Str
-        .format: email
+      .type: +JSONSchema/email[]
       .contains:
         type: string
       .minContains: 1
-    ysd: warning: unsupported JSON Schema keyword "format" at /properties/emails/items/format
     ysd: warning: unsupported JSON Schema keyword "contains" at /properties/emails/contains
     ysd: warning: unsupported JSON Schema keyword "minContains" at /properties/emails/minContains
     true

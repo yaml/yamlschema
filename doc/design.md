@@ -878,6 +878,7 @@ yamlschema.
 | `title` | `.title` |
 | `$id` | `.ysid` |
 | `$anchor` | `.name` |
+| known string `format` | `+JSONSchema/format` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | local `$ref` | `+name` symbol reference |
 | other `$ref` | `+Ref(reference)` or `.xref` |
@@ -975,6 +976,7 @@ contentEncoding contentMediaType contentSchema
 Implemented or directly represented by the design:
 
 - Scalar built-ins.
+- Draft 2020-12 string formats as `+JSONSchema/format` types.
 - Required and optional object properties.
 - Property-local dependent required constraints.
 - Nested object properties.
