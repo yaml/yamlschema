@@ -177,6 +177,104 @@ test::
   want: |
     OK
 
+- name: root-anchor-to-name
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$anchor": "PersonSchema",
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"}
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  want: |
+    # Converted from JSON Schema
+    .name: PersonSchema
+    name: +Str
+
+- name: root-name-to-anchor
+  cmnd: bin/ysd -f ysd -t jsc -
+  stdi: |
+    .name: PersonSchema
+    name: +Str
+  want: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$anchor": "PersonSchema",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+
+- name: definition-anchor-to-name
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$defs": {
+        "product": {
+          "$anchor": "ProductSchema",
+          "type": "string"
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+
+    +product:
+      .name: ProductSchema
+      .type: +Str
+
+- name: duplicate-name-is-rejected
+  cmnd: |
+    sh -c '
+      output=$(bin/ysd -f ysd -t jsc - 2>&1)
+      status=$?
+      test "$status" -eq 2
+      printf "%s\n" "$output" | head -n 1
+    '
+  stdi: |
+    .name: Shared
+    +other:
+      .name: Shared
+      .type: +Str
+    value: +other
+  want: |
+    ysd: duplicate yamlschema .name: Shared
+
+- name: invalid-anchor-is-rejected
+  cmnd: |
+    sh -c '
+      output=$(bin/ysd -f jsc -t ysd - 2>&1)
+      status=$?
+      test "$status" -eq 2
+      printf "%s\n" "$output" | head -n 1
+    '
+  stdi: |
+    {
+      "$anchor": "not valid",
+      "type": "object"
+    }
+  want: |
+    ysd: invalid JSON Schema $anchor: not valid
+
+- name: ecommerce-anchor-roundtrip
+  cmnd: |
+    sh -c '
+      bin/ysd -Rq www/src/examples/ecommerce-system.schema.json &&
+      echo OK
+    '
+  want: |
+    OK
+
 - name: empty-compact-external-ref-is-rejected
   cmnd: |
     sh -c '

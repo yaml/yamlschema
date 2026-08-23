@@ -17,6 +17,24 @@ YSD and YSDC use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
 
+The optional `.name` directive gives a schema node an externally addressable
+name:
+
+```yaml
+.name: PersonSchema
+
++address:
+  .name: AddressSchema
+  street: +Str
+```
+
+At the document top it names the root schema.
+Inside a definition or property type it names that schema node.
+It maps directly to JSON Schema `$anchor`, while a definition key such as
+`+address` remains the local YAMLSchema type name.
+Names must match `[A-Za-z_][A-Za-z0-9._-]*` and must be unique in one schema
+document.
+
 
 ## Types in Mappings
 
@@ -533,7 +551,7 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.type .xref .open .need .item .one .any .all .not .like
+.name .type .xref .open .need .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .desc .also .with .when
 ```

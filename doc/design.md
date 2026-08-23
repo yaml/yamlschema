@@ -160,6 +160,7 @@ The design keeps directive names short and regular.
 
 | Directive | Meaning |
 | --- | --- |
+| `.name` | JSON Schema anchor name for this schema node |
 | `.need` | Sibling properties required when this property is present |
 | `.type` | Complete built-in or named type expression |
 | `.xref` | Exact external JSON Schema `$ref` string |
@@ -197,7 +198,7 @@ Meta directives are top-level schema metadata:
 | Directive | Meaning |
 | --- | --- |
 | `.from` | Import schemas or namespaces |
-| `.name` | Name of a document schema |
+| `.name` | JSON Schema anchor name for the root schema |
 | `.root` | Primary exported root type |
 | `.ysid` | Representation-aware document identity |
 | `.title` | Human-facing display title |
@@ -708,6 +709,8 @@ address:
 
 A type library exports symbols.
 It has no bare data keys.
+Its JSON Schema form contains metadata and `$defs` without an implied root
+object constraint.
 Public symbols use `+name`; private symbols use `:+name`.
 
 ```yaml
@@ -874,6 +877,7 @@ yamlschema.
 | `description` | Trailing `"description"` or `.desc` |
 | `title` | `.title` |
 | `$id` | `.ysid` |
+| `$anchor` | `.name` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | local `$ref` | `+name` symbol reference |
 | other `$ref` | `+Ref(reference)` or `.xref` |
@@ -957,7 +961,7 @@ auth?:
 Current passthrough keywords include:
 
 ```text
-$anchor $dynamicRef $dynamicAnchor $vocabulary $comment
+$dynamicRef $dynamicAnchor $vocabulary $comment
 prefixItems contains patternProperties dependentSchemas propertyNames
 if then else unevaluatedItems unevaluatedProperties multipleOf
 exclusiveMaximum exclusiveMinimum maxContains minContains
@@ -993,7 +997,8 @@ Still open or incomplete:
 - Positional list schemas.
 - `contains`, `minContains`, and `maxContains`.
 - Unevaluated item/property handling.
-- JSON Schema dynamic references, anchors, vocabularies, content validation,
+- JSON Schema dynamic references, dynamic anchors, vocabularies,
+  content validation,
   and boolean schemas.
 
 Some of those may become first-class yamlschema features; some may remain

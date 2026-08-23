@@ -502,10 +502,15 @@ schema metadata.
 | JSON Schema | yamlschema |
 | --- | --- |
 | `$id` | `.ysid` |
+| `$anchor` | `.name` |
 | `title` | `.title` |
 | `description` | Trailing `"description"` or `.desc` |
 
 `.ysid` is the first mapping entry in generated yamlschema.
+`$anchor` becomes `.name` on the same schema node and exports back unchanged.
+The definition key and anchor name remain independent, so `$defs.product`
+with `$anchor: ProductSchema` becomes `+product` with
+`.name: ProductSchema`.
 YSD and both YSDC serializations use `.ysd.yaml` to identify the source YSD
 document.
 JSON Schema uses `.schema.json`.
@@ -566,6 +571,9 @@ Roundtrip notes:
 - A local reference such as `#/$defs/email` imports as `+email`.
 - Every other `$ref` imports as `+Ref(reference)` when the exact reference is
   safe in the compact grammar, or as `.xref: reference` otherwise.
+- A document containing named definitions but no root shape exports only
+  metadata and `$defs`; it does not gain a root `type`, `properties`, or
+  `additionalProperties` constraint.
 - `.xref` preserves the exact reference string without fetching or resolving
   it and can be combined with sibling constraints.
 - A singleton `allOf` containing only a reference normalizes to a sibling

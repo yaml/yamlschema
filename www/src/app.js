@@ -72,7 +72,7 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=11');
+const schemaWorker = new Worker('schema-worker.js?v=13');
 
 function loadYamlFormat() {
   try {
@@ -217,7 +217,7 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=12');
+  roundtripWorker = new Worker('roundtrip-worker.js?v=14');
   roundtripWorker.addEventListener('message', ({data}) => {
     if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;

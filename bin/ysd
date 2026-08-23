@@ -698,7 +698,8 @@ defn preferred-json-schema-key?(key):
   preferred-json-schema-keys().has?(key)
 
 defn preferred-json-schema-keys():
-  keys =: '$comment $id $schema title description type enum const default $ref'
+  keys =: '$comment $id $schema $anchor title description'
+  keys +=: ' type enum const default $ref'
   keys +=: ' properties required dependentRequired additionalProperties'
   keys +=: ' items uniqueItems minItems maxItems'
   keys +=: ' minimum maximum minLength maxLength'
@@ -757,6 +758,7 @@ defn expand-ysdc(doc source='ysd'):
   validate-regex-directives: doc source
   expanded =: reduce(expand-doc-entry omap() doc)
   expanded =: canonicalize-document-ysid(expanded)
+  validate-schema-names: expanded
   resolve-open-doc: expanded
 
 defn validate-regex-directives(value source):
@@ -807,6 +809,7 @@ defn expand-top-directive(result key value):
   normalized =:
     case key:
       '.ysid': canonical-document-id(value 'ysd' '.ysid')
+      '.name': validate-schema-name(value)
       '.open': validate-open-value(value)
       '.one': expand-combinator-sequence(key value)
       '.keys': expand-key-rules(value)
@@ -930,7 +933,7 @@ defn expand-explicit-entry(result entry):
 
 defn type-directive?(key):
   directives =:
-    +['.type', '.xref', '.like', '.match', '.find', '.enum', '.const',
+    +['.name', '.type', '.xref', '.like', '.match', '.find', '.enum', '.const',
      '.range', '.size',
      '.list', '.item', '.solo', '.uniq', '.null', '.init',
      '.one', '.any', '.all', '.not',
@@ -959,6 +962,7 @@ defn add-implied-directive-base(normalized key value result):
 
 defn normalize-directive(key value):
   case key:
+    '.name': +{key validate-schema-name(value)}
     '.xref': +{key validate-external-reference(value)}
     '.like': +{key value:S}
     '.match': +{'.like' anchored-pattern(regex-pattern(value))}
@@ -984,6 +988,42 @@ defn validate-external-reference(value):
   when-not string?(value):
     usage: 'yamlschema .xref must be a string'
   =>: value
+
+defn validate-schema-name(value label='yamlschema .name'):
+  when-not string?(value):
+    usage: "$label must be a non-empty string"
+  when value:empty?:
+    usage: "$label must be a non-empty string"
+  when-not value =~ /^[A-Za-z_][A-Za-z0-9._-]*$/:
+    usage: "invalid $label: $value"
+  =>: value
+
+defn validate-schema-names(doc):
+  seen =: atom(\{})
+  validate-schema-name-tree: doc seen
+  =>: doc
+
+defn validate-schema-name-tree(value seen):
+  when map?(value):
+    when contains?(value '.name'):
+      name =: validate-schema-name(value.'.name')
+      when deref(seen).has?(name):
+        usage: "duplicate yamlschema .name: $name"
+      swap!: seen conj name
+    each entry value:
+      validate-schema-name-child: entry seen
+
+defn validate-schema-name-child(entry seen):
+  key value =: entry
+  key =: key:S
+  cond:
+    key.in?(['.one', '.any', '.all']) && sequential?(value):
+      each child value:
+        validate-schema-name-tree: child seen
+    key.in?(['.item', '.not']):
+      validate-schema-name-tree: value seen
+    key =~ /^\./: nil
+    else: validate-schema-name-tree(value seen)
 
 # `.open` is a lexical YSD default for mapping types. Canonical YSDC keeps
 # `.open: true` only at the document top. A local wildcard opens one mapping,
@@ -1142,7 +1182,7 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.type', '.xref', '.open', '.need', '.list', '.item',
+    +['.name', '.type', '.xref', '.open', '.need', '.list', '.item',
      '.one', '.any', '.all', '.not',
      '.like', '.enum', '.const',
      '.range', '.size', '.solo', '.uniq', '.null',
@@ -1844,22 +1884,29 @@ defn ysdc-to-schema(doc):
   result =: state.result
   defs-val =: state.defs
   reqs =: state.required
-  result +=:: {type: object}
+  has-root-mapping =:
+    state.wildcard ||
+    state.props:seq ||
+    doc.has?('.keys') ||
+    defs-val:empty?
+  result :if has-root-mapping +=:: {type: object}
   result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
     .map-put-if(empty?(reqs).! 'required' reqs)
     .map-put-if(empty?(state.dependent).!
                 'dependentRequired' state.dependent)
     .map-put-if(empty?(defs-val).! '$defs' defs-val)
-  if state.wildcard:
-    then:
-      if state.additional == true:
-        then: result
-        else: result + {'additionalProperties' state.additional}
-    else:
-      if state.open:
-        then: result
-        else: result + {'additionalProperties' false}
+  if has-root-mapping:
+    if state.wildcard:
+      then:
+        if state.additional == true:
+          then: result
+          else: result + {'additionalProperties' state.additional}
+      else:
+        if state.open:
+          then: result
+          else: result + {'additionalProperties' false}
+    else: result
 
 defn initial-ysdc-doc-state(doc):
   result =: add-ysid-meta(omap() doc.'.ysid')
@@ -1925,6 +1972,7 @@ defn remove-property-need(result entry):
 defn add-schema-meta(result key value inherited-open=false):
   case key:
     '.ysid': result
+    '.name': result + {'$anchor' validate-schema-name(value)}
     '.title': result + {'title' value}
     '.Name': reject-title-directive(key)
     '.desc': result + {'description' value}
@@ -2296,6 +2344,10 @@ defn add-canonical-bounds(result lo hi min-key max-key):
     else: result + {max-key hi}
 
 defn add-canonical-annotations(result value):
+  result =:
+    if contains?(value '.name'):
+      then: result + {'$anchor' validate-schema-name(value.'.name')}
+      else: result
   result =: map-put-if(result contains?(value '.init')
     'default' value.'.init')
   result =: map-put-if(result contains?(value '.title')
@@ -2482,7 +2534,7 @@ defn wrap-array-schema(item suffix):
 
 defn unsupported-json-schema-keywords():
   +[
-    '$anchor', '$dynamicRef', '$dynamicAnchor', '$vocabulary', '$comment',
+    '$dynamicRef', '$dynamicAnchor', '$vocabulary', '$comment',
     'prefixItems', 'contains', 'patternProperties', 'dependentSchemas',
     'propertyNames', 'if', 'then', 'else',
     'unevaluatedItems', 'unevaluatedProperties',
@@ -2722,7 +2774,7 @@ defn build-doc(schema):
     .add-body(schema root-open)
     .add-root-one(schema)
     .add-root-key-rules(schema root-open)
-  =>: result
+  validate-schema-names: result
 
 defn add-document-ysid(result schema):
   if schema.'$id':
@@ -2732,6 +2784,7 @@ defn add-document-ysid(result schema):
     else: result
 
 defn add-root-annotations(result schema):
+  result =: add-schema-name-directive(result schema)
   result:
     .map-put-if(schema.title.? '.title' schema.title)
     .map-put-if(schema.description.? '.desc' schema.description)
@@ -2991,6 +3044,7 @@ defn build-properties-map(schema inherited-open):
   child-open =: imported-child-open(schema inherited-open)
   base =: schema-base-ref(schema)
   result =: map-put-if(omap() base.? '.type' base)
+  result =: add-schema-name-directive(result schema)
   result =: add-external-ref-directive(result schema)
   result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
@@ -3013,6 +3067,7 @@ defn add-block(result schema inherited-open=true):
   map-base =: pure-map.when(open-map-base(schema))
   map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
   child-open =: imported-child-open(schema inherited-open)
+  result =: add-schema-name-directive(result schema)
   result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result map-base '.type' map-base)
   result =:
@@ -3498,7 +3553,15 @@ defn object-with-props?(schema):
 
 defn schema-annotations?(schema):
   schema.has?('description') ||
-  schema.has?('title')
+  schema.has?('title') ||
+  schema.has?('$anchor')
+
+defn add-schema-name-directive(result schema):
+  if contains?(schema '$anchor'):
+    then:
+      name =: validate-schema-name(schema.'$anchor' 'JSON Schema $anchor')
+      ordered-put: result '.name' name
+    else: result
 
 # True when the whole array can be expressed by a value-side list suffix.
 defn array-as-suffix?(schema):

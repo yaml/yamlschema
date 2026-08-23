@@ -52,7 +52,21 @@ test::
   stdi: |
     +airflow: +Str [front-to-rear,rear-to-front]
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"$defs":{"airflow":{"type":"string","enum":["front-to-rear","rear-to-front"]}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"airflow":{"type":"string","enum":["front-to-rear","rear-to-front"]}}}
+
+- name: defs-only-roundtrip
+  cmnd: sh -c 'bin/ysd -Rq - && echo OK'
+  stdi: |
+    {
+      "$defs": {
+        "airflow": {
+          "type": "string",
+          "enum": ["front-to-rear", "rear-to-front"]
+        }
+      }
+    }
+  want: |
+    OK
 
 - name: compact-enum-to-schema.json
   cmnd: bin/ysd -t schema.json -C -
