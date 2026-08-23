@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: generated-comment-is-not-imported
-  cmnd: bin/ysc -f jsc -t ysd -
+  cmnd: bin/ysd -f jsc -t ysd -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -19,7 +19,7 @@ test::
     .open: true
 
 - name: generated-comment-does-not-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -32,7 +32,7 @@ test::
     OK
 
 - name: explicit-true-additional-properties-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -49,7 +49,7 @@ test::
     OK
 
 - name: singleton-ref-allof-with-properties-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -74,7 +74,7 @@ test::
     OK
 
 - name: required-only-combinator-branches-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "type": "object",
@@ -92,7 +92,7 @@ test::
     OK
 
 - name: required-property-order-does-not-affect-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -124,8 +124,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysc -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
-      bin/ysc -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
+      bin/ysd -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysd -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == select-keys( \
         ARGS.1:read:json/load ARGS.0:read:json/load:keys)" \
         -- "$d/in.schema.json" "$d/out.schema.json"
@@ -181,8 +181,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysc -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
-      bin/ysc -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
+      bin/ysd -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysd -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == select-keys( \
         ARGS.1:read:json/load ARGS.0:read:json/load:keys)" \
         -- "$d/in.schema.json" "$d/out.schema.json"

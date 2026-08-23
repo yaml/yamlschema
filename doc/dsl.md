@@ -2,7 +2,7 @@ yamlschema DSL
 ==============
 
 This page specifies the human-authored yamlschema DSL and its expansion to the
-canonical `ysc` model, serialized as `.ysc.yaml` or `.ysc.json`.
+YSD Canonical (YSDC) model, serialized as `.ysdc.yaml` or `.ysdc.json`.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
@@ -119,7 +119,7 @@ shape nested beneath it are closed unless locally reopened.
 A nested `.open` must be Boolean and overrides the inherited value.
 An explicit `+Str` wildcard controls the current shape directly.
 Combining `.open: false` with such a wildcard is an error.
-Canonical YSC keeps `.open: true` only at the document top.
+Canonical YSDC keeps `.open: true` only at the document top.
 It uses `.open: false` to close a shape under an open default and a final
 `+Str: +Any` wildcard to open a shape under a closed default.
 
@@ -268,7 +268,7 @@ pattern.
 Both imply `+Str`.
 Generated YSD uses the canonical `=~"pattern"` spelling.
 
-Canonical YSC stores both forms as `.like`, containing the exact JSON Schema
+Canonical YSDC stores both forms as `.like`, containing the exact JSON Schema
 pattern.
 A match is bookended with `^` and `$`; a find is stored unchanged:
 
@@ -281,8 +281,8 @@ search:
   .like: pattern
 ```
 
-`.like` is accepted only in `.ysc.yaml` and `.ysc.json`.
-Conversely, `.match` and `.find` are YSD directives and are rejected in YSC
+`.like` is accepted only in `.ysdc.yaml` and `.ysdc.json`.
+Conversely, `.match` and `.find` are YSD directives and are rejected in YSDC
 input.
 
 Compact enums require an explicit type reference and comma-separated members:
@@ -508,15 +508,15 @@ Directives such as `.xref` apply alongside the branch properties.
 Compile human-authored YAML to canonical JSON with:
 
 ```sh
-ysc -t yscj contact.ysd.yaml
-ysc -t yscj -C contact.ysd.yaml
-ysc -t yscj values.schema.json
+ysd -t ysdc.json contact.ysd.yaml
+ysd -t ysdc.json -C contact.ysd.yaml
+ysd -t ysdc.json values.schema.json
 ```
 
-Use `yscy` instead of `yscj` for canonical YAML.
-Use `-f/--from ysd`, `yscj`, `yscy`, or `jsc` when a filename or stdin does
+Use `ysdc` or `ysdc.yaml` instead of `ysdc.json` for canonical YAML.
+Use `-f/--from ysd`, `ysdc.json`, `ysdc`, or `jsc` when a filename or stdin does
 not make the source format clear.
-File suffixes `.ysd.yaml`, `.ysc.json`, `.ysc.yaml`, and `.schema.json` are
+File suffixes `.ysd.yaml`, `.ysdc.json`, `.ysdc.yaml`, and `.schema.json` are
 inferred automatically.
 
 Canonical directives are emitted in this order:

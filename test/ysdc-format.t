@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: scalar-enums-use-flow-style
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     first:
       .type: +Str
@@ -46,7 +46,7 @@ test::
           .enum: [x, y]
 
 - name: flow-enums-preserve-scalar-types
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     native:
       .type: +Any
@@ -65,7 +65,7 @@ test::
       .enum: [plain, has space, 'true', true, 'null', null, 12, 1.5]
 
 - name: flow-enums-quote-flow-punctuation
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     punctuation:
       .type: +Str
@@ -83,7 +83,7 @@ test::
         'hash # value', 'it''s, fine', "tab,\tvalue"]
 
 - name: structured-and-multiline-enums-stay-block-style
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     structured:
       .type: +Any
@@ -129,13 +129,13 @@ test::
       for width in 65 66 67; do
         word=$(printf "%0${width}d" 0 | tr 0 a)
         printf "x:\n  .type: +Str\n  .enum:\n  - %s\n  - b\n" "$word" |
-          bin/ysc -f yscy -t yscy - |
+          bin/ysd -f ysdc -t ysdc - |
           awk "/^  \\.enum:/ {print length(\$0), \"enum\"}
             /^    b]$/ {print length(\$0), \"continuation\"}"
       done
       word=$(printf "%090d" 0 | tr 0 a)
       printf "x:\n  .type: +Str\n  .enum:\n  - %s\n" "$word" |
-        bin/ysc -f yscy -t yscy - |
+        bin/ysd -f ysdc -t ysdc - |
         awk "/^  \\.enum:/ {print length(\$0), \"indivisible\"}"
     '
   want: |
@@ -146,7 +146,7 @@ test::
     101 indivisible
 
 - name: range-and-size-use-flow-style
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     lower:
       .type: +Int
@@ -189,7 +189,7 @@ test::
       .size: [1, 10]
 
 - name: other-sequences-are-not-reformatted
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     choice:
       .one:
@@ -202,7 +202,7 @@ test::
       - +Int
 
 - name: succinct-yaml-enums-are-not-reformatted
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -221,7 +221,7 @@ test::
 - name: formatted-enum-reparses-with-original-values
   cmnd: |
     sh -c '
-      bin/ysc -f yscy -t yscy - |
+      bin/ysd -f ysdc -t ysdc - |
         ys -e "data =: IN:read:yaml/load" \
           -e "say: json/dump(data.values.get(\".enum\"))"
     '

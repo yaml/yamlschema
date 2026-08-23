@@ -38,10 +38,10 @@ test-scripts: $(SHELLCHECK)
 	$(SHELLCHECK) util/release util/release-dist test/release
 
 json-schema-suite:
-	util/ysc-suite-roundtrip --fetch-only
+	util/ysd-suite-roundtrip --fetch-only
 
 suite-roundtrip:
-	util/ysc-suite-roundtrip draft4
+	util/ysd-suite-roundtrip draft4
 
 release-prep: $(PERL)
 	@$(if $(filter command line,$(origin VERSION)),,\

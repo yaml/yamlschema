@@ -17,19 +17,20 @@ compact form.
 
 yamlschema uses separate extensions for human-authored source, compiled
 yamlschema, and JSON Schema interchange.
+The compiled form is YSD Canonical (YSDC).
 
 ```text
-contact.ysd.yaml -> contact.ysc.yaml or contact.ysc.json
+contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
 - `.ysd.yaml` is the human-maintained yamlschema DSL form.
-- `.ysc.yaml` is the expanded yamlschema form serialized as YAML.
-- `.ysc.json` is the expanded yamlschema form serialized as JSON.
+- `.ysdc.yaml` is the YSD Canonical form serialized as YAML.
+- `.ysdc.json` is the YSD Canonical form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
 
 The `.ysd.yaml` form is ordinary YAML and should be pleasant to edit by hand.
-The `ysc` forms contain the same non-human, fully expanded data and are
+The `ysdc` forms contain the same non-human, fully expanded data and are
 intended for validators, caches, publication, and generated artifacts.
 The `.schema.json` form is the JSON Schema representation used for interop
 with the JSON Schema ecosystem.
@@ -225,7 +226,7 @@ The canonical explicit form uses the period-prefixed directive names.
 The old names `titl`, `just`, and `only` are errors with diagnostics naming
 `title` and `const`.
 The tight `like:` label is also rejected in favor of YSD `match:` or `find:`;
-canonical YSC `.like` stores the resulting raw pattern.
+canonical YSDC `.like` stores the resulting raw pattern.
 
 ### Descriptions
 
@@ -299,7 +300,7 @@ email: +Str =~"\S+@\S+"
 zip: +Str =~"\d{5}(-\d{4})?"
 ```
 
-Equivalent canonical YSC form:
+Equivalent canonical YSDC form:
 
 ```yaml
 email:
@@ -606,7 +607,7 @@ Custom definitions can inherit from other definitions:
 
 Implicit typing applies where possible:
 
-- `.like` implies `+Str` in canonical YSC; YSD `.match` and `.find` normalize
+- `.like` implies `+Str` in canonical YSDC; YSD `.match` and `.find` normalize
   to `.like`.
 - `.enum` implies the common value type, or `+Any` for heterogeneous values.
 - A mapping shape implies the mapping type without emitting a base marker.
@@ -830,11 +831,11 @@ Example compiled shape:
 
 ## JSON Schema Mapping
 
-The `bin/ysc` converter is a bootstrap path from JSON Schema into yamlschema.
+The `bin/ysd` converter is a bootstrap path from JSON Schema into yamlschema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
 Generated human-facing yamlschema output should use `.ysd.yaml`.
-Expanded yamlschema should use `.ysc.yaml` or `.ysc.json`; both contain the
+Expanded yamlschema should use `.ysdc.yaml` or `.ysdc.json`; both contain the
 same canonical model.
 The converter can also generate `.schema.json` from `.ysd.yaml` for the same
 direct mapping subset.
@@ -920,22 +921,22 @@ tags: +Str[1+,!]
 
 ## Converter Behavior
 
-`bin/ysc` works in these stages:
+`bin/ysd` works in these stages:
 
 1. Read JSON Schema or yamlschema from an input path, or from stdin by
    default.
-2. Default to YSD for JSON Schema input and JSON Schema for YSD or YSC input
+2. Default to YSD for JSON Schema input and JSON Schema for YSD or YSDC input
    when no action option is supplied.
 3. Use `-t ysd` to parse JSON Schema and emit succinct yamlschema.
-4. Use `-t yscy` or `-t yscj` to emit fully expanded yamlschema as YAML or
+4. Use `-t ysdc` or `-t ysdc.json` to emit fully expanded yamlschema as YAML or
    JSON.
 5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON Schema.
 6. Build a YAMLScript data structure for the output document.
 7. Prefer succinct scalar forms where possible.
 8. Use explicit directive maps when a schema cannot be represented as one
    scalar.
-9. Dump `ysd.yaml` and `ysc.yaml` results as YAML.
-   Dump `ysc.json` and `schema.json` results as canonical, two-space-indented
+9. Dump `ysd.yaml` and `ysdc.yaml` results as YAML.
+   Dump `ysdc.json` and `schema.json` results as canonical, two-space-indented
    JSON.
    Use `-C` / `--compact` for compact JSON output.
 10. Preserve unsupported JSON Schema keywords as same-named dotted

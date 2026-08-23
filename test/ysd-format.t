@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: compact-enums-use-comma-space
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -22,7 +22,7 @@ test::
     mode?: +Str [debug, =info, warning, error, fatal]
 
 - name: overlong-enum-and-description-use-separate-clauses
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -45,7 +45,7 @@ test::
       "Component logging mode."
 
 - name: long-enum-wraps-only-after-commas
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -69,7 +69,7 @@ test::
       "Select the logging behavior used by every component in this deployment."
 
 - name: nested-description-wraps-at-physical-column-80
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -97,7 +97,7 @@ test::
         +Str: +Any
 
 - name: long-desc-pair-wraps-at-whitespace
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -127,9 +127,9 @@ test::
       tmp=$(mktemp -d)
       trap "rm -r \"$tmp\"" EXIT
       cat > "$tmp/in.schema.json"
-      bin/ysc -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
+      bin/ysd -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
       cat "$tmp/out.ysd.yaml"
-      bin/ysc -f ysd -t jsc -C "$tmp/out.ysd.yaml" |
+      bin/ysd -f ysd -t jsc -C "$tmp/out.ysd.yaml" |
         ys -e "say: IN:read:json/load.properties.x.description"
     '
   stdi: |
@@ -161,7 +161,7 @@ test::
         printf \
           "{\"properties\":{\"x\":{\"description\":\"%s %s\"}}}\n" \
           "$first" "$last" |
-          bin/ysc -t ysd - |
+          bin/ysd -t ysd - |
           awk -v width="$width" "/\\.desc:|^    b/ {print width, length(\$0)}"
       done
     '
@@ -178,7 +178,7 @@ test::
         printf \
           "{\"properties\":{\"x\":{\"type\":\"string\",\"description\":\"%s\"}}}\n" \
           "$description" |
-          bin/ysc -t ysd - |
+          bin/ysd -t ysd - |
           awk -v width="$width" "{print width, length(\$0)}"
       done
     '
@@ -198,9 +198,9 @@ test::
       tmp=$(mktemp -d)
       trap "rm -r \"$tmp\"" EXIT
       cat > "$tmp/in.schema.json"
-      bin/ysc -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
+      bin/ysd -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
       cat "$tmp/out.ysd.yaml"
-      bin/ysc -f ysd -t jsc -C "$tmp/out.ysd.yaml" |
+      bin/ysd -f ysd -t jsc -C "$tmp/out.ysd.yaml" |
         ys -e "say: IN:read:json/load.properties.escaped.description"
     '
   stdi: |
@@ -227,7 +227,7 @@ test::
       printf \
         "{\"properties\":{\"x\":{\"type\":\"string\",\"enum\":[\"%s\"]}}}\n" \
         "$member" |
-        bin/ysc -t ysd - |
+        bin/ysd -t ysd - |
         awk "{print length(\$0)}"
     '
   want: |
@@ -243,8 +243,8 @@ test::
       tmp=$(mktemp -d)
       trap "rm -r \"$tmp\"" EXIT
       cat > "$tmp/in.schema.json"
-      bin/ysc -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
-      bin/ysc -f ysd -t jsc -C "$tmp/out.ysd.yaml" \
+      bin/ysd -t ysd "$tmp/in.schema.json" > "$tmp/out.ysd.yaml"
+      bin/ysd -f ysd -t jsc -C "$tmp/out.ysd.yaml" \
         > "$tmp/out.schema.json"
       ys -pe \
         "ARGS.0:read:json/load.properties.mode == ARGS.1:read:json/load.properties.mode" \

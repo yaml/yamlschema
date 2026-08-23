@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: json-schema-open-default-and-local-overrides
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "title": "Open rules",
@@ -58,7 +58,7 @@ test::
     explicitStr?: +Map{+Str}
 
 - name: expanded-form-resolves-inherited-open-state
-  cmnd: bin/ysc -t yscy -
+  cmnd: bin/ysd -t ysdc -
   stdi: |
     .open: true
     +person:
@@ -84,7 +84,7 @@ test::
 - name: open-export-semantics
   cmnd: |
     sh -c '
-      bin/ysc -t schema.json -C - |
+      bin/ysd -t schema.json -C - |
         jq -r ".additionalProperties,
           (.\"\u0024defs\".person | has(\"additionalProperties\")),
           .properties.closed.additionalProperties,
@@ -109,7 +109,7 @@ test::
     null
 
 - name: nested-open-canonicalizes-to-local-wildcard
-  cmnd: bin/ysc -t yscy -
+  cmnd: bin/ysd -t ysdc -
   stdi: |
     .open: true
     closed:
@@ -133,12 +133,12 @@ test::
         "bad:\n  .open: false\n  +Str: +Any" \
         "bad:\n  .type: +Str\n  .open: true"; do
         printf "%b\n" "$input" |
-          bin/ysc -t yscy - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: yamlschema .open must be true or false
-    ysc: yamlschema .open: false conflicts with an explicit +Str wildcard
-    ysc: yamlschema .open requires an anonymous mapping type
+    ysd: yamlschema .open must be true or false
+    ysd: yamlschema .open: false conflicts with an explicit +Str wildcard
+    ysd: yamlschema .open requires an anonymous mapping type
 
 done:

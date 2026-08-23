@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: one-of-to-one
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -39,7 +39,7 @@ test::
       - api_key: +Str
 
 - name: root-one-to-json-schema
-  cmnd: bin/ysc -t schema.json -
+  cmnd: bin/ysd -t schema.json -
   stdi: |
     .open: true
     deviceType: +Str
@@ -86,7 +86,7 @@ test::
     }
 
 - name: root-one-from-json-schema
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "$id": "https://example.com/device.schema.json",
@@ -123,7 +123,7 @@ test::
       $id: https://example.com/device.schema.json
 
 - name: root-one-roundtrip
-  cmnd: sh -c 'bin/ysc -Rq - && echo OK'
+  cmnd: sh -c 'bin/ysd -Rq - && echo OK'
   stdi: |
     {
       "type": "object",

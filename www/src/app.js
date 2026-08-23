@@ -72,11 +72,11 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=9');
+const schemaWorker = new Worker('schema-worker.js?v=10');
 
 function loadYamlFormat() {
   try {
-    return localStorage.getItem(formatStorageKey) === 'ysc' ? 'ysc' : 'ysd';
+    return localStorage.getItem(formatStorageKey) === 'ysdc' ? 'ysdc' : 'ysd';
   } catch {
     return 'ysd';
   }
@@ -113,14 +113,14 @@ function setEditorValue(editor, value) {
   updating = false;
 }
 
-function showGeneratingYSC() {
-  if (yamlFormat === 'ysc') {
-    setEditorValue(yamlEditor, 'Generating YSC...');
+function showGeneratingYSDC() {
+  if (yamlFormat === 'ysdc') {
+    setEditorValue(yamlEditor, 'Generating YSDC...');
   }
 }
 
 function showGeneratingYamlSchema() {
-  const name = yamlFormat === 'ysc' ? 'YSC' : 'YSD';
+  const name = yamlFormat === 'ysdc' ? 'YSDC' : 'YSD';
   setEditorValue(yamlEditor, `Generating ${name}...`);
 }
 
@@ -217,7 +217,7 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=11');
+  roundtripWorker = new Worker('roundtrip-worker.js?v=12');
   roundtripWorker.addEventListener('message', ({data}) => {
     if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;
@@ -302,8 +302,8 @@ async function convertJsonToYaml(
   );
   if (updateYSD) ysdValue = convertedYSD;
   let result = {...toYSD, value: convertedYSD};
-  if (yamlFormat === 'ysc') {
-    result = await callWorker('json-schema-to-ysc', json);
+  if (yamlFormat === 'ysdc') {
+    result = await callWorker('json-schema-to-ysdc', json);
     if (id !== conversionRequest) return;
   }
   showResult(jsonEditor, yamlEditor, jsonError, yamlError, result);
@@ -400,9 +400,9 @@ async function showSample(ysd) {
   ysdValue = ysd;
   setEditorValue(yamlEditor, ysdValue);
   const conversion = convertYamlToJson();
-  showGeneratingYSC();
+  showGeneratingYSDC();
   const result = await conversion;
-  if (yamlFormat === 'ysc' && result?.ok) {
+  if (yamlFormat === 'ysdc' && result?.ok) {
     await convertJsonToYaml(false, false);
   }
 }
@@ -445,7 +445,7 @@ async function loadSelectedSample() {
 function selectYamlFormat(format, remember = true) {
   yamlFormat = format;
   if (remember) saveYamlFormat(format);
-  const readonly = format === 'ysc';
+  const readonly = format === 'ysdc';
   yamlEditor.toggleAttribute('readonly', readonly);
   yamlEditor.classList.toggle('readonly', readonly);
   yamlEditor.classList.remove('invalid');
@@ -453,7 +453,7 @@ function selectYamlFormat(format, remember = true) {
   if (!schemaWorkerReady) return;
   if (format === 'ysd' && ysdValue) setEditorValue(yamlEditor, ysdValue);
   else {
-    showGeneratingYSC();
+    showGeneratingYSDC();
     void convertJsonToYaml(false, false);
   }
 }

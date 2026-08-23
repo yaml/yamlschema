@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: types
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -25,7 +25,7 @@ test::
     b: +Bool
 
 - name: yaml-number-inference
-  cmnd: bin/ysc -t yscj -C -
+  cmnd: bin/ysd -t ysdc.json -C -
   stdi: |
     float: 1.5
     float-enum:
@@ -38,7 +38,7 @@ test::
     {"float":{".type":"+Float",".const":1.5},"float-enum":{".type":"+Float",".enum":[1.5,2.5]},"mixed-enum":{".type":"+Num",".enum":[1,2.5]},"fractional-range":{".type":"+Num",".range":[0.5,1]},"integer-range":{".type":"+Int",".range":[0,1]}}
 
 - name: json-number-inference
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -56,7 +56,7 @@ test::
     constant: +Num ==1.5
 
 - name: float-export-warning
-  cmnd: sh -c 'bin/ysc -f ysd -t jsc -C - 2>&1'
+  cmnd: sh -c 'bin/ysd -f ysd -t jsc -C - 2>&1'
   stdi: |
     +measurement: +Float
     number: +Num
@@ -66,11 +66,11 @@ test::
     nested:
       reading?: +Float
   want: |
-    ysc: warning: +Float at /$defs/measurement exports as JSON Schema "number", which also accepts integers
-    ysc: warning: +Float at /properties/float exports as JSON Schema "number", which also accepts integers
-    ysc: warning: +Float at /properties/floats/items exports as JSON Schema "number", which also accepts integers
-    ysc: warning: +Float at /properties/choice/oneOf/1 exports as JSON Schema "number", which also accepts integers
-    ysc: warning: +Float at /properties/nested/properties/reading exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /$defs/measurement exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /properties/float exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /properties/floats/items exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /properties/choice/oneOf/1 exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /properties/nested/properties/reading exports as JSON Schema "number", which also accepts integers
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"number":{"type":"number"},"float":{"type":"number"},"floats":{"type":"array","items":{"type":"number"}},"choice":{"oneOf":[{"type":"integer"},{"type":"number"}]},"nested":{"type":"object","properties":{"reading":{"type":"number"}},"additionalProperties":false}},"required":["number","float","floats","choice","nested"],"additionalProperties":false,"$defs":{"measurement":{"type":"number"}}}
 
 - name: reject-unknown-capitalized-type-references
@@ -82,14 +82,14 @@ test::
         "+Map{+Stx}" \
         "+One(+Str,+Stx)"; do
         printf "value: %s\n" "$value" |
-          bin/ysc -f ysd -t jsc - 2>&1 |
+          bin/ysd -f ysd -t jsc - 2>&1 |
           perl -ne "print if \$. == 1"
       done
     '
   want: |
-    ysc: unknown yamlschema built-in type: +Stx
-    ysc: unknown yamlschema built-in type: +Stx
-    ysc: unknown yamlschema built-in type: +Stx
-    ysc: unknown yamlschema built-in type: +Stx
+    ysd: unknown yamlschema built-in type: +Stx
+    ysd: unknown yamlschema built-in type: +Stx
+    ysd: unknown yamlschema built-in type: +Stx
+    ysd: unknown yamlschema built-in type: +Stx
 
 done:

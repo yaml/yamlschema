@@ -6,7 +6,8 @@ repo=https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
 suite=${JSON_SCHEMA_TEST_SUITE:-.cache/JSON-Schema-Test-Suite}
 
 usage() {
-  echo "usage: util/ysc-suite-roundtrip [--fetch-only] [DRAFT] [TEST.json ...]" >&2
+  echo 'usage: util/ysd-suite-roundtrip [--fetch-only]' \
+    '[DRAFT] [TEST.json ...]' >&2
   exit 2
 }
 
@@ -24,6 +25,8 @@ fetch_suite() {
   fi
 }
 
+# The jq program must not let the shell expand JSON Schema $ names.
+# shellcheck disable=SC2016
 keywords='
   [
     .. | objects | keys[]
@@ -101,7 +104,7 @@ for file do
 
     total=$((total + 1))
 
-    if bin/ysc -Rq "$schema" > /dev/null 2> "$err"; then
+    if bin/ysd -Rq "$schema" > /dev/null 2> "$err"; then
       status=PASS
       pass=$((pass + 1))
     else

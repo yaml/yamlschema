@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: refs
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "$defs": {
@@ -32,7 +32,7 @@ test::
     admin?: +email
 
 - name: draft-07-definitions-refs
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -60,7 +60,7 @@ test::
     admin?: +email
 
 - name: external-refs-to-ysd
-  cmnd: bin/ysc -f jsc -t ysd -
+  cmnd: bin/ysd -f jsc -t ysd -
   stdi: |
     {
       "type": "object",
@@ -96,7 +96,7 @@ test::
     annotated?: +Ref(https://x.io/p.json) "External profile"
 
 - name: external-refs-to-json-schema
-  cmnd: bin/ysc -f ysd -t jsc -
+  cmnd: bin/ysd -f ysd -t jsc -
   stdi: |
     absolute?: +Ref(https://example.com/profile.schema.json)
     relative?: +Ref(profile.schema.json)
@@ -148,7 +148,7 @@ test::
     }
 
 - name: external-ref-canonical-expansion
-  cmnd: bin/ysc -f ysd -t yscy -
+  cmnd: bin/ysd -f ysd -t ysdc -
   stdi: |
     author: +Ref(https://example.com/user-profile.schema.json)
     reviewer:
@@ -162,7 +162,7 @@ test::
       .desc: External reviewer
 
 - name: external-ref-roundtrip
-  cmnd: bin/ysc -f jsc -R -
+  cmnd: bin/ysd -f jsc -R -
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -180,7 +180,7 @@ test::
 - name: empty-compact-external-ref-is-rejected
   cmnd: |
     sh -c '
-      output=$(bin/ysc -f ysd -t yscy - 2>&1)
+      output=$(bin/ysd -f ysd -t ysdc - 2>&1)
       status=$?
       test "$status" -eq 2
       printf "%s\n" "$output" | head -n 1
@@ -188,12 +188,12 @@ test::
   stdi: |
     author: +Ref()
   want: |
-    ysc: compact external reference cannot be empty; use .xref
+    ysd: compact external reference cannot be empty; use .xref
 
 - name: non-string-canonical-external-ref-is-rejected
   cmnd: |
     sh -c '
-      output=$(bin/ysc -f ysd -t yscy - 2>&1)
+      output=$(bin/ysd -f ysd -t ysdc - 2>&1)
       status=$?
       test "$status" -eq 2
       printf "%s\n" "$output" | head -n 1
@@ -202,6 +202,6 @@ test::
     author:
       .xref: 42
   want: |
-    ysc: yamlschema .xref must be a string
+    ysd: yamlschema .xref must be a string
 
 done:

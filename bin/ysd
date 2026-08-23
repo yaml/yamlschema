@@ -1,6 +1,6 @@
 #!/usr/bin/env ys-0
 
-# ysc - Convert JSON Schema to YAML Schema (succinct DSL).
+# ysd - Convert JSON Schema to YAML Schema (succinct DSL).
 #
 # Reads a JSON Schema document from an explicit input path. Use "-" to read
 # from stdin. Builds the equivalent YAML Schema as a YS data structure, dumps
@@ -17,10 +17,10 @@ BUILT-IN-TYPE-NAMES =:
     'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
     'Null', 'Map', 'One', 'All', 'Not']
 HELP =: |
-  Usage: ysc [INPUT]
-         ysc (-t FORMAT | -o FILE) [INPUT]
-         ysc -N, --norm [INPUT]
-         ysc -R, --roundtrip [-q, --quiet] [INPUT]
+  Usage: ysd [INPUT]
+         ysd (-t FORMAT | -o FILE) [INPUT]
+         ysd -N, --norm [INPUT]
+         ysd -R, --roundtrip [-q, --quiet] [INPUT]
 
   Convert between JSON Schema and yamlschema formats.
 
@@ -28,9 +28,10 @@ HELP =: |
     INPUT                 Input schema path. Defaults to stdin.
 
   Options:
-    -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
-                          Defaults based on the input format.
-    -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
+    -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
+                          ysdc.json, or jsc. Defaults based on input.
+    -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
+                          ysdc.json, or jsc.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -N, --norm            Normalize input to draft 2020-12 JSON Schema.
     -R, --roundtrip       Check JSON Schema or YSD roundtrip.
@@ -51,7 +52,7 @@ defn main(*args):
 EXPORT =::
   json-schema-normalize: [str, str]
   json-schema-to-ysd: [str, str]
-  json-schema-to-ysc: [str, str]
+  json-schema-to-ysdc: [str, str]
   json-schema-roundtrip-report: [str, str]
   json-schema-roundtrip-works: [str, bool]
   ysd-roundtrip-report: [str, str]
@@ -80,8 +81,8 @@ defn json-schema-normalize(text):
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
 
-defn json-schema-to-ysc(text):
-  json-schema-to-ysc-text: text
+defn json-schema-to-ysdc(text):
+  json-schema-to-ysdc-text: text
 
 defn json-schema-roundtrip-works(text):
   boolean: json-schema-roundtrip-result(text false).works
@@ -109,15 +110,15 @@ defn convert-to(target text opts):
       schema =: schema-input(text opts)
       schema =: add-generated-comment(schema opts)
       json-output: schema opts
-    'ysc.json':
+    'ysdc.json':
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
-      expanded =: expand-ysc(data expansion-source(opts))
+      expanded =: expand-ysdc(data expansion-source(opts))
       canonical-json-output: collapse-direct-types(expanded) opts
-    'ysc.yaml':
+    'ysdc.yaml':
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
-      expanded =: expand-ysc(data expansion-source(opts))
+      expanded =: expand-ysdc(data expansion-source(opts))
       post-process yaml/dump(collapse-direct-types(expanded)): true
     else:
       usage: "unsupported output format: $target"
@@ -193,16 +194,20 @@ defn output-format(opts):
 
 defn default-output-format(opts):
   source =: input-format(opts)
-  source: .in?(['ysd.yaml', 'ysc.yaml', 'ysc.json'])
+  source: .in?(['ysd.yaml', 'ysdc.yaml', 'ysdc.json'])
     .if('schema.json' 'ysd.yaml')
 
 defn normalize-format(fmt):
   case fmt:
     'ysd': 'ysd.yaml'
-    'yscy': 'ysc.yaml'
-    'yscj': 'ysc.json'
+    'ysdc': 'ysdc.yaml'
+    'ysdc.json': 'ysdc.json'
     'jsc': 'schema.json'
+    'yscy': unsupported-format(fmt)
+    'yscj': unsupported-format(fmt)
     'ysc': unsupported-format(fmt)
+    'ysc.yaml': unsupported-format(fmt)
+    'ysc.json': unsupported-format(fmt)
     'ysxy': unsupported-format(fmt)
     'ysxj': unsupported-format(fmt)
     'ysx.yaml': unsupported-format(fmt)
@@ -234,6 +239,10 @@ defn validate-roundtrip-options(opts):
       usage: '-R/--roundtrip requires JSON Schema or YSD input'
 
 defn reject-old-file-extension(path):
+  when path.? && path.ends?('.ysc.yaml'):
+    usage: 'unsupported file extension: .ysc.yaml'
+  when path.? && path.ends?('.ysc.json'):
+    usage: 'unsupported file extension: .ysc.json'
   when path.? && path.ends?('.ysx.yaml'):
     usage: 'unsupported file extension: .ysx.yaml'
   when path.? && path.ends?('.ysx.json'):
@@ -257,10 +266,10 @@ defn yamlschema-input-schema(text source report=true):
   data =: text:yaml/load
   when report:
     warn-yamlschema-passthrough: data
-  expanded =: expand-ysc(data expansion-source-format(source))
+  expanded =: expand-ysdc(data expansion-source-format(source))
   when report:
     warn-yamlschema-float-export: expanded
-  ysc-to-schema: expanded
+  ysdc-to-schema: expanded
 
 defn input-format(opts):
   normalize-format(opts.from) || infer-input-format(opts.input)
@@ -274,8 +283,8 @@ defn expansion-source(opts):
   expansion-source-format: source
 
 defn expansion-source-format(source):
-  if source.in?(['ysc.yaml', 'ysc.json']):
-    then: 'ysc'
+  if source.in?(['ysdc.yaml', 'ysdc.json']):
+    then: 'ysdc'
     else: 'ysd'
 
 defn collapse-direct-types(value):
@@ -303,8 +312,8 @@ defn infer-input-format(path):
     path:nil?: nil
     path == '-': nil
     path =~ /\.schema\.json$/: 'schema.json'
-    path =~ /\.ysc\.json$/: 'ysc.json'
-    path =~ /\.ysc\.yaml$/: 'ysc.yaml'
+    path =~ /\.ysdc\.json$/: 'ysdc.json'
+    path =~ /\.ysdc\.yaml$/: 'ysdc.yaml'
     path =~ /\.ysd\.yaml$/: 'ysd.yaml'
 
 defn canonical-json-output(value opts):
@@ -317,8 +326,8 @@ defn infer-output-format(output):
     output:nil?: nil
     output == '-': nil
     output =~ /\.schema\.json$/: 'schema.json'
-    output =~ /\.ysc\.yaml$/: 'ysc.yaml'
-    output =~ /\.ysc\.json$/: 'ysc.json'
+    output =~ /\.ysdc\.yaml$/: 'ysdc.yaml'
+    output =~ /\.ysdc\.json$/: 'ysdc.json'
     output =~ /\.ysd\.yaml$/: 'ysd.yaml'
 
 defn emit-output(text output):
@@ -335,7 +344,7 @@ defn usage(msg):
   throw: ex-info(msg data)
 
 defn handle-usage-error(error):
-  err: "ysc: $(ex-message(error))\n"
+  err: "ysd: $(ex-message(error))\n"
   err: HELP
   exit: 2
 
@@ -349,7 +358,7 @@ defn handle-info-options(args):
       print: HELP
       exit: 0
     when arg == '--version':
-      say: "ysc $VERSION"
+      say: "ysd $VERSION"
       exit: 0
 
 defn add-generated-comment(schema opts):
@@ -436,23 +445,23 @@ defn json-schema-roundtrip-result(text report):
 
 defn ysd-roundtrip-result(text report):
   schema =: yamlschema-input-schema(text 'ysd.yaml' report)
-  original =: ysd-to-ysc-text(text)
+  original =: ysd-to-ysdc-text(text)
   json-schema =: json-output(schema {})
-  roundtripped =: json-schema-to-ysc-text(json-schema)
+  roundtripped =: json-schema-to-ysdc-text(json-schema)
   identity: +{'works' (original == roundtripped)
               'original' original
               'roundtripped' roundtripped}
 
-defn ysd-to-ysc-text(text):
+defn ysd-to-ysdc-text(text):
   data =: text:yaml/load
-  canonical-ysc-text: data 'ysd'
+  canonical-ysdc-text: data 'ysd'
 
-defn json-schema-to-ysc-text(text):
+defn json-schema-to-ysdc-text(text):
   schema =: load-json-schema(text false)
-  canonical-ysc-text: build-doc(schema) 'ysd'
+  canonical-ysdc-text: build-doc(schema) 'ysd'
 
-defn canonical-ysc-text(data source):
-  expanded =: expand-ysc(data source)
+defn canonical-ysdc-text(data source):
+  expanded =: expand-ysdc(data source)
   post-process yaml/dump(collapse-direct-types(expanded)): true
 
 defn roundtrip-match(opts):
@@ -477,7 +486,7 @@ defn page-diff(text pager):
 
 defn roundtrip-error(error opts):
   when-not opts.quiet:
-    err: "ysc: $(ex-message(error))\n"
+    err: "ysd: $(ex-message(error))\n"
   =>: 2
 
 defn unified-diff(original roundtripped):
@@ -701,7 +710,7 @@ defn indent(width):
 # Expand succinct yamlschema into canonical explicit yamlschema.
 # --------------------------------------------------------------------
 
-defn expand-ysc(doc source='ysd'):
+defn expand-ysdc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
   validate-regex-directives: doc source
@@ -715,8 +724,8 @@ defn validate-regex-directives(value source):
         key =: entry.0:S
         when (source == 'ysd') && (key == '.like'):
           usage: 'unsupported YSD directive: .like; use .match or .find'
-        when (source == 'ysc') && key.in?(['.match', '.find']):
-          usage: "unsupported YSC directive: $key; use .like"
+        when (source == 'ysdc') && key.in?(['.match', '.find']):
+          usage: "unsupported YSDC directive: $key; use .like"
         when passthrough-directive?(key).!:
           validate-regex-directives: entry.1 source
     sequential?(value):
@@ -932,7 +941,7 @@ defn validate-external-reference(value):
     usage: 'yamlschema .xref must be a string'
   =>: value
 
-# `.open` is a lexical YSD default for mapping types. Canonical YSC keeps
+# `.open` is a lexical YSD default for mapping types. Canonical YSDC keeps
 # `.open: true` only at the document top. A local wildcard opens one mapping,
 # while `.open: false` closes a mapping and its nested default.
 defn resolve-open-doc(doc):
@@ -1786,8 +1795,8 @@ defn normalize-size(value):
 # Convert yamlschema DSL data back to JSON Schema.
 # --------------------------------------------------------------------
 
-defn ysc-to-schema(doc):
-  state =: reduce(ysc-doc-step initial-ysc-doc-state(doc) doc)
+defn ysdc-to-schema(doc):
+  state =: reduce(ysdc-doc-step initial-ysdc-doc-state(doc) doc)
   result =: state.result
   defs-val =: state.defs
   reqs =: state.required
@@ -1808,7 +1817,7 @@ defn ysc-to-schema(doc):
         then: result
         else: result + {'additionalProperties' false}
 
-defn initial-ysc-doc-state(doc):
+defn initial-ysdc-doc-state(doc):
   result =: add-json-meta(omap() doc.'.json')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
@@ -1820,7 +1829,7 @@ defn initial-ysc-doc-state(doc):
     wildcard: false
     additional:
 
-defn ysc-doc-step(state entry):
+defn ysdc-doc-step(state entry):
   key =: entry.0:S
   value =: entry.1
   cond:
@@ -1831,7 +1840,7 @@ defn ysc-doc-step(state entry):
         additional:: wildcard-value-to-schema(value)
     key =~ /^\+/:
       name =: key.replace(/^\+/)
-      schema =: ysc-value-to-schema(value state.open)
+      schema =: ysdc-value-to-schema(value state.open)
       update-state: state 'defs' name schema
     key =~ /^\./:
       result =: add-schema-meta(state.result key value state.open)
@@ -1849,7 +1858,7 @@ defn add-property-schema(state key value):
   has-need =: map?(value) && contains?(value '.need')
   needs =: has-need.when(validate-need-value(value.'.need'))
   schema-value =: has-need.if(without-property-need(value) value)
-  schema =: ysc-value-to-schema(schema-value state.open)
+  schema =: ysdc-value-to-schema(schema-value state.open)
   state =: update-state(state 'props' info.name schema)
   state =:
     if info.required:
@@ -1893,13 +1902,13 @@ defn add-root-one-schema(result branches):
 
 defn root-one-branch-to-schema(branch):
   when-not map?(branch):
-    =>: ysc-value-to-schema branch true
+    =>: ysdc-value-to-schema branch true
   parts =: reduce(split-root-one-branch root-one-branch-parts() branch)
   directives =: parts.directives
   result =:
     if empty?(directives):
       then: omap()
-      else: ysc-block-to-schema(directives true)
+      else: ysdc-block-to-schema(directives true)
   partial =: partial-object-schema(parts.fields true)
   merge-ordered-maps: result partial
 
@@ -1914,7 +1923,7 @@ defn split-root-one-branch(parts entry):
 
 defn partial-object-schema(fields inherited-open=false):
   state =:
-    reduce(ysc-object-step initial-object-state(inherited-open) fields)
+    reduce(ysdc-object-step initial-object-state(inherited-open) fields)
   result =: omap()
   result =: result.map-put-if(
     empty?(state.props).! 'properties' state.props)
@@ -1996,27 +2005,27 @@ defn parse-property-key(key):
     name:: k
     required:: required
 
-defn ysc-value-to-schema(value inherited-open=false):
+defn ysdc-value-to-schema(value inherited-open=false):
   if map?(value):
-    ysc-map-to-schema: value inherited-open
-    ysc-scalar-to-schema: value
+    ysdc-map-to-schema: value inherited-open
+    ysdc-scalar-to-schema: value
 
 defn wildcard-value-to-schema(value inherited-open=false):
-  schema =: ysc-value-to-schema(value inherited-open)
+  schema =: ysdc-value-to-schema(value inherited-open)
   if empty?(schema):
     then: true
     else: schema
 
-defn ysc-map-to-schema(value inherited-open=false):
+defn ysdc-map-to-schema(value inherited-open=false):
   explicit =: some(\(_:S =~ /^\./) value:keys)
   explicit =: value:keys.some(\(/^\./))
   if explicit:
-    ysc-block-to-schema: value inherited-open
-    ysc-object-to-schema: value inherited-open
+    ysdc-block-to-schema: value inherited-open
+    ysdc-object-to-schema: value inherited-open
 
-defn ysc-object-to-schema(value inherited-open=false):
+defn ysdc-object-to-schema(value inherited-open=false):
   state =:
-    reduce(ysc-object-step initial-object-state(inherited-open) value)
+    reduce(ysdc-object-step initial-object-state(inherited-open) value)
   reqs =: state.required
   result =: +{'type' 'object'}
   result =: map-put-if(result empty?(reqs).! 'required' reqs)
@@ -2042,7 +2051,7 @@ defn initial-object-state(open=false)::
   wildcard: false
   additional:
 
-defn ysc-object-step(state entry):
+defn ysdc-object-step(state entry):
   key =: entry.0:S
   cond:
     key == LEGACY-WILDCARD-KEY: reject-legacy-wildcard()
@@ -2055,7 +2064,7 @@ defn ysc-object-step(state entry):
     else:
       add-property-schema: state key entry.1
 
-defn ysc-block-to-schema(value inherited-open=false):
+defn ysdc-block-to-schema(value inherited-open=false):
   when contains?(value '.need'):
     reject-misplaced-need-directive()
   reject-unexportable-directives: value
@@ -2099,13 +2108,13 @@ defn reject-unexportable-directives(value):
 defn canonical-item-schema(value inherited-open=false):
   result =:
     if value.has?('.type'):
-      ysc-bare-scalar-to-schema: value.'.type'
+      ysdc-bare-scalar-to-schema: value.'.type'
       else: +{}
   result =: map-put-if(result contains?(value '.xref')
     '$ref' value.'.xref')
   result =:
     if contains?(value '.item'):
-      ysc-value-to-schema: value.'.item' inherited-open
+      ysdc-value-to-schema: value.'.item' inherited-open
       else: result
   result =: map-put-if(result contains?(value '.like')
     'pattern' value.'.like')
@@ -2146,7 +2155,7 @@ defn add-canonical-combinators(result value inherited-open=false):
     result value '.all' 'allOf' inherited-open)
   if contains?(value '.not'):
     then:
-      schema =: ysc-value-to-schema(value.'.not' inherited-open)
+      schema =: ysdc-value-to-schema(value.'.not' inherited-open)
       result +: +{'not' schema}
     else: result
 
@@ -2154,7 +2163,7 @@ defn add-canonical-any(result value inherited-open=false):
   if contains?(value '.any'):
     then:
       schemas =: value.'.any'.map(
-        \(ysc-value-to-schema(_ inherited-open))):vec
+        \(ysdc-value-to-schema(_ inherited-open))):vec
       types =: vec(schemas.map(simple-schema-type))
       type-union =: simple-type-union?(result types)
       if type-union:
@@ -2181,7 +2190,7 @@ defn add-canonical-combinator(result value directive keyword open=false):
   if contains?(value directive):
     then:
       schemas =: value.$directive.map(
-        \(ysc-value-to-schema(_ open))):vec
+        \(ysdc-value-to-schema(_ open))):vec
       result +: +{keyword schemas}
     else: result
 
@@ -2190,7 +2199,7 @@ defn canonical-shape-schema(value inherited-open=false):
   when entries:seq || contains?(value '.open'):
     local-open =: value.get('.open' inherited-open)
     state =:
-      reduce(ysc-object-step initial-object-state(local-open) entries)
+      reduce(ysdc-object-step initial-object-state(local-open) entries)
     result =: +{'type' 'object'}
     result =: map-put-if(result state.props:seq 'properties' state.props)
     result =:
@@ -2263,7 +2272,7 @@ defn initial-block-state()::
   wildcard: false
   additional:
 
-defn ysc-block-step(state entry):
+defn ysdc-block-step(state entry):
   result =: state.result
   key =: entry.0:S
   val =: entry.1
@@ -2288,7 +2297,7 @@ defn ysc-block-step(state entry):
     '.desc':
       state + {'result' (result + {'description' val})}
     '.item':
-      state + {'item' ysc-value-to-schema(val)}
+      state + {'item' ysdc-value-to-schema(val)}
     '.size':
       state + {'result' add-size(result val)}
     '.range':
@@ -2302,7 +2311,7 @@ defn ysc-block-step(state entry):
         key == WILDCARD-KEY:
           state +::
             wildcard:: true
-            additional:: ysc-value-to-schema(val)
+            additional:: ysdc-value-to-schema(val)
         legacy-directive?(key):
           reject-legacy-directive: key
         key =~ /^\./:
@@ -2312,7 +2321,7 @@ defn ysc-block-step(state entry):
 
 defn add-base-schema(state val):
   result =: state.result
-  schema =: ysc-scalar-to-schema(val)
+  schema =: ysdc-scalar-to-schema(val)
   if result.type == 'array':
     then: state + {'item' schema}
     else: state + {'result' merge(result schema)}
@@ -2338,9 +2347,9 @@ defn add-bounds(result lo hi min-key max-key):
     .map-put-if(has-lo min-key lo)
     .map-put-if(has-hi max-key hi)
 
-defn ysc-scalar-to-schema(value):
+defn ysdc-scalar-to-schema(value):
   annotated =: split-scalar-description(value)
-  result =: ysc-bare-scalar-to-schema(annotated.type)
+  result =: ysdc-bare-scalar-to-schema(annotated.type)
   has-desc =: annotated.has?('desc')
   map-put-if: result has-desc 'description' annotated.desc
 
@@ -2352,7 +2361,7 @@ defn split-scalar-description(value):
     then: +{'base' match.1, 'desc' match.2}
     else: +{'base' value}
 
-defn ysc-bare-scalar-to-schema(value):
+defn ysdc-bare-scalar-to-schema(value):
   s =: value:S
   cond:
     value-list-scalar?(s):
@@ -2382,7 +2391,7 @@ defn value-list-scalar?(s):
 defn value-list-to-schema(s):
   suffix =: s.replace(/^.*(\[[^\]]*\])$/ '$1')
   base =: s.replace(/\[[^\]]*\]$/)
-  wrap-array-schema: ysc-bare-scalar-to-schema(base) suffix
+  wrap-array-schema: ysdc-bare-scalar-to-schema(base) suffix
 
 defn range-literal?(s):
   (s =~ /^-?[0-9.]*\.\.-?[0-9.]*$/) &&
@@ -2600,7 +2609,7 @@ defn warn-float-reference(reference path):
 
 defn warn-float-json-schema(path):
   location =: path.empty?.if('/' path)
-  prefix =: "ysc: warning: +Float at $location exports as JSON Schema "
+  prefix =: "ysd: warning: +Float at $location exports as JSON Schema "
   err: "$prefix\"number\", which also accepts integers\n"
 
 defn yamlschema-schema-child-path(path key root):
@@ -2615,7 +2624,7 @@ defn yamlschema-schema-child-path(path key root):
       =>: json-pointer-child(json-pointer-child(path 'properties') name)
 
 defn warn-unsupported-json-schema-keyword(keyword path):
-  err: "ysc: warning: unsupported JSON Schema keyword \"$keyword\" at $path\n"
+  err: "ysd: warning: unsupported JSON Schema keyword \"$keyword\" at $path\n"
 
 defn json-pointer-child(path key):
   token =: key:S.replace(/~/ '~0').replace(/\// '~1')
@@ -2858,7 +2867,7 @@ defn append-list-suffix(type suffix):
   tokens =: assoc(tokens 0 "$(tokens.0)$suffix")
   joins: tokens
 
-# Return the value side of a property (or def) — either a scalar in
+# Return the value side of a property (or def), either a scalar in
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
 defn build-value(schema inherited-open=true):

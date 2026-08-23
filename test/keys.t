@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: singleton-allof-anyof-imports-as-key-rule
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "type": "object",
@@ -49,7 +49,7 @@ test::
       - existingSecretAdminPassword: +Str 1+
 
 - name: key-rule-exports-partial-mapping-constraints
-  cmnd: bin/ysc -t jsc -
+  cmnd: bin/ysd -t jsc -
   stdi: |
     .open: true
     .keys:
@@ -89,7 +89,7 @@ test::
 - name: optional-branch-properties-and-multiple-rules
   cmnd: |
     sh -c '
-      bin/ysc -t jsc -C - |
+      bin/ysd -t jsc -C - |
         jq -c ".allOf"
     '
   stdi: |
@@ -114,21 +114,21 @@ test::
         ".keys:\n- .any: [nope, {foo: +Str}]" \
         ".keys:\n- .any: [{.type: +Str}, {foo: +Str}]"; do
         printf "%b\n" "$input" |
-          bin/ysc -t yscy - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: yamlschema .keys requires a non-empty sequence of rules
-    ysc: yamlschema .keys requires a non-empty sequence of rules
-    ysc: yamlschema .keys rules currently require exactly one .any entry
-    ysc: yamlschema .keys .any requires at least two branches
-    ysc: yamlschema .keys .any branches require property-to-type mappings
-    ysc: yamlschema .keys .any branch keys must be property names
+    ysd: yamlschema .keys requires a non-empty sequence of rules
+    ysd: yamlschema .keys requires a non-empty sequence of rules
+    ysd: yamlschema .keys rules currently require exactly one .any entry
+    ysd: yamlschema .keys .any requires at least two branches
+    ysd: yamlschema .keys .any branches require property-to-type mappings
+    ysd: yamlschema .keys .any branch keys must be property names
 
 - name: singleton-allof-anyof-normalization-is-narrow
   cmnd: |
     sh -c '
-      bin/ysc -N -f jsc - |
+      bin/ysd -N -f jsc - |
         jq -c "{anyOf: .anyOf, allOf: .allOf}"
     '
   stdi: |
@@ -145,7 +145,7 @@ test::
 - name: singleton-allof-anyof-with-sibling-stays-allof
   cmnd: |
     sh -c '
-      bin/ysc -N -f jsc - |
+      bin/ysd -N -f jsc - |
         jq -c "{anyOf: .anyOf, allOf: .allOf}"
     '
   stdi: |
@@ -161,7 +161,7 @@ test::
     {"anyOf":null,"allOf":[{"title":"A choice","anyOf":[{"type":"string"},{"type":"integer"}]}]}
 
 - name: key-rule-warning-paths
-  cmnd: sh -c 'bin/ysc -t jsc -C - 2>&1 >/dev/null'
+  cmnd: sh -c 'bin/ysd -t jsc -C - 2>&1 >/dev/null'
   stdi: |
     .keys:
     - .any:
@@ -169,11 +169,11 @@ test::
           .if: {}
       - bar: +Float
   want: |
-    ysc: warning: unsupported JSON Schema keyword "if" at /anyOf/0/properties/foo/if
-    ysc: warning: +Float at /anyOf/1/properties/bar exports as JSON Schema "number", which also accepts integers
+    ysd: warning: unsupported JSON Schema keyword "if" at /anyOf/0/properties/foo/if
+    ysd: warning: +Float at /anyOf/1/properties/bar exports as JSON Schema "number", which also accepts integers
 
 - name: tracked-schema-roundtrip
-  cmnd: sh -c 'bin/ysc -Rq -f jsc - && echo OK'
+  cmnd: sh -c 'bin/ysd -Rq -f jsc - && echo OK'
   stdi: |
     {
       "type": "object",

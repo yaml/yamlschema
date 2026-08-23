@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: compact-combinator-expansion
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
   stdi: |
     one: +One(+Str,+Int)
     any: +Any( +foo, +bar )
@@ -23,7 +23,7 @@ test::
     ":{".type":"+Any[]",".any":["+foo","+bar"]}}
 
 - name: compact-combinators-to-json-schema
-  cmnd: bin/ysc -t schema.json -
+  cmnd: bin/ysd -t schema.json -
   stdi: |
     one: +One(+Str,+Int)
     any: +Any(+foo,+bar)
@@ -111,7 +111,7 @@ test::
     }
 
 - name: json-schema-to-compact-combinators
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -133,7 +133,7 @@ test::
     not?: +Not(+Str,+Int)
 
 - name: singleton-ref-allof-with-properties
-  cmnd: bin/ysc -t ysd -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "$defs": {
@@ -169,7 +169,7 @@ test::
     alias?: +base
 
 - name: referenced-base-with-properties-to-json-schema
-  cmnd: bin/ysc -f ysd -t jsc -C -
+  cmnd: bin/ysd -f ysd -t jsc -C -
   stdi: |
     .open: true
     +base:
@@ -182,7 +182,7 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}},"$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}}}
 
 - name: primitive-any-is-json-type-union
-  cmnd: bin/ysc -t schema.json -C -
+  cmnd: bin/ysd -t schema.json -C -
   stdi: |
     value: +Any(+Str,+Int)
     nullable: +Any(+Str,+Int)~
@@ -190,7 +190,7 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"value":{"type":["string","integer"]},"nullable":{"type":["string","integer","null"]}},"required":["value","nullable"],"additionalProperties":false}
 
 - name: json-type-union-to-compact-any
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -209,7 +209,7 @@ test::
     nullable?: +Any(+Str,+Int)~
 
 - name: rich-combinators-stay-explicit
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -234,7 +234,7 @@ test::
       .not: +Str /x/
 
 - name: explicit-combinators-to-json-schema
-  cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t schema.json -C - | fold -w 72'
   stdi: |
     choice:
       .one:
@@ -256,23 +256,23 @@ test::
       for value in "+One()" "+One(+Str)" "+Any(+Str)" \
                    "+All(+Str)" "+Not()"; do
         printf "x: %s\n" "$value" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: +One requires at least two type references
-    ysc: +One requires at least two type references
-    ysc: +Any requires at least two type references
-    ysc: +All requires at least two type references
-    ysc: +Not requires at least one type reference
+    ysd: +One requires at least two type references
+    ysd: +One requires at least two type references
+    ysd: +Any requires at least two type references
+    ysd: +All requires at least two type references
+    ysd: +Not requires at least one type reference
 
 - name: reject-non-reference-combinator-member
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +One(+Str,foo)
   want: |
-    ysc: +One accepts only type references
+    ysd: +One accepts only type references
 
 - name: reject-square-bracket-combinators
   cmnd: |
@@ -280,17 +280,17 @@ test::
       for value in "+One[+Str,+Int]" "+Any[+Str,+Int]" \
                    "+All[+Str,+Int]" "+Not[+Str]"; do
         printf "x: %s\n" "$value" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: unsupported compact combinator syntax: +One[+Str,+Int]; use +One(+Str,+Int)
-    ysc: unsupported compact combinator syntax: +Any[+Str,+Int]; use +Any(+Str,+Int)
-    ysc: unsupported compact combinator syntax: +All[+Str,+Int]; use +All(+Str,+Int)
-    ysc: unsupported compact combinator syntax: +Not[+Str]; use +Not(+Str)
+    ysd: unsupported compact combinator syntax: +One[+Str,+Int]; use +One(+Str,+Int)
+    ysd: unsupported compact combinator syntax: +Any[+Str,+Int]; use +Any(+Str,+Int)
+    ysd: unsupported compact combinator syntax: +All[+Str,+Int]; use +All(+Str,+Int)
+    ysd: unsupported compact combinator syntax: +Not[+Str]; use +Not(+Str)
 
 - name: list-suffixes-remain-distinct
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
   stdi: |
     any: +Any[]
     exact: +Any[2]
@@ -300,8 +300,8 @@ test::
 - name: base-plus-one-all-roundtrip
   cmnd: |
     sh -c '
-      bin/ysc -t yscj -C - |
-        bin/ysc -f yscj -t schema.json -C - |
+      bin/ysd -t ysdc.json -C - |
+        bin/ysd -f ysdc.json -t schema.json -C - |
         fold -w 72
     '
   stdi: |
@@ -314,24 +314,24 @@ test::
 
 - name: explicit-combinator-empty-error
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       .any: []
   want: |
-    ysc: yamlschema .any requires at least one type definition
+    ysd: yamlschema .any requires at least one type definition
 
 - name: reject-pick-rename
   cmnd: |
     sh -c '
       printf "bad:\n  .pick:\n  - +Str\n  - +Int\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       printf "bad: pick:x\n" |
-        bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
     '
   want: |
-    ysc: unsupported yamlschema directive: .pick; use .one
-    ysc: unsupported yamlschema keyword: pick; use one
+    ysd: unsupported yamlschema directive: .pick; use .one
+    ysd: unsupported yamlschema keyword: pick; use one
 
 - name: reject-old-combinator-names
   cmnd: |
@@ -339,20 +339,20 @@ test::
       for pair in ".oneof .one" ".anyof .any" ".allof .all"; do
         set -- $pair
         printf "bad:\n  %s: []\n" "$1" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       done
       for pair in "oneof one" "anyof any" "allof all"; do
         set -- $pair
         printf "bad: %s:x\n" "$1" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: unsupported yamlschema directive: .oneof; use .one
-    ysc: unsupported yamlschema directive: .anyof; use .any
-    ysc: unsupported yamlschema directive: .allof; use .all
-    ysc: unsupported yamlschema keyword: oneof; use one
-    ysc: unsupported yamlschema keyword: anyof; use any
-    ysc: unsupported yamlschema keyword: allof; use all
+    ysd: unsupported yamlschema directive: .oneof; use .one
+    ysd: unsupported yamlschema directive: .anyof; use .any
+    ysd: unsupported yamlschema directive: .allof; use .all
+    ysd: unsupported yamlschema keyword: oneof; use one
+    ysd: unsupported yamlschema keyword: anyof; use any
+    ysd: unsupported yamlschema keyword: allof; use all
 
 done:

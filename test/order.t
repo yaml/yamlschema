@@ -7,7 +7,7 @@ test::
 - name: expanded-json-root-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t yscj - |
+      bin/ysd -t ysdc.json - |
         ys -e "say: IN:read:yaml/load:keys:joins"
     '
   stdi: |
@@ -27,7 +27,7 @@ test::
 - name: expanded-yaml-root-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t yscy - |
+      bin/ysd -t ysdc - |
         ys -e "say: IN:read:yaml/load:keys:joins"
     '
   stdi: |
@@ -47,7 +47,7 @@ test::
 - name: expanded-nested-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t yscy - |
+      bin/ysd -t ysdc - |
         ys -e "say: IN:read:yaml/load.parent:keys:joins"
     '
   stdi: |
@@ -68,7 +68,7 @@ test::
 - name: canonical-directive-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t yscy - |
+      bin/ysd -t ysdc - |
         ys -e "say: IN:read:yaml/load.rich:keys:joins"
     '
   stdi: |
@@ -89,7 +89,7 @@ test::
 - name: json-schema-definition-and-property-order
   cmnd: |
     sh -c '
-      bin/ysc -f jsc -t yscy - |
+      bin/ysd -f jsc -t ysdc - |
         ys -e "say: IN:read:yaml/load:keys:joins" |
         tr " " "\n"
     '
@@ -150,7 +150,7 @@ test::
 - name: normalization-preserves-json-object-key-order
   cmnd: |
     sh -c '
-      bin/ysc -NC - |
+      bin/ysd -NC - |
         jq -r "
           \"properties \" + (.properties | keys_unsorted | join(\" \")),
           \"required \" + (.required | join(\" \")),
@@ -184,7 +184,7 @@ test::
 - name: succinct-to-json-property-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -t jsc - |
+      bin/ysd -t jsc - |
         jq -r ".properties | keys_unsorted | join(\" \")"
     '
   stdi: |
@@ -204,8 +204,8 @@ test::
 - name: json-succinct-json-property-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysc -f jsc -t ysd - |
-        bin/ysc -f ysd -t jsc - |
+      bin/ysd -f jsc -t ysd - |
+        bin/ysd -f ysd -t jsc - |
         jq -r ".properties | keys_unsorted | join(\" \")"
     '
   stdi: |

@@ -8,8 +8,8 @@ test::
   cmnd: |
     sh -c '
       input="foo: +Str"
-      printf "%s\n" "$input" | bin/ysc -t yscj -C -
-      printf "%s\n" "$input" | bin/ysc -t yscy -
+      printf "%s\n" "$input" | bin/ysd -t ysdc.json -C -
+      printf "%s\n" "$input" | bin/ysd -t ysdc -
     '
   want: |
     {"foo":"+Str"}
@@ -19,15 +19,15 @@ test::
   cmnd: |
     sh -c '
       input="foo: +Str"
-      printf "%s\n" "$input" | bin/ysc -t ysc.json -C -
-      printf "%s\n" "$input" | bin/ysc -t ysc.yaml -
+      printf "%s\n" "$input" | bin/ysd -t ysdc.json -C -
+      printf "%s\n" "$input" | bin/ysd -t ysdc.yaml -
     '
   want: |
     {"foo":"+Str"}
     foo: +Str
 
 - name: collapse-sole-type-pairs
-  cmnd: bin/ysc -f yscy -t yscy -
+  cmnd: bin/ysd -f ysdc -t ysdc -
   stdi: |
     namespace?:
       .type: +Str
@@ -52,8 +52,8 @@ test::
   cmnd: |
     sh -c '
       input="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
-      printf "%s\n" "$input" | bin/ysc -t ysd -
-      printf "%s\n" "$input" | bin/ysc -t ysd.yaml -
+      printf "%s\n" "$input" | bin/ysd -t ysd -
+      printf "%s\n" "$input" | bin/ysd -t ysd.yaml -
     '
   want: |
     # Converted from JSON Schema
@@ -67,9 +67,9 @@ test::
   cmnd: |
     sh -c '
       input="foo: +Str"
-      printf "%s\n" "$input" | bin/ysc -t jsc -C - |
+      printf "%s\n" "$input" | bin/ysd -t jsc -C - |
         ys -e "say: IN:read:json/load.type"
-      printf "%s\n" "$input" | bin/ysc -t schema.json -C - |
+      printf "%s\n" "$input" | bin/ysd -t schema.json -C - |
         ys -e "say: IN:read:json/load.type"
     '
   want: |
@@ -84,22 +84,22 @@ test::
       canonical_json="{\"foo\":{\".type\":\"+Str\"}}"
       json_schema="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
       for format in ysd ysd.yaml; do
-        printf "%s\n" "$dsl" | bin/ysc -f "$format" -t jsc -C - |
+        printf "%s\n" "$dsl" | bin/ysd -f "$format" -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
       done
-      for format in yscy ysc.yaml; do
+      for format in ysdc ysdc.yaml; do
         printf "%b\n" "$canonical_yaml" |
-          bin/ysc -f "$format" -t jsc -C - |
+          bin/ysd -f "$format" -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
       done
-      for format in yscj ysc.json; do
+      for format in ysdc.json; do
         printf "%s\n" "$canonical_json" |
-          bin/ysc -f "$format" -t jsc -C - |
+          bin/ysd -f "$format" -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
       done
       for format in jsc schema.json; do
         printf "%s\n" "$json_schema" |
-          bin/ysc -f "$format" -t yscj -C - |
+          bin/ysd -f "$format" -t ysdc.json -C - |
           jq -r ".\"foo?\""
       done
     '
@@ -109,12 +109,11 @@ test::
     object
     object
     object
-    object
     +Str
     +Str
 
 - name: json-schema-to-expanded-yaml
-  cmnd: bin/ysc -f jsc -t yscy -
+  cmnd: bin/ysd -f jsc -t ysdc -
   stdi: |
     {
       "properties": {"foo": {"type": "string"}},
@@ -131,7 +130,7 @@ test::
       printf "%s\n" \
         "{\"title\":\"Harbor Next Helm Chart Values\",\"type\":\"object\"}" \
         > "$dir/values.schema.json"
-      bin/ysc "$dir/values.schema.json" -t jsc -C
+      bin/ysd "$dir/values.schema.json" -t jsc -C
       rm -r "$dir"
     '
   want: |
@@ -142,20 +141,20 @@ test::
     sh -c '
       dir=$(mktemp -d)
       printf "foo: +Str\n" > "$dir/in.ysd.yaml"
-      printf "foo:\n  .type: +Str\n" > "$dir/in.ysc.yaml"
+      printf "foo:\n  .type: +Str\n" > "$dir/in.ysdc.yaml"
       printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" \
-        > "$dir/in.ysc.json"
+        > "$dir/in.ysdc.json"
       printf "%s\n" \
         "{\"type\":\"object\",\"properties\":{\"foo\":{\"type\":\"string\"}},\
     \"required\":[\"foo\"],\"additionalProperties\":false}" \
         > "$dir/in.schema.json"
       for file in \
         "$dir/in.ysd.yaml" \
-        "$dir/in.ysc.yaml" \
-        "$dir/in.ysc.json" \
+        "$dir/in.ysdc.yaml" \
+        "$dir/in.ysdc.json" \
         "$dir/in.schema.json"
       do
-        bin/ysc -NC "$file"
+        bin/ysd -NC "$file"
       done
       rm -r "$dir"
     '
@@ -169,10 +168,10 @@ test::
   cmnd: |
     sh -c '
       dir=$(mktemp -d)
-      printf "foo: +Str\n" | bin/ysc -C -o "$dir/out.ysc.json"
-      cat "$dir/out.ysc.json"
-      printf "foo: +Str\n" | bin/ysc -o "$dir/out.ysc.yaml"
-      cat "$dir/out.ysc.yaml"
+      printf "foo: +Str\n" | bin/ysd -C -o "$dir/out.ysdc.json"
+      cat "$dir/out.ysdc.json"
+      printf "foo: +Str\n" | bin/ysd -o "$dir/out.ysdc.yaml"
+      cat "$dir/out.ysdc.yaml"
       rm -r "$dir"
     '
   want: |
@@ -185,7 +184,7 @@ test::
       dir=$(mktemp -d)
       printf "%s\n" \
         "{\"properties\":{\"foo\":{\"type\":\"string\"}}}" |
-        bin/ysc -o "$dir/out.ysd.yaml"
+        bin/ysd -o "$dir/out.ysd.yaml"
       cat "$dir/out.ysd.yaml"
       rm -r "$dir"
     '
@@ -201,7 +200,7 @@ test::
       printf "%s\n" \
         "{\"properties\":{\"foo\":{\"type\":\"string\"}}}" \
         > "$dir/in.schema.json"
-      bin/ysc -t yscy "$dir/in.schema.json"
+      bin/ysd -t ysdc "$dir/in.schema.json"
       rm -r "$dir"
     '
   want: |
@@ -212,9 +211,9 @@ test::
   cmnd: |
     sh -c '
       printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" |
-        bin/ysc -f yscj -t jsc -C - | fold -w 72
+        bin/ysd -f ysdc.json -t jsc -C - | fold -w 72
       printf "foo:\n  .type: +Str\n" |
-        bin/ysc -f yscy -t jsc -C - | fold -w 72
+        bin/ysd -f ysdc -t jsc -C - | fold -w 72
     '
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
@@ -228,11 +227,11 @@ test::
   cmnd: |
     sh -c '
       input="foo:\n  .like: /a.*b/"
-      printf "%b\n" "$input" | bin/ysc -f yscy -t yscj -C -
-      printf "%b\n" "$input" | bin/ysc -f yscy -t jsc -C - |
+      printf "%b\n" "$input" | bin/ysd -f ysdc -t ysdc.json -C -
+      printf "%b\n" "$input" | bin/ysd -f ysdc -t jsc -C - |
         ys -e "say: IN:read:json/load.properties.foo.pattern"
       printf "%s\n" "{\"foo\":{\".like\":\"^x$\"}}" |
-        bin/ysc -f yscj -t jsc -C - |
+        bin/ysd -f ysdc.json -t jsc -C - |
         ys -e "say: IN:read:json/load.properties.foo.pattern"
     '
   want: |
@@ -244,26 +243,26 @@ test::
   cmnd: |
     sh -c '
       printf "foo:\n  .like: a\n" |
-        bin/ysc -f ysd -t yscj -C - 2>&1 | sed -n 1p
+        bin/ysd -f ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       for key in .match .find; do
         printf "foo:\n  %s: a\n" "$key" |
-          bin/ysc -f yscy -t jsc -C - 2>&1 | sed -n 1p
+          bin/ysd -f ysdc -t jsc -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: unsupported YSD directive: .like; use .match or .find
-    ysc: unsupported YSC directive: .match; use .like
-    ysc: unsupported YSC directive: .find; use .like
+    ysd: unsupported YSD directive: .like; use .match or .find
+    ysd: unsupported YSDC directive: .match; use .like
+    ysd: unsupported YSDC directive: .find; use .like
 
 - name: expanded-input-extension-inference
   cmnd: |
     sh -c '
       dir=$(mktemp -d)
-      printf "foo:\n  .type: +Str\n" > "$dir/in.ysc.yaml"
+      printf "foo:\n  .type: +Str\n" > "$dir/in.ysdc.yaml"
       printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" \
-        > "$dir/in.ysc.json"
-      bin/ysc -t yscj -C "$dir/in.ysc.yaml"
-      bin/ysc -t yscy "$dir/in.ysc.json"
+        > "$dir/in.ysdc.json"
+      bin/ysd -t ysdc.json -C "$dir/in.ysdc.yaml"
+      bin/ysd -t ysdc "$dir/in.ysdc.json"
       rm -r "$dir"
     '
   want: |
@@ -275,7 +274,7 @@ test::
     sh -c '
       dir=$(mktemp -d)
       printf "foo?: +Str\n" > "$dir/in.ysd.yaml"
-      bin/ysc -t jsc -C "$dir/in.ysd.yaml" |
+      bin/ysd -t jsc -C "$dir/in.ysd.yaml" |
         ys -e "say: IN:read:json/load.properties.foo.type"
       rm -r "$dir"
     '
@@ -285,39 +284,51 @@ test::
 - name: reject-old-format-slugs
   cmnd: |
     sh -c '
-      for format in ysc ysxy ysxj; do
+      for format in ysc yscy yscj ysc.yaml ysc.json ysxy ysxj; do
         printf "foo: +Str\n" |
-          bin/ysc -t "$format" - 2>&1 | sed -n 1p
+          bin/ysd -t "$format" - 2>&1 | sed -n 1p
       done
-      for format in ysc ysxy ysxj; do
+      for format in ysc yscy yscj ysc.yaml ysc.json ysxy ysxj; do
         printf "foo: +Str\n" |
-          bin/ysc -f "$format" -t jsc - 2>&1 | sed -n 1p
+          bin/ysd -f "$format" -t jsc - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: unsupported format: ysc
-    ysc: unsupported format: ysxy
-    ysc: unsupported format: ysxj
-    ysc: unsupported format: ysc
-    ysc: unsupported format: ysxy
-    ysc: unsupported format: ysxj
+    ysd: unsupported format: ysc
+    ysd: unsupported format: yscy
+    ysd: unsupported format: yscj
+    ysd: unsupported format: ysc.yaml
+    ysd: unsupported format: ysc.json
+    ysd: unsupported format: ysxy
+    ysd: unsupported format: ysxj
+    ysd: unsupported format: ysc
+    ysd: unsupported format: yscy
+    ysd: unsupported format: yscj
+    ysd: unsupported format: ysc.yaml
+    ysd: unsupported format: ysc.json
+    ysd: unsupported format: ysxy
+    ysd: unsupported format: ysxj
 
 - name: reject-old-expanded-extension
   cmnd: |
     sh -c '
       dir=$(mktemp -d)
-      for extension in ysx.yaml ysx.json; do
+      for extension in ysc.yaml ysc.json ysx.yaml ysx.json; do
         printf "foo: +Str\n" > "$dir/in.$extension"
-        bin/ysc -t jsc "$dir/in.$extension" 2>&1 | sed -n 1p
+        bin/ysd -t jsc "$dir/in.$extension" 2>&1 | sed -n 1p
         printf "foo: +Str\n" |
-          bin/ysc -o "$dir/out.$extension" 2>&1 | sed -n 1p
+          bin/ysd -o "$dir/out.$extension" 2>&1 | sed -n 1p
       done
       rm -r "$dir"
     '
   want: |
-    ysc: unsupported file extension: .ysx.yaml
-    ysc: unsupported file extension: .ysx.yaml
-    ysc: unsupported file extension: .ysx.json
-    ysc: unsupported file extension: .ysx.json
+    ysd: unsupported file extension: .ysc.yaml
+    ysd: unsupported file extension: .ysc.yaml
+    ysd: unsupported file extension: .ysc.json
+    ysd: unsupported file extension: .ysc.json
+    ysd: unsupported file extension: .ysx.yaml
+    ysd: unsupported file extension: .ysx.yaml
+    ysd: unsupported file extension: .ysx.json
+    ysd: unsupported file extension: .ysx.json
 
 done:

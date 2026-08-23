@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: typed-map-expansion
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
   stdi: |
     any: +Map{+Any}
     strings: +Map{+Str}~
@@ -20,7 +20,7 @@ test::
     :{"fixed?":"+Str","+Str":"+Str"}}
 
 - name: typed-map-to-json-schema
-  cmnd: sh -c 'bin/ysc -t schema.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t schema.json -C - | fold -w 72'
   stdi: |
     +flag: +Bool
 
@@ -38,7 +38,7 @@ test::
     fs":{"flag":{"type":"boolean"}}}
 
 - name: json-schema-to-typed-maps
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "$defs": {"flag": {"type": "boolean"}},
@@ -86,42 +86,42 @@ test::
 
 - name: bare-map-is-rejected
   cmnd: |
-    sh -c 'bin/ysc -t schema.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t schema.json -C - 2>&1 | sed -n 1p'
   stdi: |
     data: +Map
   want: |
-    ysc: incomplete +Map type requires key/value pairs
+    ysd: incomplete +Map type requires key/value pairs
 
 - name: reject-invalid-map-value-type
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +Map{Str}
   want: |
-    ysc: +Map requires exactly one value type reference
+    ysd: +Map requires exactly one value type reference
 
 - name: map-parameter-errors
   cmnd: |
     sh -c '
       for value in "+Map{}" "+Map{+Any,+Any}"; do
         printf "bad: %s\n" "$value" |
-          bin/ysc -t yscj -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysc: +Map requires exactly one value type reference
-    ysc: +Map{+Key,+Value} is reserved but not supported yet
+    ysd: +Map requires exactly one value type reference
+    ysd: +Map{+Key,+Value} is reserved but not supported yet
 
 - name: reject-old-map-parameter-delimiters
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +Map[+Any]
   want: |
-    ysc: unsupported map parameter syntax: +Map[+Any]; use +Map{+Type}
+    ysd: unsupported map parameter syntax: +Map[+Any]; use +Map{+Type}
 
 - name: shaped-map-list-base
-  cmnd: sh -c 'bin/ysc -t yscj -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
   stdi: |
     extraEnv?:
       .type: +Map[1-10,$!]
@@ -133,7 +133,7 @@ test::
     "name":"+Str","value?":"+Str","valueFrom?":{"+Str":"+Any"}}}
 
 - name: old-shaped-map-marker-normalizes-away
-  cmnd: bin/ysc -t yscj -
+  cmnd: bin/ysd -t ysdc.json -
   stdi: |
     closed:
       .type: +Map
@@ -155,25 +155,25 @@ test::
 
 - name: marker-only-map-is-rejected
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       .type: +Map
       .desc: Old marker
   want: |
-    ysc: incomplete +Map type requires key/value pairs
+    ysd: incomplete +Map type requires key/value pairs
 
 - name: legacy-wildcard-is-rejected
   cmnd: |
-    sh -c 'bin/ysc -t yscj -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       +Str*: +Any
   want: |
-    ysc: unsupported yamlschema wildcard: +Str*; use +Str
+    ysd: unsupported yamlschema wildcard: +Str*; use +Str
 
 - name: pure-object-generation
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -193,7 +193,7 @@ test::
       .open: false
 
 - name: nullable-object-generation
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
@@ -221,7 +221,7 @@ test::
         +Str: +Any
 
 - name: nullable-any-map-to-json-schema
-  cmnd: bin/ysc -t schema.json -C -
+  cmnd: bin/ysd -t schema.json -C -
   stdi: |
     startup?: +Map{+Any}~
   want: |
@@ -229,18 +229,18 @@ test::
 
 - name: reserved-str-definition-collision
   cmnd: |
-    sh -c 'bin/ysc -t ysd.yaml - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysd.yaml - 2>&1 | sed -n 1p'
   stdi: |
     {"$defs": {"Str": {"type": "string"}}}
   want: |
-    ysc: JSON Schema definition name Str conflicts with the +Str wildcard
+    ysd: JSON Schema definition name Str conflicts with the +Str wildcard
 
 - name: reserved-str-property-collision
   cmnd: |
-    sh -c 'bin/ysc -t ysd.yaml - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysd.yaml - 2>&1 | sed -n 1p'
   stdi: |
     {"properties": {"+Str": {"type": "string"}}}
   want: |
-    ysc: JSON Schema property name +Str is reserved for the wildcard
+    ysd: JSON Schema property name +Str is reserved for the wildcard
 
 done:

@@ -5,12 +5,12 @@ use ys::taptest: :all
 test::
 
 - name: no-args
-  cmnd: bin/ysc
+  cmnd: bin/ysd
   want: |
-    Usage: ysc [INPUT]
-           ysc (-t FORMAT | -o FILE) [INPUT]
-           ysc -N, --norm [INPUT]
-           ysc -R, --roundtrip [-q, --quiet] [INPUT]
+    Usage: ysd [INPUT]
+           ysd (-t FORMAT | -o FILE) [INPUT]
+           ysd -N, --norm [INPUT]
+           ysd -R, --roundtrip [-q, --quiet] [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -18,9 +18,10 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
-                            Defaults based on the input format.
-      -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
+      -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
+                            ysdc.json, or jsc. Defaults based on input.
+      -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
+                            ysdc.json, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
       -R, --roundtrip       Check JSON Schema or YSD roundtrip.
@@ -30,12 +31,12 @@ test::
           --version         Show version.
 
 - name: help
-  cmnd: bin/ysc --help
+  cmnd: bin/ysd --help
   want: |
-    Usage: ysc [INPUT]
-           ysc (-t FORMAT | -o FILE) [INPUT]
-           ysc -N, --norm [INPUT]
-           ysc -R, --roundtrip [-q, --quiet] [INPUT]
+    Usage: ysd [INPUT]
+           ysd (-t FORMAT | -o FILE) [INPUT]
+           ysd -N, --norm [INPUT]
+           ysd -R, --roundtrip [-q, --quiet] [INPUT]
 
     Convert between JSON Schema and yamlschema formats.
 
@@ -43,9 +44,10 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysd, yscy, yscj, or jsc.
-                            Defaults based on the input format.
-      -f, --from FORMAT     Input format: ysd, yscy, yscj, or jsc.
+      -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
+                            ysdc.json, or jsc. Defaults based on input.
+      -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
+                            ysdc.json, or jsc.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
       -R, --roundtrip       Check JSON Schema or YSD roundtrip.
@@ -57,16 +59,21 @@ test::
 - name: version
   cmnd: |
     sh -c '
-      bin/ysc --version |
+      bin/ysd --version |
         perl -pe "s/[0-9]+[.][0-9]+[.][0-9]+/VERSION/"
     '
   want: |
-    ysc VERSION
+    ysd VERSION
+
+- name: old-command-is-removed
+  cmnd: sh -c 'test ! -e bin/ysc && echo ok'
+  want: |
+    ok
 
 - name: file-input-defaults-to-ysd
   cmnd: |
     sh -c '
-      bin/ysc www/src/examples/device-type.schema.json |
+      bin/ysd www/src/examples/device-type.schema.json |
         perl -ne "print if $. <= 3"
     '
   want: |
@@ -80,10 +87,10 @@ test::
       dir=$(mktemp -d)
       trap "rm -r \"$dir\"" EXIT
       printf "%s\n" "name: +Str" > "$dir/values.ysd.yaml"
-      printf "%s\n" "name: +Str" > "$dir/values.ysc.yaml"
-      printf "%s\n" "{\"name\":\"+Str\"}" > "$dir/values.ysc.json"
-      for file in values.ysd.yaml values.ysc.yaml values.ysc.json; do
-        bin/ysc "$dir/$file" | perl -ne "print if $. <= 3"
+      printf "%s\n" "name: +Str" > "$dir/values.ysdc.yaml"
+      printf "%s\n" "{\"name\":\"+Str\"}" > "$dir/values.ysdc.json"
+      for file in values.ysd.yaml values.ysdc.yaml values.ysdc.json; do
+        bin/ysd "$dir/$file" | perl -ne "print if $. <= 3"
       done
     '
   want: |
@@ -100,15 +107,15 @@ test::
 - name: reject-removed-format-options
   cmnd: |
     sh -c '
-      bin/ysc -F 2>&1 | sed -n 1p
-      bin/ysc --fmt 2>&1 | sed -n 1p
+      bin/ysd -F 2>&1 | sed -n 1p
+      bin/ysd --fmt 2>&1 | sed -n 1p
     '
   want: |
-    ysc: unknown option -F
-    ysc: unknown option --fmt
+    ysd: unknown option -F
+    ysd: unknown option --fmt
 
 - name: norm-compact
-  cmnd: bin/ysc -NC
+  cmnd: bin/ysd -NC
   stdi: |
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -118,7 +125,7 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"thing":{"type":"string"}}}
 
 - name: norm
-  cmnd: bin/ysc -N
+  cmnd: bin/ysd -N
   stdi: |
     {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -141,7 +148,7 @@ test::
     }
 
 - name: norm-canonicalizes-explicit-open-objects
-  cmnd: bin/ysc -NC
+  cmnd: bin/ysd -NC
   stdi: |
     {
       "type": "object",
@@ -167,7 +174,7 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"open":{"type":"object"},"empty":{"type":"object"},"closed":{"type":"object","additionalProperties":false},"typed":{"type":"object","additionalProperties":{"type":"string"}},"data":{"default":{"additionalProperties":true,"definitions":{"x":{"type":"string"}},"$ref":"#\/definitions\/x"}}}}
 
 - name: norm-canonicalizes-single-ref-allof
-  cmnd: bin/ysc -NC
+  cmnd: bin/ysd -NC
   stdi: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -188,15 +195,15 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"inherited":{"type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}},"rich":{"allOf":[{"title":"Branch","$ref":"#\/$defs\/base"}]}},"$defs":{"base":{"type":"object"}}}
 
 - name: norm-warns-for-float-export
-  cmnd: sh -c 'bin/ysc -f ysd -NC - 2>&1'
+  cmnd: sh -c 'bin/ysd -f ysd -NC - 2>&1'
   stdi: |
     precise: +Float
   want: |
-    ysc: warning: +Float at /properties/precise exports as JSON Schema "number", which also accepts integers
+    ysd: warning: +Float at /properties/precise exports as JSON Schema "number", which also accepts integers
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"precise":{"type":"number"}},"required":["precise"],"additionalProperties":false}
 
 - name: roundtrip-match
-  cmnd: bin/ysc --roundtrip -f jsc -
+  cmnd: bin/ysd --roundtrip -f jsc -
   stdi: |
     {
       "type": "object",
@@ -208,7 +215,7 @@ test::
     OK
 
 - name: roundtrip-detects-json-content
-  cmnd: bin/ysc --roundtrip -
+  cmnd: bin/ysd --roundtrip -
   stdi: |
 
       {
@@ -219,7 +226,7 @@ test::
     OK
 
 - name: roundtrip-detects-ysd-content
-  cmnd: bin/ysc --roundtrip -
+  cmnd: bin/ysd --roundtrip -
   stdi: |
     .title: Person
     .open: true
@@ -234,7 +241,7 @@ test::
       file=$(mktemp --suffix=.schema.json)
       printf "%s\n" ".title: Person" ".open: true" \
         "name: +Str" > "$file"
-      bin/ysc -R "$file"
+      bin/ysd -R "$file"
       status=$?
       rm "$file"
       exit "$status"
@@ -243,7 +250,7 @@ test::
     OK
 
 - name: roundtrip-explicit-format-precedence
-  cmnd: bin/ysc --roundtrip -f ysd -
+  cmnd: bin/ysd --roundtrip -f ysd -
   stdi: |
     {.open: true, name: +Str}
   want: |
@@ -253,7 +260,7 @@ test::
   cmnd: |
     sh -c '
       output=$(printf "%s\n" ".open: true" "value: +Float 0.." |
-        bin/ysc -R -f ysd - 2>/dev/null)
+        bin/ysd -R -f ysd - 2>/dev/null)
       status=$?
       test "$status" -eq 1
       printf "status=%s\n%s\n" "$status" "$output"
@@ -273,7 +280,7 @@ test::
   cmnd: |
     sh -c '
       output=$(printf "%s\n" "{\"minimum\":1}" |
-        bin/ysc -R -f jsc -)
+        bin/ysd -R -f jsc -)
       status=$?
       test "$status" -eq 1
       printf "status=%s\n%s\n" "$status" "$output"
@@ -301,7 +308,7 @@ test::
       chmod +x "$dir/less"
       output=$(printf "%s\n" "{\"minimum\":1}" |
         PATH="$dir:$PATH" LESS_LOG="$dir/less.log" \
-        bin/ysc -R -f jsc -)
+        bin/ysd -R -f jsc -)
       status=$?
       args=$(cat "$dir/less.log")
       rm -r "$dir"
@@ -326,7 +333,7 @@ test::
       ln -s "$(command -v diff)" "$dir/diff"
       ln -s "$(command -v mktemp)" "$dir/mktemp"
       output=$(printf "%s\n" "{\"minimum\":1}" |
-        PATH="$dir" bin/ysc -R -f jsc -)
+        PATH="$dir" bin/ysd -R -f jsc -)
       status=$?
       rm -r "$dir"
       test "$status" -eq 1
@@ -340,13 +347,13 @@ test::
     sh -c '
       same=$(printf "%s\n" \
         "{\"type\":\"object\",\"additionalProperties\":false}" |
-        bin/ysc -Rq -f jsc - 2>&1)
+        bin/ysd -Rq -f jsc - 2>&1)
       same_status=$?
       changed=$(printf "%s\n" "{\"minimum\":1}" |
-        bin/ysc -R --quiet -f jsc - 2>&1)
+        bin/ysd -R --quiet -f jsc - 2>&1)
       changed_status=$?
       broken=$(printf "%s\n" "{bad" |
-        bin/ysc -Rq -f jsc - 2>&1)
+        bin/ysd -Rq -f jsc - 2>&1)
       broken_status=$?
       test -z "$same"
       test -z "$changed"
@@ -361,32 +368,32 @@ test::
   cmnd: |
     sh -c '
       output=$(printf "%s\n" "foo: +Str" |
-        bin/ysc -R -f yscy - 2>&1)
+        bin/ysd -R -f ysdc - 2>&1)
       status=$?
       test "$status" -eq 2
       printf "%s\n" "$output" | perl -ne "print if $. == 1"
     '
   want: |
-    ysc: -R/--roundtrip requires JSON Schema or YSD input
+    ysd: -R/--roundtrip requires JSON Schema or YSD input
 
 - name: reject-roundtrip-option-conflicts
   cmnd: |
     sh -c '
-      bin/ysc -RN 2>&1 | sed -n 1p
-      bin/ysc -RC 2>&1 | sed -n 1p
-      bin/ysc -R -t jsc 2>&1 | sed -n 1p
-      bin/ysc -R -o out.schema.json 2>&1 | sed -n 1p
-      bin/ysc -q 2>&1 | sed -n 1p
+      bin/ysd -RN 2>&1 | sed -n 1p
+      bin/ysd -RC 2>&1 | sed -n 1p
+      bin/ysd -R -t jsc 2>&1 | sed -n 1p
+      bin/ysd -R -o out.schema.json 2>&1 | sed -n 1p
+      bin/ysd -q 2>&1 | sed -n 1p
     '
   want: |
-    ysc: -R/--roundtrip cannot be combined with -N/--norm
-    ysc: -R/--roundtrip cannot be combined with -C/--compact
-    ysc: -R/--roundtrip cannot be combined with -t/--to
-    ysc: -R/--roundtrip cannot be combined with -o/--output
-    ysc: -q/--quiet requires -R/--roundtrip
+    ysd: -R/--roundtrip cannot be combined with -N/--norm
+    ysd: -R/--roundtrip cannot be combined with -C/--compact
+    ysd: -R/--roundtrip cannot be combined with -t/--to
+    ysd: -R/--roundtrip cannot be combined with -o/--output
+    ysd: -q/--quiet requires -R/--roundtrip
 
 - name: stdin-default-with-to
-  cmnd: bin/ysc -t ysd
+  cmnd: bin/ysd -t ysd
   stdi: |
     {
       "type": "object",
@@ -400,8 +407,8 @@ test::
     .open: true
     name: +Str
 
-- name: json-schema-def-order-to-ysc
-  cmnd: bin/ysc -t ysd
+- name: json-schema-def-order-to-ysdc
+  cmnd: bin/ysd -t ysd
   stdi: |
     {
       "definitions": {
@@ -441,7 +448,7 @@ test::
     +juliet: +Str
 
 - name: compact-schema-json
-  cmnd: sh -c 'bin/ysc -t jsc -C | wc -l'
+  cmnd: sh -c 'bin/ysd -t jsc -C | wc -l'
   stdi: |
     s: +Str
   want: |

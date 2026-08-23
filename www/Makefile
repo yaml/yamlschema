@@ -33,7 +33,7 @@ SITE := site
 EXAMPLE-SOURCES := $(wildcard src/examples/*)
 EXAMPLE-FILES := $(patsubst src/examples/%,$(SITE)/examples/%,\
   $(EXAMPLE-SOURCES))
-WASM := $(SITE)/ysc.wasm
+WASM := $(SITE)/ysd.wasm
 WASM-EXEC := $(SITE)/wasm_exec.js
 YAMLSCRIPT-DIR := ../../yamlscript
 LOCAL-YS := $(wildcard $(YAMLSCRIPT-DIR)/ys/bin/ys)
@@ -93,7 +93,7 @@ $(SITE)/style.css: src/style.css | $(SITE)
 $(SITE)/values.ysd.yaml: src/values.ysd.yaml | $(SITE)
 	cp $< $@
 
-$(WASM): ../bin/ysc $(GLOAT) | $(SITE)
+$(WASM): ../bin/ysd $(GLOAT) | $(SITE)
 	$(GLOAT-ENV) $(GLOAT) -qf -t js -o $@ $<
 
 $(WASM-EXEC): $(GLOAT) | $(SITE)

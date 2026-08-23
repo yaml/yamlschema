@@ -6,7 +6,7 @@ JSON Schema Roundtrip
 ```text
 contact.schema.json
   -> contact.ysd.yaml
-  -> contact.ysc.yaml or contact.ysc.json
+  -> contact.ysdc.yaml or contact.ysdc.json
   -> contact.schema.json
 ```
 
@@ -22,12 +22,13 @@ their input order through conversion and normalization.
 ## Roundtrip Model
 
 There are three useful semantic representations.
-Expanded yamlschema has YAML and JSON serializations:
+Expanded yamlschema is YSD Canonical (YSDC), with YAML and JSON
+serializations:
 
 ```text
 contact.schema.json
   -> contact.ysd.yaml
-  -> contact.ysc.yaml or contact.ysc.json
+  -> contact.ysdc.yaml or contact.ysdc.json
   -> contact.schema.json
 ```
 
@@ -39,7 +40,7 @@ email?: +Str =~"\S+@\S+"
 tags: +Str[1+,!]
 ```
 
-The `.ysc.json` explicit form is one serialization of the canonical internal
+The `.ysdc.json` explicit form is one serialization of the canonical internal
 shape:
 
 ```json
@@ -75,25 +76,25 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 
 Use `.schema.json` for JSON Schema files and `.ysd.yaml` for human-maintained
 yamlschema DSL files.
-Use `.ysc.yaml` or `.ysc.json` for the same non-human, fully expanded
+Use `.ysdc.yaml` or `.ysdc.json` for the same non-human, fully expanded
 yamlschema model.
 
 
 ## Conversion Directions
 
-`bin/ysc` implements all four direct conversion targets:
+`bin/ysd` implements all four direct conversion targets:
 
 ```text
 contact.schema.json -> contact.ysd.yaml
-contact.ysd.yaml -> contact.ysc.yaml
-contact.ysd.yaml -> contact.ysc.json
+contact.ysd.yaml -> contact.ysdc.yaml
+contact.ysd.yaml -> contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
 The explicit form is the shared expansion boundary:
 
 ```text
-contact.ysd.yaml -> contact.ysc.yaml or contact.ysc.json
+contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
@@ -159,7 +160,7 @@ Their direct JSON Schema mappings are:
 
 JSON Schema `number` accepts integer and non-integer numeric values, so it maps
 to `+Num`.
-The YAML-specific `+Float` type exports as JSON Schema `number`, but `ysc`
+The YAML-specific `+Float` type exports as JSON Schema `number`, but `ysd`
 warns because the exported schema also accepts integers.
 
 Example:
@@ -214,7 +215,7 @@ Roundtrip notes:
   with `^` and `$`.
 - YSD `.find` is an unanchored search and canonicalization preserves its
   value.
-- Canonical YSC uses `.like` for both and exports its value unchanged as the
+- Canonical YSDC uses `.like` for both and exports its value unchanged as the
   JSON Schema `pattern`.
 - `/pattern/` is shorthand for `find:"pattern"` only when the body contains
   neither whitespace nor `/`.
@@ -654,7 +655,7 @@ corresponding schema.
 Top-level `.open` controls the root mapping as well as the mapping shapes
 defined beneath it.
 
-Canonical YSC keeps `.open: true` only at the top.
+Canonical YSDC keeps `.open: true` only at the top.
 It preserves `.open: false` where an open inherited default must be closed,
 and uses a final `+Str: +Any` wildcard where a closed inherited default must
 be opened.
@@ -832,13 +833,13 @@ addition to the schema semantics.
 Use `-R` to roundtrip either JSON Schema or YSD through the other format:
 
 ```sh
-ysc -R values.schema.json
-ysc -Rq values.schema.json
-ysc -R values.ysd.yaml
-ysc -Rq values.ysd.yaml
+ysd -R values.schema.json
+ysd -Rq values.schema.json
+ysd -R values.ysd.yaml
+ysd -Rq values.ysd.yaml
 ```
 
-For JSON Schema input, `ysc` compares normalized JSON Schema before and after
+For JSON Schema input, `ysd` compares normalized JSON Schema before and after
 conversion through YSD.
 For YSD input, it compares canonical YSD before and after conversion through
 JSON Schema.

@@ -79,7 +79,7 @@ for (const invalidJSON of [
 }
 
 const go = new Go();
-const bytes = await readFile('ysc.wasm');
+const bytes = await readFile('ysd.wasm');
 const {instance} = await WebAssembly.instantiate(bytes, go.importObject);
 go.run(instance);
 
@@ -215,13 +215,13 @@ if (
   throw new Error('focusing an editor does not start its roundtrip check');
 }
 if (
-  !appSource.includes("setEditorValue(yamlEditor, 'Generating YSC...')") ||
-  !appSource.includes("yamlFormat === 'ysc' ? 'YSC' : 'YSD'") ||
+  !appSource.includes("setEditorValue(yamlEditor, 'Generating YSDC...')") ||
+  !appSource.includes("yamlFormat === 'ysdc' ? 'YSDC' : 'YSD'") ||
   !appSource.includes('showGeneratingYamlSchema();') ||
   !appSource.includes('const conversion = convertYamlToJson();') ||
-  !appSource.includes('showGeneratingYSC();')
+  !appSource.includes('showGeneratingYSDC();')
 ) {
-  throw new Error('old YAML remains visible while YSD or YSC is generated');
+  throw new Error('old YAML remains visible while YSD or YSDC is generated');
 }
 if (
   !appSource.includes(
@@ -485,18 +485,18 @@ if (!toJSON.ok || JSON.parse(toJSON.value).type !== 'object') {
   throw new Error(`YSD to JSON failed: ${JSON.stringify(toJSON)}`);
 }
 
-const toYSC = globalThis.gloat.exports['json-schema-to-ysc'](json);
-const expectedYSC = '.open: true\nname: +Str';
-if (!toYSC.ok || toYSC.value !== expectedYSC) {
-  throw new Error(`JSON to YSC failed: ${JSON.stringify(toYSC)}`);
+const toYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](json);
+const expectedYSDC = '.open: true\nname: +Str';
+if (!toYSDC.ok || toYSDC.value !== expectedYSDC) {
+  throw new Error(`JSON to YSDC failed: ${JSON.stringify(toYSDC)}`);
 }
 
-const closedYSC = globalThis.gloat.exports[
-  'json-schema-to-ysc'
+const closedYSDC = globalThis.gloat.exports[
+  'json-schema-to-ysdc'
 ](initialResult.value);
-if (!closedYSC.ok || closedYSC.value.includes('.open: true')) {
-  throw new Error(`closed JSON produced open YSC: ${JSON.stringify(
-    closedYSC,
+if (!closedYSDC.ok || closedYSDC.value.includes('.open: true')) {
+  throw new Error(`closed JSON produced open YSDC: ${JSON.stringify(
+    closedYSDC,
   )}`);
 }
 
@@ -616,5 +616,5 @@ for (const invalidYSD of ['bad: [', '.unknown: true', 'name: +Stx']) {
   }
 }
 
-console.log('browser exports converted YSD, YSC, and JSON');
+console.log('browser exports converted YSD, YSDC, and JSON');
 process.exit(0);

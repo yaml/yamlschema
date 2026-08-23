@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: pattern
-  cmnd: bin/ysc -t ysd.yaml -
+  cmnd: bin/ysd -t ysd.yaml -
   stdi: |
     {
       "properties": {
