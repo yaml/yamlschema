@@ -1,5 +1,6 @@
 import {normalizeJson} from './json.js?v=3';
 
+const schemaEditor = document.querySelector('.schema-editor');
 const jsonEditor = document.querySelector('#json-schema');
 const yamlEditor = document.querySelector('#yaml-schema');
 const jsonError = document.querySelector('#json-error');
@@ -27,6 +28,10 @@ const sampleSelects = {
   ysd: yamlSampleSelect,
   json: jsonSampleSelect,
 };
+const editRootURL = new URL(
+  schemaEditor.dataset.editRoot,
+  window.location.href,
+);
 const assetURL = (path) => new URL(path, import.meta.url).href;
 const sampleSources = {
   ysd: {
@@ -125,13 +130,18 @@ function saveSample(source, sample) {
   }
 }
 
-function requestedSampleSelection() {
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get('source');
-  const sample = params.get('example');
-  if (!Object.hasOwn(sampleSources, source)) return undefined;
-  if (!Object.hasOwn(sampleSources[source], sample)) return undefined;
-  return {source, sample};
+function routedSampleSelection() {
+  const sample = schemaEditor.dataset.schemaSlug;
+  if (!sample) return undefined;
+  for (const [source, samples] of Object.entries(sampleSources)) {
+    if (Object.hasOwn(samples, sample)) return {source, sample};
+  }
+  return undefined;
+}
+
+function replaceEditorURL(sample) {
+  const url = new URL(`${sample}/`, editRootURL);
+  window.history.replaceState(null, '', url);
 }
 
 function selectSampleSource(source, sample = loadSample(source)) {
@@ -530,13 +540,16 @@ roundtripDiffClose.addEventListener('click', () => {
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();
 });
-const requestedSample = requestedSampleSelection();
+const requestedSample = routedSampleSelection();
 const initialSampleSource = requestedSample?.source || loadSampleSource();
+const initialSample = requestedSample?.sample || loadSample(initialSampleSource);
 if (requestedSample) saveSample(requestedSample.source, requestedSample.sample);
-selectSampleSource(initialSampleSource, requestedSample?.sample);
+selectSampleSource(initialSampleSource, initialSample);
+replaceEditorURL(initialSample);
 for (const [source, select] of Object.entries(sampleSelects)) {
   select.addEventListener('change', () => {
     saveSample(source, select.value);
+    replaceEditorURL(select.value);
     cancelRoundtripStatus();
     clearTimeout(checkingTimer);
     void loadSelectedSample(source);

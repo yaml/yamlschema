@@ -15,7 +15,7 @@ name: +Str
 `age?` is optional and, when present, must be an integer greater than or equal
 to zero.
 
-[Open Person in the editor](editor.md?source=ysd&example=person){ .md-button }
+[Open Person in the editor](edit/person.md){ .md-button }
 
 ## Dependent fields
 
@@ -32,7 +32,7 @@ countryName: +Str
 When either extended address field is present, `streetAddress` is required.
 The relationship maps to JSON Schema `dependentRequired`.
 
-[Open Address in the editor](editor.md?source=json&example=address){ .md-button }
+[Open Address in the editor](edit/address.md){ .md-button }
 
 ## Alternatives and external references
 
@@ -49,7 +49,7 @@ Exactly one branch must match.
 Each branch combines a discriminating constant with an external schema
 reference.
 
-[Open Device Type in the editor](editor.md?source=json&example=device-type){ .md-button }
+[Open Device Type in the editor](edit/device-type.md){ .md-button }
 
 ## Named definitions
 
@@ -81,4 +81,4 @@ values.
 The Harbor Next Helm chart example demonstrates nested definitions, maps,
 lists, ranges, annotations, and open subtrees in a production-sized schema.
 
-[Open Harbor Next in the editor](editor.md?source=ysd&example=harbor-next){ .md-button }
+[Open Harbor Next in the editor](edit/harbor-next.md){ .md-button }

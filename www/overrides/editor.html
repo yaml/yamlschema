@@ -1,16 +1,18 @@
----
-title: Interactive Editor
-description: Convert between YAMLSchema and JSON Schema in your browser
-hide:
-- toc
----
+{% extends "main.html" %}
 
-# Interactive editor
+{% block content %}
+<h1>Interactive editor</h1>
 
-Edit either schema and the other side updates automatically.
-Conversion and roundtrip checks run locally in your browser.
+<p>
+  Edit either schema and the other side updates automatically.
+  Conversion and roundtrip checks run locally in your browser.
+</p>
 
-<div class="schema-editor">
+<div class="schema-editor"
+     data-edit-root="{{ base_url }}/edit/"
+     {% if page.meta.schema_slug %}
+     data-schema-slug="{{ page.meta.schema_slug }}"
+     {% endif %}>
   <section class="editors" aria-label="Schema converter">
     <article>
       <div class="editor-heading">
@@ -86,4 +88,5 @@ Conversion and roundtrip checks run locally in your browser.
   </dialog>
 </div>
 
-<script type="module" src="../assets/editor/app.js"></script>
+<script type="module" src="{{ base_url }}/assets/editor/app.js"></script>
+{% endblock %}

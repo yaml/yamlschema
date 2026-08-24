@@ -12,6 +12,7 @@ exclude_docs: |
 
 theme:
   name: material
+  custom_dir: overrides
   favicon: img/favicon.svg
   features:
   - navigation.tracking
@@ -54,7 +55,7 @@ extra_javascript:
 
 nav:
 - YAMLSchema: index.md
-- Editor: editor.md
+- Editor: edit/index.md
 - Getting Started: getting-started.md
 - Examples: examples.md
 - Cheat Sheet: cheat-sheet.md

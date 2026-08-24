@@ -270,11 +270,14 @@ if (
   throw new Error('inactive example selector is not cleared');
 }
 if (
-  !appSource.includes("params.get('source')") ||
-  !appSource.includes("params.get('example')") ||
-  !appSource.includes('requestedSample?.source')
+  !appSource.includes('schemaEditor.dataset.schemaSlug') ||
+  !appSource.includes('window.history.replaceState') ||
+  !appSource.includes('replaceEditorURL(initialSample)')
 ) {
-  throw new Error('editor example links do not select their requested input');
+  throw new Error('editor schema routes do not select canonical inputs');
+}
+if (appSource.includes('URLSearchParams')) {
+  throw new Error('editor still supports query-string schema selection');
 }
 if (
   !appSource.includes("callWorker('json-schema-normalize', json)") ||
@@ -341,7 +344,12 @@ const exampleFiles = [
   'user-profile',
   'ansible-builder',
 ];
-const indexHTML = await readFile('site/editor/index.html', 'utf8');
+const routedExamples = [
+  ['person', 'ysd'],
+  ['harbor-next', 'ysd'],
+  ...exampleFiles.map((name) => [name, 'json']),
+];
+const indexHTML = await readFile('site/edit/index.html', 'utf8');
 if (!indexHTML.includes('id="normalize-json"')) {
   throw new Error('Normalize JSON button is missing');
 }
@@ -388,6 +396,26 @@ if (
 ) {
   throw new Error('roundtrip diff dialog is missing');
 }
+for (const [slug] of routedExamples) {
+  const routeHTML = await readFile(`site/edit/${slug}/index.html`, 'utf8');
+  if (!routeHTML.includes(`data-schema-slug="${slug}"`)) {
+    throw new Error(`${slug} editor route has the wrong schema slug`);
+  }
+  if (!routeHTML.includes('id="yaml-schema"') ||
+      !routeHTML.includes('id="json-schema"')) {
+    throw new Error(`${slug} editor route is missing the shared editor`);
+  }
+}
+let oldEditorExists = true;
+try {
+  await readFile('site/editor/index.html');
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  oldEditorExists = false;
+}
+if (oldEditorExists) {
+  throw new Error('old editor route was generated');
+}
 
 const homeHTML = await readFile('site/index.html', 'utf8');
 if (!homeHTML.includes('Define a lot more')) {
@@ -397,9 +425,9 @@ if ((homeHTML.match(/data-comparison-slide/g) || []).length !== 3) {
   throw new Error('home page comparison carousel is incomplete');
 }
 for (const href of [
-  'editor/?source=ysd&amp;example=person',
-  'editor/?source=json&amp;example=address',
-  'editor/?source=json&amp;example=device-type',
+  'edit/person/',
+  'edit/address/',
+  'edit/device-type/',
 ]) {
   if (!homeHTML.includes(href)) {
     throw new Error(`home page editor link is missing: ${href}`);

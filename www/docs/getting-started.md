@@ -22,7 +22,7 @@ format.
 
 !!! tip "Try it without installing anything"
 
-    Open the [interactive editor](editor.md?source=ysd&example=person),
+    Open the [interactive editor](edit/person.md),
     change either pane, and watch the other representation update.
 
 ## Install the command

@@ -15,7 +15,7 @@ hide:
       and roundtrips with the JSON Schema ecosystem.
     </p>
     <div class="home-actions">
-      <a class="ys-button ys-button-primary" href="editor/">
+      <a class="ys-button ys-button-primary" href="edit/">
         Try the Editor
       </a>
       <a class="ys-button ys-button-secondary" href="getting-started/">
@@ -80,11 +80,11 @@ Choose an example, or click the comparison to continue in the editor.
          aria-label="YAMLSchema and JSON Schema comparisons">
   <div class="comparison-viewport">
     <article class="comparison-slide is-active" data-comparison-slide
-             data-editor-href="editor/?source=ysd&amp;example=person"
+             data-editor-href="edit/person/"
              tabindex="0" aria-label="Open Person in the editor">
       <div class="comparison-title">
         <div><span>01</span><h3>Person</h3></div>
-        <a href="editor/?source=ysd&amp;example=person">Open in editor</a>
+        <a href="edit/person/">Open in editor</a>
       </div>
       <div class="comparison-panes">
         <div>
@@ -112,11 +112,11 @@ name: +Str</code></pre>
       </div>
     </article>
     <article class="comparison-slide" data-comparison-slide
-             data-editor-href="editor/?source=json&amp;example=address"
+             data-editor-href="edit/address/"
              tabindex="0" aria-label="Open Address in the editor">
       <div class="comparison-title">
         <div><span>02</span><h3>Address</h3></div>
-        <a href="editor/?source=json&amp;example=address">Open in editor</a>
+        <a href="edit/address/">Open in editor</a>
       </div>
       <div class="comparison-panes">
         <div>
@@ -148,11 +148,11 @@ countryName: +Str</code></pre>
       </div>
     </article>
     <article class="comparison-slide" data-comparison-slide
-             data-editor-href="editor/?source=json&amp;example=device-type"
+             data-editor-href="edit/device-type/"
              tabindex="0" aria-label="Open Device Type in the editor">
       <div class="comparison-title">
         <div><span>03</span><h3>Device Type</h3></div>
-        <a href="editor/?source=json&amp;example=device-type">
+        <a href="edit/device-type/">
           Open in editor
         </a>
       </div>
@@ -254,5 +254,5 @@ The interchange form for the existing JSON Schema ecosystem.
 
 <section class="home-closing">
   <p>Start with the shape of your data. Add only the constraints you need.</p>
-  <a class="ys-button ys-button-primary" href="editor/">Try YAMLSchema</a>
+  <a class="ys-button ys-button-primary" href="edit/">Try YAMLSchema</a>
 </section>
