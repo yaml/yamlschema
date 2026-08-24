@@ -297,9 +297,12 @@ if (!styleSource.includes('font-weight: 900')) {
 if (
   !styleSource.includes('@media (max-width: 900px) and ' +
     '(orientation: portrait)') ||
-  !styleSource.includes('grid-template-columns: repeat(2, minmax(0, 1fr))')
+  !styleSource.includes('height: calc(100dvh - 3.6rem)') ||
+  !styleSource.includes('grid-template-rows: repeat(2, minmax(0, 1fr))') ||
+  !styleSource.includes('body:has(.schema-editor) .md-footer') ||
+  !styleSource.includes('.schema-editor .error:empty')
 ) {
-  throw new Error('editor panes do not use the requested responsive layout');
+  throw new Error('both editor panes do not fit in the portrait layout');
 }
 const roundtripWorkerSource = await readFile(
   'docs/assets/editor/roundtrip-worker.js',
