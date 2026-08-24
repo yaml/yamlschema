@@ -3237,10 +3237,15 @@ defn annotated-scalar(scalar description):
 
 defn succinct-array-scalar(schema):
   is-array =: json-type(schema).eq('array')
-  when is-array && array-as-suffix?(schema):
-    item =: succinct-scalar(array-item-schema(schema))
+  item-schema =: array-item-schema(schema)
+  marked =:
+    when contains?(schema 'default') && sequential?(item-schema.enum):
+      compact-enum-default-scalar:
+        item-schema.put('default' schema.'default')
+  when is-array && (marked || array-as-suffix?(schema)):
+    item =: marked || succinct-scalar(item-schema)
     when item:
-      =>: "$item$(list-suffix(schema))"
+      append-list-suffix: item list-suffix(schema)
 
 defn build-properties-map(schema inherited-open):
   child-open =: imported-child-open(schema inherited-open)

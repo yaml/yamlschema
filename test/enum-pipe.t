@@ -49,6 +49,47 @@ test::
     .open: true
     type?: +Str [ieee802.11a, 1.6tbase-cr8]
 
+- name: list-compact-enum
+  cmnd: bin/ysd -t ysd.yaml -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["good", "bad", "ugly"]
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    tags?: +Str[] [good, bad, ugly]
+
+- name: list-compact-enum-default
+  cmnd: bin/ysd -t ysd.yaml -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "default": "good",
+          "items": {
+            "type": "string",
+            "enum": ["good", "bad", "ugly"]
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    tags?: +Str[] [=good, bad, ugly]
+
 - name: compact-enum-default-expansion
   cmnd: bin/ysd -t ysdc.json -
   stdi: |
