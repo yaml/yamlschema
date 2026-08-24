@@ -41,7 +41,7 @@ _yamlschema_install_main() {
     install_mk_url=${install_mk_url:-https://yamlschema.org/install.mk}
     install_mk=$(command curl -fsSL "$install_mk_url") || return
     temporary=$(mktemp) || return
-    printf "%s\n" "$install_mk" > "$temporary"
+    printf "%s\n" "$install_mk" >| "$temporary"
     binary=$(command make --no-print-directory \
       -f "$temporary" install PREFIX="$prefix" "$@")
     install_status=$?

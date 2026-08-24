@@ -43,6 +43,11 @@ prepare_prefix() {
 check_install() {
   local shell=$1 prefix=$temporary/prefix-${1##*/}
   local output expected
+  local -a shell_options=()
+
+  if [[ ${shell##*/} == zsh ]]; then
+    shell_options=(-o noclobber)
+  fi
 
   prepare_prefix "$prefix"
   export YAMLSCHEMA_TEST_PREFIX=$prefix
@@ -66,7 +71,7 @@ check_install() {
   else
     # shellcheck disable=SC2016
     output=$(
-      "$shell" -c '
+      "$shell" "${shell_options[@]}" -c '
         source "$1" \
           PREFIX="$YAMLSCHEMA_TEST_PREFIX" \
           VERSION=0.1.3 \
