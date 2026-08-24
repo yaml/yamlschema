@@ -6,7 +6,7 @@
   --editor-text: #18171a;
   --editor-muted: #66615b;
   --editor-error: #b42330;
-  margin-top: 1.5rem;
+  margin-top: 0;
 }
 
 .schema-editor .editors {

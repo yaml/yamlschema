@@ -353,6 +353,15 @@ const indexHTML = await readFile('site/edit/index.html', 'utf8');
 if (!indexHTML.includes('id="normalize-json"')) {
   throw new Error('Normalize JSON button is missing');
 }
+if (
+  indexHTML.includes('<h1>Interactive editor</h1>') ||
+  indexHTML.includes('Edit either schema and the other side updates')
+) {
+  throw new Error('editor introduction is still visible');
+}
+if (!styleSource.includes('margin-top: 0;')) {
+  throw new Error('editor top spacing is not compact');
+}
 for (const source of ['ysd', 'json']) {
   if (!indexHTML.includes(`data-roundtrip-source="${source}"`)) {
     throw new Error(`${source} roundtrip status source is missing`);

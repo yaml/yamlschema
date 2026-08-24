@@ -1,13 +1,6 @@
 {% extends "main.html" %}
 
 {% block content %}
-<h1>Interactive editor</h1>
-
-<p>
-  Edit either schema and the other side updates automatically.
-  Conversion and roundtrip checks run locally in your browser.
-</p>
-
 <div class="schema-editor"
      data-edit-root="{{ base_url }}/edit/"
      {% if page.meta.schema_slug %}
