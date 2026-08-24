@@ -6,6 +6,13 @@
   --editor-text: #18171a;
   --editor-muted: #66615b;
   --editor-error: #b42330;
+  --editor-key: #8f2639;
+  --editor-string: #196d4b;
+  --editor-value: #315c9b;
+  --editor-comment: #716b64;
+  --editor-punctuation: #5d5751;
+  --editor-linked-line: #f9e8eb;
+  --editor-linked-number: #a32638;
   margin-top: 0;
 }
 
@@ -161,33 +168,82 @@ body:has(.schema-editor) .md-main__inner {
   color: #c66b16;
 }
 
-.schema-editor textarea {
+.schema-editor .code-editor {
   box-sizing: border-box;
   width: 100%;
-  min-height: 64vh;
+  height: 64vh;
+  overflow: hidden;
   resize: vertical;
   border: 1px solid var(--editor-border);
   border-radius: 0.3rem;
-  padding: 0.85rem;
   background: var(--editor-bg);
   color: var(--editor-text);
-  font: 0.72rem/1.5 "JetBrains Mono", ui-monospace, monospace;
-  tab-size: 2;
 }
 
-.schema-editor textarea:focus {
+.schema-editor .code-editor:focus-within {
   border-color: var(--editor-border-focus);
   outline: 2px solid color-mix(in srgb, var(--editor-border-focus) 20%,
     transparent);
 }
 
-.schema-editor textarea.invalid {
+.schema-editor .code-editor.invalid {
   border-color: var(--editor-error);
 }
 
-.schema-editor textarea.readonly {
+.schema-editor .code-editor.readonly {
   background: var(--editor-readonly);
   color: var(--editor-muted);
+}
+
+.schema-editor .cm-editor {
+  height: 100%;
+  background: transparent;
+  color: inherit;
+}
+
+.schema-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
+.schema-editor .cm-scroller {
+  font: 0.72rem/1.5 "JetBrains Mono", ui-monospace, monospace;
+  tab-size: 2;
+}
+
+.schema-editor .cm-content {
+  padding: 0.85rem 0;
+  caret-color: var(--editor-text);
+}
+
+.schema-editor .cm-line {
+  padding: 0 0.85rem;
+}
+
+.schema-editor .cm-gutters {
+  border-right: 1px solid var(--editor-border);
+  background: var(--editor-readonly);
+  color: var(--editor-muted);
+}
+
+.schema-editor .cm-lineNumbers .cm-gutterElement {
+  min-width: 2.2rem;
+  padding: 0 0.5rem 0 0.65rem;
+  cursor: pointer;
+}
+
+.schema-editor .cm-activeLine,
+.schema-editor .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--editor-border) 18%, transparent);
+}
+
+.schema-editor .cm-linked-line {
+  background: var(--editor-linked-line);
+}
+
+.schema-editor .cm-linked-line-number {
+  background: var(--editor-linked-line);
+  color: var(--editor-linked-number);
+  font-weight: 700;
 }
 
 .schema-editor .error {
@@ -329,6 +385,13 @@ body:has(.schema-editor) .md-main__inner {
   --editor-text: #f1efeb;
   --editor-muted: #b9b4ad;
   --editor-error: #ff7581;
+  --editor-key: #ff9aaa;
+  --editor-string: #8fd6b3;
+  --editor-value: #a9c8ff;
+  --editor-comment: #aaa39b;
+  --editor-punctuation: #d1cbc4;
+  --editor-linked-line: #482328;
+  --editor-linked-number: #ff9aaa;
 }
 
 [data-md-color-scheme="slate"] .schema-editor .diff-hunk-header {
@@ -378,7 +441,7 @@ body:has(.schema-editor) .md-main__inner {
     flex-direction: column;
   }
 
-  .schema-editor textarea {
+  .schema-editor .code-editor {
     height: auto;
     min-height: 0;
     flex: 1 1 0;

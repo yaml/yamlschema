@@ -30,6 +30,7 @@ include $M/shell.mk
 
 export UV_LINK_MODE := copy
 export UV_CACHE_DIR := $(CURDIR)/.cache/uv
+export NPM_CONFIG_CACHE := $(LOCAL-CACHE)/npm
 export NO_MKDOCS_2_WARNING := 1
 
 REPO ?= git@github.com:yaml/yamlschema
@@ -37,15 +38,19 @@ SERVE-HOST ?= localhost
 SERVE-PORT ?= 8000
 
 EDITOR-ASSETS := docs/assets/editor
+EDITOR-SOURCE := src/editor
+EDITOR-BUNDLE := $(EDITOR-ASSETS)/app.js
+EDITOR-SOURCES := $(wildcard $(EDITOR-SOURCE)/*.js)
 WASM := $(EDITOR-ASSETS)/ysd.wasm
 WASM-EXEC := $(EDITOR-ASSETS)/wasm_exec.js
+NODE-MODULES := node_modules
 YAMLSCRIPT-DIR := ../../yamlscript
 LOCAL-YS := $(wildcard $(YAMLSCRIPT-DIR)/ys/bin/ys)
 GLOAT-ENV := $(if $(LOCAL-YS),GLOAT_YS=$(abspath $(LOCAL-YS)))
-DEPS := $(PYTHON-VENV) $(WASM) $(WASM-EXEC)
+DEPS := $(PYTHON-VENV) $(EDITOR-BUNDLE) $(WASM) $(WASM-EXEC)
 
-MAKES-CLEAN := site $(WASM) $(WASM-EXEC)
-MAKES-REALCLEAN := $(PYTHON-VENV)
+MAKES-CLEAN := site $(EDITOR-BUNDLE) $(WASM) $(WASM-EXEC)
+MAKES-REALCLEAN := $(PYTHON-VENV) node_modules
 
 default:: site
 
@@ -71,6 +76,12 @@ publish: site
 	  git commit -m 'Deploy YAMLSchema website' && \
 	  git push -f $(REPO) HEAD:gh-pages
 	$(RM) -r $<
+
+$(EDITOR-BUNDLE): $(EDITOR-SOURCES) rollup.config.mjs $(NODE-MODULES)
+	node_modules/.bin/rollup --config
+
+$(NODE-MODULES): package.json package-lock.json $(NODE)
+	npm ci
 
 $(WASM): ../bin/ysd $(GLOAT)
 	$(GLOAT-ENV) $(GLOAT) -qf -t js -o $@ $<

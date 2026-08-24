@@ -38,8 +38,7 @@
           </option>
         </select>
       </div>
-      <textarea id="yaml-schema" spellcheck="false"
-                aria-label="YAMLSchema editor"></textarea>
+      <div id="yaml-schema" class="code-editor"></div>
       <p class="error" id="yaml-error" aria-live="polite"></p>
     </article>
     <article>
@@ -48,7 +47,7 @@
                 data-roundtrip-source="json"
                 title="Checking Roundtrip" aria-label="Checking Roundtrip"
                 disabled>…</button>
-        <label class="editor-title" for="json-schema">JSON Schema</label>
+        <span class="editor-title">JSON Schema</span>
         <button type="button" id="normalize-json"
                 title="Normalize JSON Schema" disabled>Normalize</button>
         <select id="json-sample-select" class="sample-select"
@@ -70,8 +69,7 @@
           <option value="netbox-generated">NetBox Generated</option>
         </select>
       </div>
-      <textarea id="json-schema" spellcheck="false"
-                aria-label="JSON Schema editor"></textarea>
+      <div id="json-schema" class="code-editor"></div>
       <p class="error" id="json-error" aria-live="polite"></p>
     </article>
   </section>
@@ -124,6 +122,16 @@
         </p>
       </section>
       <section>
+        <h3>Share content and lines</h3>
+        <p>
+          Edited source content is compressed into the URL so the current
+          schema can be shared without sending it to a server.
+          Select a line number to highlight that line in the shared link.
+          Shift-select another line number to extend the highlighted range.
+          Select in the editor or press Escape to clear the line highlight.
+        </p>
+      </section>
+      <section>
         <h3>Understand roundtrip status</h3>
         <ul>
           <li><strong>…</strong> means the roundtrip is being checked.</li>
@@ -151,8 +159,9 @@
         </p>
       </section>
       <p class="editor-help-note">
-        Edits are not saved.
-        Reloading the page restores the packaged schema named by the URL.
+        Edits are stored only in the current URL.
+        Reloading or sharing that URL restores the same source and highlighted
+        lines.
       </p>
     </div>
   </dialog>

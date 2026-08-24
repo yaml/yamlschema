@@ -1,8 +1,13 @@
-import {normalizeJson} from './json.js?v=3';
+import {json} from '@codemirror/lang-json';
+import {yaml} from '@codemirror/lang-yaml';
+
+import {normalizeJson} from '../../docs/assets/editor/json.js';
+import {CodeEditor} from './editor.js';
+import {parseEditorState, serializeEditorState} from './url-state.js';
 
 const schemaEditor = document.querySelector('.schema-editor');
-const jsonEditor = document.querySelector('#json-schema');
-const yamlEditor = document.querySelector('#yaml-schema');
+const jsonEditorMount = document.querySelector('#json-schema');
+const yamlEditorMount = document.querySelector('#yaml-schema');
 const jsonError = document.querySelector('#json-error');
 const yamlError = document.querySelector('#yaml-error');
 const yamlSampleSelect = document.querySelector('#yaml-sample-select');
@@ -66,6 +71,7 @@ const sampleSources = {
 };
 
 let timer;
+let editorURLTimer;
 let checkingTimer;
 let roundtripTimer;
 let roundtripWorker;
@@ -79,10 +85,37 @@ let updating = false;
 let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
+let selectedSample;
+let selectedSampleSource;
+let documentSource;
+let loadingEditorState = true;
+let linkedPane;
+let linkedLines;
+let canonicalSourceValues = {};
 const workerCalls = new Map();
 const schemaWorker = new Worker(
   new URL('./schema-worker.js', import.meta.url),
 );
+const sharedStateResult = parseEditorState(window.location.hash);
+const sharedState = sharedStateResult.ok ? sharedStateResult.state : {};
+if (!sharedStateResult.ok) {
+  console.warn(`Ignoring shared editor state: ${sharedStateResult.error}`);
+}
+
+const jsonEditor = new CodeEditor(jsonEditorMount, {
+  language: json(),
+  ariaLabel: 'JSON Schema editor',
+  onChange: () => schedule(jsonEditor),
+  onFocus: () => roundtripOnFocus(jsonEditor),
+  onLinkedLines: (range) => linkedSelectionChanged('json', range),
+});
+const yamlEditor = new CodeEditor(yamlEditorMount, {
+  language: yaml(),
+  ariaLabel: 'YAMLSchema editor',
+  onChange: () => schedule(yamlEditor),
+  onFocus: () => roundtripOnFocus(yamlEditor),
+  onLinkedLines: (range) => linkedSelectionChanged(yamlFormat, range),
+});
 
 function loadYamlFormat() {
   try {
@@ -145,20 +178,90 @@ function routedSampleSelection() {
   return undefined;
 }
 
-function replaceEditorURL(sample) {
+function replaceEditorURL(sample, hash = '') {
   const url = new URL(`${sample}/`, editRootURL);
+  url.hash = hash;
   window.history.replaceState(null, '', url);
 }
 
+function removeCustomOptions() {
+  for (const select of Object.values(sampleSelects)) {
+    select.querySelector('option[data-custom]')?.remove();
+  }
+}
+
 function selectSampleSource(source, sample = loadSample(source)) {
+  removeCustomOptions();
   for (const [current, select] of Object.entries(sampleSelects)) {
     select.value = current === source ? sample : '';
   }
 }
 
+function showCustomSelection(source) {
+  removeCustomOptions();
+  const origin = sampleSelects[selectedSampleSource].querySelector(
+    `option[value="${selectedSample}"]`,
+  )?.textContent.trim() || selectedSample;
+  const option = document.createElement('option');
+  option.value = '__custom__';
+  option.textContent = `Custom from ${origin}`;
+  option.dataset.custom = 'true';
+  option.disabled = true;
+  sampleSelects[source].insertBefore(option, sampleSelects[source].options[1]);
+  option.selected = true;
+  for (const [current, select] of Object.entries(sampleSelects)) {
+    if (current !== source) select.value = '';
+  }
+}
+
+function currentSourceContent(source) {
+  if (source === 'json') return jsonEditor.value;
+  return yamlFormat === 'ysd' ? yamlEditor.value : ysdValue;
+}
+
+function updateEditorURL() {
+  if (loadingEditorState || !selectedSample || !documentSource) return;
+  const content = currentSourceContent(documentSource);
+  const custom = content === canonicalSourceValues[documentSource]
+    ? undefined
+    : content;
+  const hash = serializeEditorState({
+    source: documentSource,
+    content: custom,
+    pane: linkedPane,
+    lines: linkedLines,
+  });
+  replaceEditorURL(selectedSample, hash);
+  if (custom === undefined) {
+    selectSampleSource(selectedSampleSource, selectedSample);
+  } else {
+    showCustomSelection(documentSource);
+  }
+}
+
+function scheduleEditorURL() {
+  clearTimeout(editorURLTimer);
+  editorURLTimer = setTimeout(updateEditorURL, 250);
+}
+
+function linkedSelectionChanged(pane, range) {
+  linkedPane = range ? pane : undefined;
+  linkedLines = range;
+  updateEditorURL();
+}
+
 function setEditorValue(editor, value) {
   updating = true;
-  editor.value = value;
+  editor.setValue(value);
+  const pane = editor === jsonEditor ? 'json' : yamlFormat;
+  if (!value.startsWith('Generating ') &&
+      linkedPane === pane && linkedLines) {
+    const previousLines = linkedLines;
+    linkedLines = editor.setLinkedLines(linkedLines);
+    if (JSON.stringify(previousLines) !== JSON.stringify(linkedLines)) {
+      scheduleEditorURL();
+    }
+  }
   updating = false;
 }
 
@@ -379,6 +482,7 @@ async function convertYamlToJson() {
 
 async function normalizeJsonSchema() {
   if (!schemaWorkerReady || updating) return;
+  documentSource = 'json';
   normalizeJsonButton.disabled = true;
   const id = ++conversionRequest;
   clearTimeout(timer);
@@ -406,6 +510,7 @@ async function normalizeJsonSchema() {
     }
     setEditorValue(jsonEditor, result.value);
     await convertJsonToYaml();
+    updateEditorURL();
   } finally {
     normalizeJsonButton.disabled = !schemaWorkerReady;
   }
@@ -513,24 +618,31 @@ async function loadSelectedSample(side = loadSampleSource()) {
   }
 }
 
-function selectYamlFormat(format, remember = true) {
+async function selectYamlFormat(format, remember = true) {
   yamlFormat = format;
   if (remember) saveYamlFormat(format);
   const readonly = format === 'ysdc';
-  yamlEditor.toggleAttribute('readonly', readonly);
-  yamlEditor.classList.toggle('readonly', readonly);
+  yamlEditor.setReadOnly(readonly);
   yamlEditor.classList.remove('invalid');
   yamlError.textContent = '';
+  if (remember && linkedPane && linkedPane !== format &&
+      linkedPane !== 'json') {
+    yamlEditor.clearLinkedLines();
+    linkedPane = undefined;
+    linkedLines = undefined;
+    updateEditorURL();
+  }
   if (!schemaWorkerReady) return;
   if (format === 'ysd' && ysdValue) setEditorValue(yamlEditor, ysdValue);
   else {
     showGeneratingYSDC();
-    void convertJsonToYaml(false, false);
+    await convertJsonToYaml(false, false);
   }
 }
 
 function schedule(editor) {
   const source = editor === jsonEditor ? 'json' : 'ysd';
+  documentSource = source;
   setRoundtripSource(source);
   conversionRequest++;
   cancelRoundtripStatus();
@@ -540,12 +652,9 @@ function schedule(editor) {
     setRoundtripStatus('checking');
   }, 200);
   timer = setTimeout(() => convertFrom(editor), 250);
+  scheduleEditorURL();
 }
 
-jsonEditor.addEventListener('input', () => schedule(jsonEditor));
-yamlEditor.addEventListener('input', () => schedule(yamlEditor));
-jsonEditor.addEventListener('focus', () => roundtripOnFocus(jsonEditor));
-yamlEditor.addEventListener('focus', () => roundtripOnFocus(yamlEditor));
 for (const indicator of roundtripStatuses) {
   indicator.addEventListener('click', showRoundtripDiff);
 }
@@ -566,32 +675,88 @@ normalizeJsonButton.addEventListener('click', () => {
 });
 const requestedSample = routedSampleSelection();
 const initialSampleSource = requestedSample?.source || loadSampleSource();
-const initialSample = requestedSample?.sample || loadSample(initialSampleSource);
+const initialSample = requestedSample?.sample ||
+  loadSample(initialSampleSource);
 if (requestedSample) saveSample(requestedSample.source, requestedSample.sample);
+selectedSampleSource = initialSampleSource;
+selectedSample = initialSample;
+documentSource = initialSampleSource;
 selectSampleSource(initialSampleSource, initialSample);
-replaceEditorURL(initialSample);
+replaceEditorURL(
+  initialSample,
+  sharedStateResult.ok ? window.location.hash : '',
+);
 for (const [source, select] of Object.entries(sampleSelects)) {
-  select.addEventListener('change', () => {
+  select.addEventListener('change', async () => {
+    loadingEditorState = true;
     saveSample(source, select.value);
+    selectedSampleSource = source;
+    selectedSample = select.value;
+    documentSource = source;
+    canonicalSourceValues = {};
+    linkedPane = undefined;
+    linkedLines = undefined;
+    jsonEditor.clearLinkedLines();
+    yamlEditor.clearLinkedLines();
     replaceEditorURL(select.value);
     cancelRoundtripStatus();
     clearTimeout(checkingTimer);
-    void loadSelectedSample(source);
+    await loadSelectedSample(source);
+    canonicalSourceValues = {
+      ysd: ysdValue,
+      json: jsonEditor.value,
+    };
+    loadingEditorState = false;
+    updateEditorURL();
   });
 }
 for (const control of formatControls) {
   control.checked = control.value === yamlFormat;
   control.addEventListener('change', () => {
-    if (control.checked) selectYamlFormat(control.value);
+    if (control.checked) void selectYamlFormat(control.value);
   });
 }
-selectYamlFormat(yamlFormat, false);
+void selectYamlFormat(yamlFormat, false);
+
+async function initializeEditor() {
+  await loadSelectedSample(initialSampleSource);
+  canonicalSourceValues = {
+    ysd: ysdValue,
+    json: jsonEditor.value,
+  };
+
+  if (sharedState.content !== undefined) {
+    documentSource = sharedState.source;
+    if (sharedState.source === 'json') {
+      await showJsonSample(sharedState.content);
+    } else {
+      await showSample(sharedState.content);
+    }
+  }
+
+  if (sharedState.pane && sharedState.lines) {
+    if (sharedState.pane === 'ysd' || sharedState.pane === 'ysdc') {
+      await selectYamlFormat(sharedState.pane, false);
+      for (const control of formatControls) {
+        control.checked = control.value === yamlFormat;
+      }
+      linkedPane = sharedState.pane;
+      linkedLines = yamlEditor.setLinkedLines(sharedState.lines, true);
+    } else {
+      linkedPane = 'json';
+      linkedLines = jsonEditor.setLinkedLines(sharedState.lines, true);
+    }
+  }
+
+  loadingEditorState = false;
+  updateEditorURL();
+}
 
 schemaWorker.addEventListener('message', ({data}) => {
   if (data.type === 'ready') {
     schemaWorkerReady = true;
     normalizeJsonButton.disabled = false;
-    void loadSelectedSample();
+    void initializeEditor();
     return;
   }
   if (data.type === 'error') {

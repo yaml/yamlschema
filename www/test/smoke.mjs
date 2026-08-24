@@ -1,7 +1,83 @@
 import '../docs/assets/editor/wasm_exec.js';
 import {readFile} from 'node:fs/promises';
 import {normalizeJson} from '../docs/assets/editor/json.js';
+import {
+  clampLineRange,
+  decodeContent,
+  encodeContent,
+  nextLineRange,
+  parseEditorState,
+  parseLineRange,
+  serializeEditorState,
+} from '../src/editor/url-state.js';
 await import('../docs/assets/editor/unified-diff.js');
+
+const sharedContent = '.title: Caf\u00e9 \ud83c\udf0d\nname: +Str\n';
+const encodedContent = encodeContent(sharedContent);
+if (decodeContent(encodedContent) !== sharedContent) {
+  throw new Error('shared editor content did not survive compression');
+}
+const sharedHash = serializeEditorState({
+  source: 'ysd',
+  content: sharedContent,
+  pane: 'ysd',
+  lines: {anchor: 3, start: 3, end: 7},
+});
+if (!sharedHash.startsWith('#v=1&s=ysd&z=') ||
+    !sharedHash.endsWith('&p=ysd&l=3-7')) {
+  throw new Error(`shared editor URL is unstable: ${sharedHash}`);
+}
+const parsedShared = parseEditorState(sharedHash);
+if (
+  !parsedShared.ok ||
+  parsedShared.state.source !== 'ysd' ||
+  parsedShared.state.content !== sharedContent ||
+  parsedShared.state.pane !== 'ysd' ||
+  parsedShared.state.lines.start !== 3 ||
+  parsedShared.state.lines.end !== 7
+) {
+  throw new Error(`shared editor URL did not parse: ${JSON.stringify(
+    parsedShared,
+  )}`);
+}
+const linesOnlyHash = serializeEditorState({
+  pane: 'json',
+  lines: {anchor: 8, start: 2, end: 8},
+});
+if (linesOnlyHash !== '#v=1&p=json&l=2-8') {
+  throw new Error(`line-only editor URL is unstable: ${linesOnlyHash}`);
+}
+if (serializeEditorState({source: 'ysd'}) !== '') {
+  throw new Error('canonical editor state produced a fragment');
+}
+for (const invalidHash of [
+  '#v=2&s=ysd&z=x',
+  '#v=1&s=ysd',
+  '#v=1&s=ysd&z=not-gzip',
+]) {
+  if (parseEditorState(invalidHash).ok) {
+    throw new Error(`invalid editor URL was accepted: ${invalidHash}`);
+  }
+}
+const reversedLines = parseLineRange('8-2');
+if (!reversedLines || reversedLines.anchor !== 8 ||
+    reversedLines.start !== 2 || reversedLines.end !== 8) {
+  throw new Error('reversed line range was not normalized');
+}
+const clampedLines = clampLineRange(reversedLines, 5);
+if (!clampedLines || clampedLines.anchor !== 5 ||
+    clampedLines.start !== 2 || clampedLines.end !== 5) {
+  throw new Error('linked lines were not clamped to the document');
+}
+const extendedLines = nextLineRange(
+  {anchor: 5, start: 5, end: 5},
+  2,
+  true,
+);
+if (extendedLines.anchor !== 5 || extendedLines.start !== 2 ||
+    extendedLines.end !== 5) {
+  throw new Error('shift-click did not extend from the linked-line anchor');
+}
 
 const unifiedDiff = globalThis.createUnifiedDiff;
 const changedDiff = unifiedDiff('a\nb\nc', 'a\nx\nc');
@@ -180,11 +256,17 @@ if (
   )}`);
 }
 
-const appSource = await readFile('docs/assets/editor/app.js', 'utf8');
+const appSource = await readFile('src/editor/app.js', 'utf8');
+const codeEditorSource = await readFile('src/editor/editor.js', 'utf8');
+const bundledApp = await readFile('docs/assets/editor/app.js', 'utf8');
 const styleSource = await readFile(
   'docs/assets/editor/editor.css',
   'utf8',
 );
+if (bundledApp.length < 100000 ||
+    /(?:from|import)\s*[(']["']@codemirror\//.test(bundledApp)) {
+  throw new Error('CodeMirror browser bundle was not built locally');
+}
 if (appSource.includes('globalThis.gloat')) {
   throw new Error('the browser app calls Wasm on the UI thread');
 }
@@ -206,16 +288,32 @@ if (
   throw new Error('roundtrip direction does not follow the edited pane');
 }
 if (
-  !appSource.includes(
-    "jsonEditor.addEventListener('focus', () => roundtripOnFocus(jsonEditor))",
-  ) ||
-  !appSource.includes(
-    "yamlEditor.addEventListener('focus', () => roundtripOnFocus(yamlEditor))",
-  ) ||
+  !appSource.includes('onFocus: () => roundtripOnFocus(jsonEditor)') ||
+  !appSource.includes('onFocus: () => roundtripOnFocus(yamlEditor)') ||
   !appSource.includes("updateRoundtripStatus('json', json, 0)") ||
   !appSource.includes("updateRoundtripStatus('ysd', yamlEditor.value, 0)")
 ) {
   throw new Error('focusing an editor does not start its roundtrip check');
+}
+for (const feature of [
+  'lineNumbers({',
+  'foldGutter()',
+  'bracketMatching()',
+  'EditorView.lineWrapping',
+  'setReadOnly(readOnly)',
+  'setLinkedLines(range, scroll = false)',
+]) {
+  if (!codeEditorSource.includes(feature)) {
+    throw new Error(`CodeMirror editor is missing: ${feature}`);
+  }
+}
+if (
+  !appSource.includes('parseEditorState(window.location.hash)') ||
+  !appSource.includes('serializeEditorState({') ||
+  !appSource.includes('Custom from ${origin}') ||
+  !appSource.includes("replaceEditorURL(selectedSample, hash)")
+) {
+  throw new Error('shareable editor URL state is incomplete');
 }
 if (
   !appSource.includes("setEditorValue(yamlEditor, 'Generating YSDC...')") ||
@@ -281,12 +379,9 @@ if (
 if (
   !appSource.includes('schemaEditor.dataset.schemaSlug') ||
   !appSource.includes('window.history.replaceState') ||
-  !appSource.includes('replaceEditorURL(initialSample)')
+  !appSource.includes('replaceEditorURL(\n  initialSample,')
 ) {
   throw new Error('editor schema routes do not select canonical inputs');
-}
-if (appSource.includes('URLSearchParams')) {
-  throw new Error('editor still supports query-string schema selection');
 }
 if (
   !appSource.includes("callWorker('json-schema-normalize', json)") ||
@@ -367,6 +462,13 @@ if (!indexHTML.includes('id="normalize-json"')) {
   throw new Error('Normalize JSON button is missing');
 }
 if (
+  indexHTML.includes('<textarea') ||
+  !indexHTML.includes('id="yaml-schema" class="code-editor"') ||
+  !indexHTML.includes('id="json-schema" class="code-editor"')
+) {
+  throw new Error('editor panes are not CodeMirror mount points');
+}
+if (
   indexHTML.includes('data-md-component="sidebar"') ||
   !styleSource.includes(
     'body:has(.schema-editor) .md-main__inner',
@@ -389,9 +491,17 @@ if (
   !indexHTML.includes('a diff is available to show') ||
   !indexHTML.includes('Choose a starting schema') ||
   !indexHTML.includes('Understand roundtrip status') ||
-  !indexHTML.includes('Normalize JSON Schema')
+  !indexHTML.includes('Normalize JSON Schema') ||
+  !indexHTML.includes('Share content and lines')
 ) {
   throw new Error('editor help instructions are incomplete');
+}
+if (
+  !styleSource.includes('.cm-linked-line') ||
+  !styleSource.includes('.cm-linked-line-number') ||
+  !styleSource.includes('.code-editor:focus-within')
+) {
+  throw new Error('CodeMirror linked-line styling is incomplete');
 }
 if (
   !styleSource.includes('.schema-editor .editor-help-link::after') ||

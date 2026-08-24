@@ -1,5 +1,7 @@
 /.cache/
 /site/
 /venv/
+/node_modules/
+/docs/assets/editor/app.js
 /docs/assets/editor/wasm_exec.js
 /docs/assets/editor/ysd.wasm
