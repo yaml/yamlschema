@@ -48,6 +48,9 @@ const sampleSources = {
     'job-posting': {url: assetURL('examples/job-posting.schema.json')},
     movie: {url: assetURL('examples/movie.schema.json')},
     'user-profile': {url: assetURL('examples/user-profile.schema.json')},
+    'ansible-builder': {
+      url: assetURL('examples/ansible-builder.schema.json'),
+    },
   },
 };
 

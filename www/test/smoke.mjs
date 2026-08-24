@@ -339,6 +339,7 @@ const exampleFiles = [
   'job-posting',
   'movie',
   'user-profile',
+  'ansible-builder',
 ];
 const indexHTML = await readFile('site/editor/index.html', 'utf8');
 if (!indexHTML.includes('id="normalize-json"')) {
@@ -376,6 +377,10 @@ for (const name of ['person', 'harbor-next']) {
 if (yamlSelectHTML.indexOf('value="person"') >
     yamlSelectHTML.indexOf('value="harbor-next"')) {
   throw new Error('YAMLSchema example order is wrong');
+}
+if (jsonSelectHTML.indexOf('value="ansible-builder"') <
+    jsonSelectHTML.indexOf('value="user-profile"')) {
+  throw new Error('Ansible Builder is not the last JSON Schema example');
 }
 if (
   !indexHTML.includes('id="roundtrip-diff-dialog"') ||
@@ -431,7 +436,8 @@ for (const name of exampleFiles) {
     'utf8',
   );
   const schema = JSON.parse(text);
-  if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
+  if (schema.$schema &&
+      schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
     throw new Error(`${name} does not use JSON Schema 2020-12`);
   }
   const converted = globalThis.gloat.exports['json-schema-to-ysd'](text);

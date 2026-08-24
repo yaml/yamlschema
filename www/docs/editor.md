@@ -67,6 +67,7 @@ Conversion and roundtrip checks run locally in your browser.
           <option value="job-posting">Job Posting</option>
           <option value="movie">Movie</option>
           <option value="user-profile">User Profile</option>
+          <option value="ansible-builder">Ansible Builder</option>
         </select>
       </div>
       <textarea id="json-schema" spellcheck="false"

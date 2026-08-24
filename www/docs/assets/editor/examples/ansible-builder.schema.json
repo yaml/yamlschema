@@ -1,0 +1,361 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "The EE schema version number",
+      "type": "number"
+    },
+    "build_arg_defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ANSIBLE_GALAXY_CLI_COLLECTION_OPTS": {
+          "type": "string"
+        },
+        "ANSIBLE_GALAXY_CLI_ROLE_OPTS": {
+          "type": "string"
+        },
+        "PKGMGR_PRESERVE_CACHE": {
+          "type": "string"
+        }
+      }
+    },
+    "dependencies": {
+      "description": "The dependency stuff",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "python": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "galaxy": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "system": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "python_interpreter": {
+          "description": "Python package name and path",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "package_system": {
+              "description": "The python package to install via system package manager",
+              "type": "string"
+            },
+            "python_path": {
+              "description": "Path to the python interpreter",
+              "type": "string"
+            }
+          }
+        },
+        "ansible_core": {
+          "description": "Ansible package installation",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "package_pip": {
+              "description": "Ansible package to install via pip",
+              "type": "string"
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "package_pip"
+              ]
+            }
+          ]
+        },
+        "ansible_runner": {
+          "description": "Ansible Runner package installation",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "package_pip": {
+              "description": "Ansible Runner package to install via pip",
+              "type": "string"
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "package_pip"
+              ]
+            }
+          ]
+        },
+        "exclude": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "python": {
+              "description": "A list of python package names",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "system": {
+              "description": "A list of system package names",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "all_from_collections": {
+              "description": "A list of collection names",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base_image": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "signature_original_name": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "additional_build_steps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prepend_base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "append_base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "prepend_galaxy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "append_galaxy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "prepend_builder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "append_builder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "prepend_final": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "append_final": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "additional_build_files": {
+      "description": "Describes files to add to the build context",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "src": {
+            "description": "File to add to build context",
+            "type": "string"
+          },
+          "dest": {
+            "description": "Relative subdirectory under build context to place file",
+            "type": "string"
+          }
+        },
+        "required": [
+          "src",
+          "dest"
+        ]
+      }
+    },
+    "options": {
+      "description": "Options that affect the runtime behavior",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "relax_passwd_permissions": {
+          "description": "allows GID0 write access to /etc/passwd; currently necessary for many uses",
+          "type": "boolean"
+        },
+        "skip_ansible_check": {
+          "description": "Disables the check for Ansible/Runner in final image",
+          "type": "boolean"
+        },
+        "skip_pip_install": {
+          "description": "Disables the installation of pip in the base image",
+          "type": "boolean"
+        },
+        "workdir": {
+          "description": "Default working directory, also often the homedir for ephemeral UIDs",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "package_manager_path": {
+          "description": "Path to the system package manager to use",
+          "type": "string"
+        },
+        "user": {
+          "description": "Sets the username or UID",
+          "type": "string"
+        },
+        "container_init": {
+          "description": "Customize container startup behavior",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "package_pip": {
+              "description": "package to install via pip for entrypoint support",
+              "type": "string"
+            },
+            "entrypoint": {
+              "description": "literal value for ENTRYPOINT Containerfile directive",
+              "type": "string"
+            },
+            "cmd": {
+              "description": "literal value for CMD Containerfile directive",
+              "type": "string"
+            }
+          }
+        },
+        "tags": {
+          "description": "A list of names to assign to the resulting image if build process completes successfully",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
