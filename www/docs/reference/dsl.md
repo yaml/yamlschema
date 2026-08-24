@@ -385,6 +385,27 @@ Key-side list suffixes are rejected.
 | `[$]` | Scalar or list |
 | `[n-m,$!]` | Scalar or a unique list with the given size |
 
+The scalar-or-list form is the compact spelling of a JSON Schema `anyOf`
+whose two branches are the same item schema and a list of that item schema:
+
+```yaml
+python?: +Str[$]
+```
+
+```json
+{
+  "anyOf": [
+    {"type": "string"},
+    {"type": "array", "items": {"type": "string"}}
+  ]
+}
+```
+
+The converter recognizes either branch order and matching item constraints,
+references, and JSON Schema format types.
+An `anyOf` with extra branches or different scalar and item schemas stays
+explicit.
+
 A list of shaped mappings uses the incomplete `+Map` base and defines the item
 properties alongside it:
 

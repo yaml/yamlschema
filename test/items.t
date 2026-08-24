@@ -86,4 +86,98 @@ test::
     extraManifests?: +Any[] "Extra static manifests to deploy"
     extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
 
+- name: scalar-or-list-any-of
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$defs": {"thing": {"type": "string"}},
+      "type": "object",
+      "properties": {
+        "python": {
+          "anyOf": [
+            {"type": "string"},
+            {"type": "array", "items": {"type": "string"}}
+          ]
+        },
+        "ids": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {"type": "integer"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            {"type": "integer"}
+          ]
+        },
+        "dates": {
+          "description": "One date or several dates",
+          "anyOf": [
+            {"type": "string", "format": "date"},
+            {
+              "type": "array",
+              "items": {"type": "string", "format": "date"}
+            }
+          ]
+        },
+        "things": {
+          "anyOf": [
+            {"$ref": "#/$defs/thing"},
+            {
+              "type": "array",
+              "items": {"$ref": "#/$defs/thing"}
+            }
+          ]
+        },
+        "mismatch": {
+          "anyOf": [
+            {"type": "string"},
+            {"type": "array", "items": {"type": "integer"}}
+          ]
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+
+    +thing: +Str
+
+    python?: +Str[$]
+    ids?: +Int[1+,$!]
+    dates?: +JSONSchema/date[$] "One date or several dates"
+    things?: +thing[$]
+    mismatch?:
+      .any:
+      - +Str
+      - +Int[]
+
+- name: annotated-scalar-or-list
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$anchor": "values",
+          "title": "Values",
+          "description": "One or many",
+          "default": "x",
+          "anyOf": [
+            {"type": "string"},
+            {"type": "array", "items": {"type": "string"}}
+          ]
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    value?:
+      .name: values
+      .type: +Str[$]
+      .init: x
+      .title: Values
+      .desc: One or many
+
 done:

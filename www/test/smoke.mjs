@@ -438,6 +438,23 @@ if (!pastedRoundtrip.ok || pastedRoundtrip.value !== true) {
   )}`);
 }
 
+const ansibleBuilderJSON = await readFile(
+  'docs/assets/editor/examples/ansible-builder.schema.json',
+  'utf8',
+);
+const ansibleBuilderYSD = globalThis.gloat.exports[
+  'json-schema-to-ysd'
+](ansibleBuilderJSON);
+if (
+  !ansibleBuilderYSD.ok ||
+  !ansibleBuilderYSD.value.includes('python?: +Str[$]') ||
+  !ansibleBuilderYSD.value.includes('system?: +Str[$]')
+) {
+  throw new Error(`scalar-or-list conversion failed: ${JSON.stringify(
+    ansibleBuilderYSD,
+  )}`);
+}
+
 const exampleFiles = [
   'address',
   'blog-post',

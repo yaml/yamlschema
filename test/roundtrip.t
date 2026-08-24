@@ -118,6 +118,43 @@ test::
   want: |
     OK
 
+- name: scalar-or-list-array-first-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "ids": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {"type": "integer"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            {"type": "integer"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
+- name: explicit-any-solo-list-roundtrip
+  cmnd: bin/ysd -R -f ysd -
+  stdi: |
+    value:
+      .any:
+      - .type: +Str
+        .match: x
+      - .type: +Str[]
+        .match: x
+        .size: [1]
+  want: |
+    OK
+
 - name: metadata-roundtrip
   cmnd: |
     sh -c '

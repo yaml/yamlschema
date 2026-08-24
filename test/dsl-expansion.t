@@ -168,6 +168,50 @@ test::
       }
     }
 
+- name: explicit-any-canonicalizes-to-solo-list
+  cmnd: bin/ysd -f ysd -t ysdc.json -
+  stdi: |
+    value:
+      .any:
+      - .type: +Str
+        .match: x
+      - .type: +Str[]
+        .match: x
+        .size: [1]
+    mismatch:
+      .any:
+      - +Str
+      - +Int[]
+    annotated:
+      .any:
+      - +Int
+      - +Int[]
+      .title: Number or numbers
+      .desc: Accept one integer or a list
+  want: |
+    {
+      "value": {
+        ".type": "+Str[]",
+        ".like": "^x$",
+        ".size": [
+          1
+        ],
+        ".solo": true
+      },
+      "mismatch": {
+        ".any": [
+          "+Str",
+          "+Int[]"
+        ]
+      },
+      "annotated": {
+        ".type": "+Int[]",
+        ".solo": true,
+        ".title": "Number or numbers",
+        ".desc": "Accept one integer or a list"
+      }
+    }
+
 - name: composable-list-property-spellings
   cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
   stdi: |

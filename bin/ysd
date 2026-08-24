@@ -528,6 +528,7 @@ defn normalize-json-map(value root?):
   result =: normalize-ref(result)
   result =: normalize-single-ref-allof(result)
   result =: normalize-single-anyof-allof(result)
+  result =: normalize-solo-list-anyof(result)
   if root?:
     then:
       result =: normalize-root-json-id(result)
@@ -650,6 +651,47 @@ defn normalize-single-anyof-allof(result):
       alternatives =: result.allOf.0.anyOf
       normalized =: dissoc(result 'allOf')
       ordered-put: normalized 'anyOf' alternatives
+
+defn normalize-solo-list-anyof(result):
+  info =: solo-list-info(result)
+  if info && info.array-first:
+    then: result.put('anyOf' [info.item info.array])
+    else: result
+
+defn solo-list-info(schema):
+  when map?(schema):
+    branches =: schema.anyOf
+    when sequential?(branches) && (branches.# == 2):
+      left right =: branches
+      left-solo =: solo-list-array?(left) &&
+        normalized-schema-equal?(right left.items)
+      right-solo =: solo-list-array?(right) &&
+        normalized-schema-equal?(left right.items)
+      cond:
+        left-solo:
+          +{'item' right, 'array' left, 'array-first' true}
+        right-solo:
+          +{'item' left, 'array' right, 'array-first' false}
+
+defn solo-list-array?(schema):
+  allowed =: set(qw(type items minItems maxItems uniqueItems))
+  and:
+    map?(schema)
+    schema.type == 'array'
+    contains?(schema 'items')
+    map?(schema.items)
+    schema:keys.every?(\(allowed.has?(_)))
+
+defn normalized-schema-equal?(left right):
+  left =: normalize-json-schema(left false):canonical-json-schema
+  right =: normalize-json-schema(right false):canonical-json-schema
+  left ==: right
+
+defn importable-solo-list-info(schema):
+  allowed =: set(qw(anyOf $anchor title description default))
+  info =: solo-list-info(schema)
+  when info && schema:keys.every?(\(allowed.has?(_))):
+    =>: info
 
 defn canonical-json-schema(value):
   cond:
@@ -1202,6 +1244,7 @@ defn ordered-directives(value):
 
 defn canonicalize-type-reference(value):
   value =: fold-list-type(value)
+  value =: canonicalize-solo-list-any(value)
   ordered-directives: value
 
 defn fold-list-type(value):
@@ -1215,6 +1258,57 @@ defn fold-list-type(value):
       result =: dissoc(result '.type')
       ordered-put: result '.type' reference
     else: value
+
+defn canonicalize-solo-list-any(value):
+  info =: ysdc-solo-list-info(value)
+  if info:
+    then:
+      keys =: value:keys.remove(\(_:S == '.any'))
+      annotations =: select-keys(value keys)
+      result =: merge-ordered-maps(info.list annotations)
+      ordered-put: result '.solo' true
+    else: value
+
+defn ysdc-solo-list-info(value):
+  allowed =: set(['.any' '.name' '.init' '.title' '.desc'])
+  branches =: value.'.any'
+  eligible =:
+    and:
+      map?(value)
+      sequential?(branches)
+      branches.# == 2
+      value:keys.every?(\(allowed.has?(_:S)))
+  when eligible:
+    left right =: branches
+    left-list =: ysdc-solo-list-branch?(left)
+    right-list =: ysdc-solo-list-branch?(right)
+    cond:
+      (and left-list (ysdc-list-item-equal? left right)):
+        +{'list' left}
+      (and right-list (ysdc-list-item-equal? right left)):
+        +{'list' right}
+
+defn ysdc-solo-list-branch?(value):
+  reference =: value.'.type'
+  forbidden =:
+    set(['.solo' '.null' '.name' '.init' '.title' '.desc'])
+  and:
+    map?(value)
+    string?(reference)
+    reference.ends?('[]')
+    value:keys.every?(\(forbidden.has?(_:S).!))
+
+defn ysdc-list-item-equal?(list item):
+  array =: ysdc-value-to-schema(list false)
+  allowed =: set(qw(type items minItems maxItems uniqueItems))
+  valid =:
+    and:
+      array.type == 'array'
+      map?(array.items)
+      array:keys.every?(\(allowed.has?(_)))
+  when valid:
+    item-schema =: ysdc-value-to-schema(item false)
+    normalized-schema-equal?: array.items item-schema
 
 defn put-present(result key value):
   if contains?(value key):
@@ -2958,10 +3052,10 @@ defn build-root-key-branch-entry(result entry required inherited-open):
   value =: build-value(sub inherited-open)
   ordered-put: result key value
 
-defn build-list-value(schema inherited-open):
+defn build-list-value(schema inherited-open solo=false):
   item =: array-item-schema(schema)
   item-scalar =: empty?(item).if('+Any' succinct-scalar(item))
-  suffix =: list-suffix(schema)
+  suffix =: list-suffix(schema solo)
   value =:
     if item-scalar:
       then: append-list-suffix(item-scalar suffix)
@@ -2994,6 +3088,12 @@ defn append-list-suffix(type suffix):
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
 defn build-value(schema inherited-open=true):
+  info =: importable-solo-list-info(schema)
+  if info:
+    build-solo-list-value: schema info inherited-open
+    build-ordinary-value: schema inherited-open
+
+defn build-ordinary-value(schema inherited-open=true):
   validate-schema-dependent-required: schema
   scalar-schema =: schema-without-description(schema)
   scalar =: succinct-default-scalar(scalar-schema)
@@ -3005,6 +3105,34 @@ defn build-value(schema inherited-open=true):
       description-scalar
     object-with-props?(schema): build-properties-map(schema inherited-open)
     else: build-block-map(schema inherited-open)
+
+defn build-solo-list-value(schema info inherited-open):
+  value =: build-list-value(info.array inherited-open true)
+  add-solo-list-annotations: value schema
+
+defn add-solo-list-annotations(value schema):
+  block? =:
+    schema.has?('$anchor') ||
+    schema.has?('default') ||
+    schema.has?('title')
+  if block?:
+    then:
+      result =: string?(value).if({'.type' value} value)
+      anchor =:
+        when schema.has?('$anchor'):
+          validate-schema-name: schema.'$anchor'
+      result =: map-put-if(result anchor.? '.name' anchor)
+      result =: map-put-if(result schema.has?('default')
+        '.init' schema.default)
+      result =: map-put-if(result schema.has?('title')
+        '.title' schema.title)
+      result =: map-put-if(result schema.has?('description')
+        '.desc' schema.description)
+      ordered-directives: result
+    else:
+      if schema.has?('description'):
+        add-list-description: value schema.description
+        identity: value
 
 defn schema-without-description(schema):
   if schema.has?('description'):
@@ -3628,7 +3756,7 @@ defn key-for(name is-required):
   opt =: is-required.if('' '?')
   str: name opt
 
-defn list-suffix(sub):
+defn list-suffix(sub solo=false):
   mn =: sub.minItems
   mx =: sub.maxItems
   size =:
@@ -3638,7 +3766,7 @@ defn list-suffix(sub):
       mn:nil? && mx.?: "0-$mx"
       mn.? && mx:nil?: "${mn}+"
       else: "$mn-$mx"
-  flags =: sub.uniqueItems.if('!' '')
+  flags =: solo.if('$' '') + sub.uniqueItems.if('!' '')
   body =:
     if size.? && flags.?:
       then: "$size,$flags"
