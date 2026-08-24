@@ -35,6 +35,21 @@ It maps directly to JSON Schema `$anchor`, while a definition key such as
 Names must match `[A-Za-z_][A-Za-z0-9._-]*` and must be unique in one schema
 document.
 
+The optional `.root` directive distinguishes an explicit root type from a
+document that only publishes named definitions:
+
+```yaml
+.root: {}
+
++kind: +Str
+```
+
+This example has a closed, empty mapping as its root type, so only `{}` is
+valid at the document root.
+Without `.root`, the document only defines `+kind` and leaves its JSON Schema
+root unconstrained.
+`.root` may also reference a named type, as in `.root: +kind`.
+
 
 ## Types in Mappings
 

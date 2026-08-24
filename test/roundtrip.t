@@ -31,6 +31,58 @@ test::
   want: |
     OK
 
+- name: empty-closed-root-with-definitions-import
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "$defs": {
+        "kind": {"type": "string"}
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .root: {}
+
+    +kind: +Str
+
+- name: empty-closed-root-with-definitions-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "additionalProperties": false,
+      "$defs": {
+        "kind": {"type": "string"}
+      }
+    }
+  want: |
+    OK
+
+- name: definition-only-document-has-no-root
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$defs": {
+        "kind": {"type": "string"}
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+
+    +kind: +Str
+
+- name: explicit-scalar-root-export
+  cmnd: bin/ysd -t jsc -C -
+  stdi: |
+    .root: +Str
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"string"}
+
 - name: explicit-true-additional-properties-roundtrip
   cmnd: bin/ysd -R -f jsc -
   stdi: |

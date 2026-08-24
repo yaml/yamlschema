@@ -199,7 +199,7 @@ Meta directives are top-level schema metadata:
 | --- | --- |
 | `.from` | Import schemas or namespaces |
 | `.name` | JSON Schema anchor name for the root schema |
-| `.root` | Primary exported root type |
+| `.root` | Explicit root type when a document also has named types |
 | `.ysid` | Representation-aware document identity |
 | `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |

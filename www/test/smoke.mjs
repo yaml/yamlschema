@@ -462,6 +462,28 @@ if (
   })}`);
 }
 
+const netboxJSON = await readFile(
+  'docs/assets/editor/examples/netbox-generated.schema.json',
+  'utf8',
+);
+const netboxYSD = globalThis.gloat.exports[
+  'json-schema-to-ysd'
+](netboxJSON);
+const netboxRoundtrip = globalThis.gloat.exports[
+  'json-schema-roundtrip-works'
+](netboxJSON);
+if (
+  !netboxYSD.ok ||
+  !netboxYSD.value.includes('.root: {}') ||
+  !netboxRoundtrip.ok ||
+  netboxRoundtrip.value !== true
+) {
+  throw new Error(`NetBox conversion failed: ${JSON.stringify({
+    conversion: netboxYSD,
+    roundtrip: netboxRoundtrip,
+  })}`);
+}
+
 const exampleFiles = [
   'address',
   'blog-post',

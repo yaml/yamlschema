@@ -889,6 +889,7 @@ defn expand-top-directive(result key value):
     case key:
       '.ysid': canonical-document-id(value 'ysd' '.ysid')
       '.name': validate-schema-name(value)
+      '.root': expand-type(value)
       '.open': validate-open-value(value)
       '.one': expand-combinator-sequence(key value)
       '.keys': expand-key-rules(value)
@@ -2031,11 +2032,14 @@ defn ysdc-to-schema(doc):
   result =: state.result
   defs-val =: state.defs
   reqs =: state.required
-  has-root-mapping =:
+  root-fields =:
     state.wildcard ||
     state.props:seq ||
-    doc.has?('.keys') ||
-    defs-val:empty?
+    doc.has?('.keys')
+  when state.explicit-root && root-fields:
+    usage: 'yamlschema .root cannot be combined with top-level fields'
+  has-root-mapping =:
+    state.explicit-root.! && (root-fields || defs-val:empty?)
   result :if has-root-mapping +=:: {type: object}
   result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
@@ -2064,6 +2068,7 @@ defn initial-ysdc-doc-state(doc):
     required: []
     dependent:: omap()
     open:: doc.get('.open' false)
+    explicit-root:: false
     wildcard: false
     additional:
 
@@ -2071,6 +2076,11 @@ defn ysdc-doc-step(state entry):
   key =: entry.0:S
   value =: entry.1
   cond:
+    key == '.root':
+      schema =: ysdc-value-to-schema(value state.open)
+      state +::
+        result:: merge-ordered-maps(state.result schema)
+        explicit-root:: true
     key == WILDCARD-KEY:
       state +::
         wildcard:: true
@@ -2915,6 +2925,7 @@ defn build-doc(schema):
     .add-document-ysid(schema)
     .add-root-annotations(schema)
     .add-import-open-default(root-open)
+    .add-explicit-empty-root(schema defs)
     .add-defs(defs root-open)
     .add-body(schema root-open)
     .add-root-one(schema)
@@ -2938,6 +2949,17 @@ defn add-import-open-default(result root-open):
   if root-open:
     then: ordered-put(result '.open' true)
     else: result
+
+defn add-explicit-empty-root(result schema defs):
+  if defs:seq && empty-closed-object-root?(schema):
+    then: ordered-put(result '.root' omap())
+    else: result
+
+defn empty-closed-object-root?(schema):
+  and:
+    json-type(schema).eq('object')
+    json-closed?(schema)
+    schema.has?('properties').!
 
 defn add-defs(result defs inherited-open):
   reduce \(add-def-step(_1 _2 inherited-open)): result defs
