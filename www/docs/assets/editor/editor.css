@@ -36,6 +36,38 @@ body:has(.schema-editor) .md-main__inner {
   font-weight: 700;
 }
 
+.schema-editor .editor-help-link {
+  color: var(--md-typeset-a-color);
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+.schema-editor .editor-help-link::after {
+  display: inline-grid;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-left: 0.28rem;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "?";
+  font-size: 0.68rem;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: 0.08rem;
+}
+
+.schema-editor .editor-help-link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.schema-editor .editor-help-link:focus-visible {
+  border-radius: 0.15rem;
+  outline: 2px solid currentColor;
+  outline-offset: 0.15rem;
+}
+
 .schema-editor .format-selector {
   display: flex;
   align-items: center;
@@ -68,7 +100,8 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 .schema-editor #normalize-json,
-.schema-editor #roundtrip-diff-close {
+.schema-editor #roundtrip-diff-close,
+.schema-editor #editor-help-close {
   border: 1px solid var(--editor-border);
   border-radius: 0.2rem;
   padding: 0.2rem 0.45rem;
@@ -178,6 +211,63 @@ body:has(.schema-editor) .md-main__inner {
 
 .schema-editor #roundtrip-diff-dialog::backdrop {
   background: rgb(24 23 26 / 55%);
+}
+
+.schema-editor #editor-help-dialog {
+  box-sizing: border-box;
+  width: min(90vw, 42rem);
+  max-width: none;
+  max-height: 85vh;
+  border: 1px solid var(--editor-border);
+  border-radius: 0.35rem;
+  padding: 0;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+}
+
+.schema-editor #editor-help-dialog::backdrop {
+  background: rgb(24 23 26 / 55%);
+}
+
+.schema-editor .help-dialog-heading {
+  display: flex;
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--editor-border);
+  padding: 0.75rem 1rem;
+  background: var(--editor-bg);
+}
+
+.schema-editor .help-dialog-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.schema-editor .editor-help-content {
+  box-sizing: border-box;
+  max-height: calc(85vh - 3.5rem);
+  padding: 0.25rem 1.2rem 1rem;
+  overflow: auto;
+}
+
+.schema-editor .editor-help-content h3 {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.9rem;
+}
+
+.schema-editor .editor-help-content p,
+.schema-editor .editor-help-content ul {
+  margin: 0.35rem 0;
+}
+
+.schema-editor .editor-help-note {
+  border-top: 1px solid var(--editor-border);
+  padding-top: 0.8rem;
+  color: var(--editor-muted);
 }
 
 .schema-editor .diff-dialog-heading {

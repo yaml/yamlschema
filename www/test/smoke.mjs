@@ -243,6 +243,15 @@ if (
   throw new Error('roundtrip diff does not close from its backdrop');
 }
 if (
+  !appSource.includes('editorHelpDialog.showModal()') ||
+  !appSource.includes(
+    "editorHelpDialog.addEventListener('click', closeHelpFromBackdrop)",
+  ) ||
+  !appSource.includes('editorHelpDialog.getBoundingClientRect()')
+) {
+  throw new Error('editor help dialog behavior is incomplete');
+}
+if (
   !appSource.includes('setRoundtripSource(side)') ||
   !appSource.includes('indicator.dataset.roundtripSource')
 ) {
@@ -355,6 +364,40 @@ const routedExamples = [
 const indexHTML = await readFile('site/edit/index.html', 'utf8');
 if (!indexHTML.includes('id="normalize-json"')) {
   throw new Error('Normalize JSON button is missing');
+}
+if (
+  indexHTML.includes('data-md-component="sidebar"') ||
+  !styleSource.includes(
+    'body:has(.schema-editor) .md-main__inner',
+  )
+) {
+  throw new Error('editor does not use the full page width');
+}
+if (
+  !indexHTML.includes('id="editor-help-open"') ||
+  !indexHTML.includes('href="#editor-help-dialog"') ||
+  !indexHTML.includes('aria-haspopup="dialog"') ||
+  !indexHTML.includes('title="Open editor help">YAMLSchema</a>')
+) {
+  throw new Error('YAMLSchema editor heading is incorrect');
+}
+if (
+  !indexHTML.includes('id="editor-help-dialog"') ||
+  !indexHTML.includes('This editor converts between YAMLSchema') ||
+  !indexHTML.includes('back without losing information') ||
+  !indexHTML.includes('a diff is available to show') ||
+  !indexHTML.includes('Choose a starting schema') ||
+  !indexHTML.includes('Understand roundtrip status') ||
+  !indexHTML.includes('Normalize JSON Schema')
+) {
+  throw new Error('editor help instructions are incomplete');
+}
+if (
+  !styleSource.includes('.schema-editor .editor-help-link::after') ||
+  !styleSource.includes('color: var(--md-typeset-a-color)') ||
+  !styleSource.includes('.schema-editor .editor-help-link:focus-visible')
+) {
+  throw new Error('YAMLSchema help link is not styled as a link');
 }
 if (
   indexHTML.includes('<h1>Interactive editor</h1>') ||

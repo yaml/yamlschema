@@ -14,6 +14,9 @@ const roundtripDiffDialog = document.querySelector(
 );
 const roundtripDiffOutput = document.querySelector('#roundtrip-diff');
 const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
+const editorHelpOpen = document.querySelector('#editor-help-open');
+const editorHelpDialog = document.querySelector('#editor-help-dialog');
+const editorHelpClose = document.querySelector('#editor-help-close');
 const formatControls = document.querySelectorAll(
   'input[name="yaml-format"]',
 );
@@ -441,6 +444,16 @@ function closeDiffFromBackdrop(event) {
   if (outside) roundtripDiffDialog.close();
 }
 
+function closeHelpFromBackdrop(event) {
+  if (event.target !== editorHelpDialog) return;
+  const bounds = editorHelpDialog.getBoundingClientRect();
+  const outside = event.clientX < bounds.left ||
+    event.clientX > bounds.right ||
+    event.clientY < bounds.top ||
+    event.clientY > bounds.bottom;
+  if (outside) editorHelpDialog.close();
+}
+
 async function showSample(ysd) {
   ysdValue = ysd;
   setEditorValue(yamlEditor, ysdValue);
@@ -536,6 +549,14 @@ for (const indicator of roundtripStatuses) {
 roundtripDiffDialog.addEventListener('click', closeDiffFromBackdrop);
 roundtripDiffClose.addEventListener('click', () => {
   roundtripDiffDialog.close();
+});
+editorHelpOpen.addEventListener('click', (event) => {
+  event.preventDefault();
+  editorHelpDialog.showModal();
+});
+editorHelpDialog.addEventListener('click', closeHelpFromBackdrop);
+editorHelpClose.addEventListener('click', () => {
+  editorHelpDialog.close();
 });
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();

@@ -15,7 +15,9 @@
                 data-roundtrip-source="ysd"
                 title="Checking Roundtrip" aria-label="Checking Roundtrip"
                 disabled>…</button>
-        <label class="editor-title" for="yaml-schema">YAML Schema</label>
+        <a id="editor-help-open" class="editor-title editor-help-link"
+           href="#editor-help-dialog" aria-haspopup="dialog"
+           title="Open editor help">YAMLSchema</a>
         <div class="format-selector" role="radiogroup"
              aria-label="YAML Schema format">
           <label>
@@ -80,6 +82,78 @@
               aria-label="Close roundtrip diff">Close</button>
     </div>
     <pre id="roundtrip-diff" tabindex="0"></pre>
+  </dialog>
+  <dialog id="editor-help-dialog" aria-labelledby="editor-help-title">
+    <div class="help-dialog-heading">
+      <h2 id="editor-help-title">Using the YAMLSchema editor</h2>
+      <button type="button" id="editor-help-close"
+              aria-label="Close editor help">Close</button>
+    </div>
+    <div class="editor-help-content">
+      <p class="editor-help-purpose">
+        This editor converts between YAMLSchema and JSON Schema so you can
+        work in either format and see the equivalent representation beside it.
+        It also verifies that the source roundtrips to the other format and
+        back without losing information.
+        When the schema file doesn't roundtrip, a diff is available to show
+        where the information was lost.
+      </p>
+      <section>
+        <h3>Choose a starting schema</h3>
+        <p>
+          The left menu contains YAMLSchema examples and the right menu
+          contains JSON Schema examples.
+          Choosing either one makes that pane the source and generates the
+          other representation.
+          The URL changes to a shareable schema link.
+        </p>
+      </section>
+      <section>
+        <h3>Edit and convert</h3>
+        <p>
+          Edit YSD in the left pane or JSON Schema in the right pane.
+          Conversion happens automatically after you stop typing and runs
+          entirely in this browser.
+          Generated panes display a short message while conversion is active.
+        </p>
+        <p>
+          Select YSDC to inspect the canonical YAMLSchema representation.
+          YSDC is generated and read-only, so switch back to YSD to edit the
+          YAMLSchema source.
+        </p>
+      </section>
+      <section>
+        <h3>Understand roundtrip status</h3>
+        <ul>
+          <li><strong>…</strong> means the roundtrip is being checked.</li>
+          <li><strong>√</strong> means the supported meaning survived.</li>
+          <li>
+            <strong>X</strong> means it changed.
+            Select the X to inspect a unified diff.
+          </li>
+          <li>
+            <strong>?</strong> means the source could not be parsed or
+            converted.
+          </li>
+        </ul>
+        <p>
+          The indicator appears only beside the current source pane.
+          Focusing an editable pane also starts a fresh roundtrip check.
+        </p>
+      </section>
+      <section>
+        <h3>Normalize JSON Schema</h3>
+        <p>
+          Normalize rewrites the JSON Schema into the converter's canonical
+          representation, regenerates YAMLSchema, and runs another roundtrip
+          check.
+        </p>
+      </section>
+      <p class="editor-help-note">
+        Edits are not saved.
+        Reloading the page restores the packaged schema named by the URL.
+      </p>
+    </div>
   </dialog>
 </div>
 
