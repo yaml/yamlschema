@@ -9,14 +9,14 @@ hide:
 <section class="home-hero">
   <div class="home-hero-copy">
     <p class="home-eyebrow">YAML-native data schemas</p>
-    <h1>Define a lot more<br>with a lot less</h1>
+    <h1><span>Define a lot more</span><br><span>with a lot less</span></h1>
     <p class="home-lead">
       YAMLSchema mirrors the data you validate, keeps required fields obvious,
       and roundtrips with the JSON Schema ecosystem.
     </p>
     <div class="home-actions">
       <a class="ys-button ys-button-primary" href="demo/">
-        Try the Editor
+        Try the Demo
       </a>
       <a class="ys-button ys-button-secondary" href="getting-started/">
         Get Started
@@ -37,17 +37,14 @@ tags?: +Str[] [=good, bad, ugly]</code></pre>
 
 <section class="benefit-grid" aria-label="YAMLSchema benefits">
   <article>
-    <span>01</span>
     <h2>Shape mirrors data</h2>
     <p>Read the schema the same way you read the YAML it validates.</p>
   </article>
   <article>
-    <span>02</span>
     <h2>Required by default</h2>
     <p>Add one question mark when a field is optional. Nothing is hidden.</p>
   </article>
   <article>
-    <span>03</span>
     <h2>JSON Schema compatible</h2>
     <p>Convert, normalize, and inspect roundtrip differences in the browser.</p>
   </article>
@@ -83,7 +80,7 @@ Choose an example, or click the comparison to continue in the editor.
              data-editor-href="demo/person/"
              tabindex="0" aria-label="Open Person in the editor">
       <div class="comparison-title">
-        <div><span>01</span><h3>Person</h3></div>
+        <div><h3>Person</h3></div>
         <a href="demo/person/">Open in editor</a>
       </div>
       <div class="comparison-panes">
@@ -128,7 +125,7 @@ tags?: +Str[] [=good, bad, ugly]</code></pre>
              data-editor-href="demo/address/"
              tabindex="0" aria-label="Open Address in the editor">
       <div class="comparison-title">
-        <div><span>02</span><h3>Address</h3></div>
+        <div><h3>Address</h3></div>
         <a href="demo/address/">Open in editor</a>
       </div>
       <div class="comparison-panes">
@@ -164,7 +161,7 @@ countryName: +Str</code></pre>
              data-editor-href="demo/device-type/"
              tabindex="0" aria-label="Open Device Type in the editor">
       <div class="comparison-title">
-        <div><span>03</span><h3>Device Type</h3></div>
+        <div><h3>Device Type</h3></div>
         <a href="demo/device-type/">
           Open in editor
         </a>
@@ -253,12 +250,18 @@ age?:
 
 <div markdown>
 
-### JSON Schema
+### YSDC JSON
 
-The interchange form for the existing JSON Schema ecosystem.
+The explicit canonical form encoded as JSON.
 
 ```json
-{"type": "object", "properties": {"name": {"type": "string"}}}
+{
+  "name": "+Str",
+  "age?": {
+    ".type": "+Int",
+    ".range": [0]
+  }
+}
 ```
 
 </div>

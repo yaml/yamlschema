@@ -204,11 +204,6 @@
   padding: 1.2rem 0.35rem 0;
 }
 
-.benefit-grid article > span {
-  color: var(--ys-red);
-  font: 700 0.65rem/1 "JetBrains Mono", monospace;
-}
-
 .md-typeset .benefit-grid h2,
 .md-typeset .format-grid h3 {
   margin: 0.7rem 0 0.35rem;
@@ -227,10 +222,6 @@
   border-radius: 0.55rem;
   background: var(--ys-paper);
   box-shadow: 0 1rem 2.5rem rgb(35 25 28 / 8%);
-}
-
-.comparison-viewport {
-  min-height: 31rem;
 }
 
 .comparison-slide {
@@ -274,11 +265,6 @@
   gap: 0.65rem;
 }
 
-.comparison-title span {
-  color: var(--ys-red);
-  font: 700 0.65rem/1 "JetBrains Mono", monospace;
-}
-
 .md-typeset .comparison-title h3 {
   margin: 0;
   font-size: 1rem;
@@ -313,14 +299,13 @@
 }
 
 .md-typeset .comparison-panes pre {
-  height: 24rem;
+  max-height: 24rem;
   margin: 0;
   overflow: auto;
   border-radius: 0;
 }
 
 .md-typeset .comparison-panes pre > code {
-  min-height: 100%;
   background: var(--ys-paper);
   color: var(--ys-ink);
   font-size: 0.7rem;
@@ -439,7 +424,11 @@
   }
 
   .md-typeset .home-hero h1 {
-    font-size: 2.8rem;
+    font-size: clamp(1.4rem, 8.5vw, 2.2rem);
+  }
+
+  .md-typeset .home-hero h1 > span {
+    white-space: nowrap;
   }
 
   .benefit-grid,
@@ -449,17 +438,13 @@
     grid-template-columns: 1fr;
   }
 
-  .comparison-viewport {
-    min-height: 47rem;
-  }
-
   .comparison-panes > div + div {
     border-top: 1px solid var(--ys-line);
     border-left: 0;
   }
 
   .md-typeset .comparison-panes pre {
-    height: 18rem;
+    max-height: 18rem;
   }
 
   .home-closing {
