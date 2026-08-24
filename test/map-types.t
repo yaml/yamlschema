@@ -29,13 +29,13 @@ test::
     custom: +Map{+flag}
     many: +Map{+Str}[]
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"any":{"type":"object"},"strings":{"type":"object",
-    "additionalProperties":{"type":"string"}},"custom":{"type":"object","add
-    itionalProperties":{"$ref":"#\/$defs\/flag"}},"many":{"type":"array","it
-    ems":{"type":"object","additionalProperties":{"type":"string"}}}},"requi
-    red":["any","strings","custom","many"],"additionalProperties":false,"$de
-    fs":{"flag":{"type":"boolean"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{
+    "flag":{"type":"boolean"}},"type":"object","properties":{"any":{"type":"
+    object"},"strings":{"type":"object","additionalProperties":{"type":"stri
+    ng"}},"custom":{"type":"object","additionalProperties":{"$ref":"#\/$defs
+    \/flag"}},"many":{"type":"array","items":{"type":"object","additionalPro
+    perties":{"type":"string"}}}},"required":["any","strings","custom","many
+    "],"additionalProperties":false}
 
 - name: json-schema-to-typed-maps
   cmnd: bin/ysd -t ysd.yaml -

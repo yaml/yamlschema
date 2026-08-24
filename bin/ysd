@@ -780,11 +780,11 @@ defn preferred-json-schema-key?(key):
 defn preferred-json-schema-keys():
   split _ ' ':
     '$comment $id $schema $anchor title description
-    type format enum const default $ref
+    $defs type format enum const default $ref
     properties required dependentRequired additionalProperties
     items uniqueItems minItems maxItems
     minimum maximum minLength maxLength
-    minProperties maxProperties $defs'
+    minProperties maxProperties'
 
 defn pretty-json(value):
   pretty-value: value 0

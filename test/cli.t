@@ -139,14 +139,14 @@ test::
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "properties": {
-        "name": {
-          "$ref": "#/$defs/thing"
-        }
-      },
       "$defs": {
         "thing": {
           "type": "string"
+        }
+      },
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/thing"
         }
       }
     }
@@ -196,7 +196,7 @@ test::
       }
     }
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"inherited":{"type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}},"rich":{"allOf":[{"title":"Branch","$ref":"#\/$defs\/base"}]}},"$defs":{"base":{"type":"object"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"base":{"type":"object"}},"type":"object","properties":{"inherited":{"type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}},"rich":{"allOf":[{"title":"Branch","$ref":"#\/$defs\/base"}]}}}
 
 - name: norm-warns-for-float-export
   cmnd: sh -c 'bin/ysd -f ysd -NC - 2>&1'

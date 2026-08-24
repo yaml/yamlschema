@@ -179,7 +179,7 @@ test::
       .desc: Component
       local?: +Int
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}},"$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}},"type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}}}
 
 - name: primitive-any-is-json-type-union
   cmnd: bin/ysd -t schema.json -C -

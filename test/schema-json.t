@@ -35,7 +35,7 @@ test::
     host: +Str
     admin?: +email
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"host":{"type":"string"},"admin":{"$ref":"#\/$defs\/email"}},"required":["host"],"additionalProperties":false,"$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"email":{"type":"string","pattern":"^\\S+@\\S+$"}},"type":"object","properties":{"host":{"type":"string"},"admin":{"$ref":"#\/$defs\/email"}},"required":["host"],"additionalProperties":false}
 
 - name: match-find-and-regex-to-schema.json
   cmnd: bin/ysd -t schema.json -C -
@@ -143,7 +143,7 @@ test::
 
     +Str: +label
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":{"$ref":"#\/$defs\/label"},"$defs":{"label":{"type":"string"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"label":{"type":"string"}},"type":"object","additionalProperties":{"$ref":"#\/$defs\/label"}}
 
 - name: nested-shaped-and-open-maps
   cmnd: bin/ysd -t schema.json -C -

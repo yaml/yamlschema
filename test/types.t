@@ -71,7 +71,7 @@ test::
     ysd: warning: +Float at /properties/floats/items exports as JSON Schema "number", which also accepts integers
     ysd: warning: +Float at /properties/choice/oneOf/1 exports as JSON Schema "number", which also accepts integers
     ysd: warning: +Float at /properties/nested/properties/reading exports as JSON Schema "number", which also accepts integers
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"number":{"type":"number"},"float":{"type":"number"},"floats":{"type":"array","items":{"type":"number"}},"choice":{"oneOf":[{"type":"integer"},{"type":"number"}]},"nested":{"type":"object","properties":{"reading":{"type":"number"}},"additionalProperties":false}},"required":["number","float","floats","choice","nested"],"additionalProperties":false,"$defs":{"measurement":{"type":"number"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"measurement":{"type":"number"}},"type":"object","properties":{"number":{"type":"number"},"float":{"type":"number"},"floats":{"type":"array","items":{"type":"number"}},"choice":{"oneOf":[{"type":"integer"},{"type":"number"}]},"nested":{"type":"object","properties":{"reading":{"type":"number"}},"additionalProperties":false}},"required":["number","float","floats","choice","nested"],"additionalProperties":false}
 
 - name: reject-unknown-capitalized-type-references
   cmnd: |
