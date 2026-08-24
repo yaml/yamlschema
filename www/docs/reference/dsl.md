@@ -1,7 +1,7 @@
 YAMLSchema DSL
 ==============
 
-This page specifies the human-authored yamlschema DSL and its expansion to the
+This page specifies the human-authored YAMLSchema DSL and its expansion to the
 YSD Canonical (YSDC) model, serialized as `.ysdc.yaml` or `.ysdc.json`.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
@@ -46,7 +46,7 @@ nickname?: +Str
 ```
 
 Keys are required unless they end in `?`.
-The `?` remains on the key in canonical yamlschema.
+The `?` remains on the key in canonical YAMLSchema.
 A value may be a reference, an anonymous type, or a reference refined by more
 constraints:
 
@@ -597,7 +597,7 @@ Unknown directives are errors.
 sibling property names.
 For example, `.need: [password]` on `user` means that the presence of `user`
 requires `password`.
-`.also`, `.with`, and `.when` may be retained in explicit yamlschema, but an
+`.also`, `.with`, and `.when` may be retained in explicit YAMLSchema, but an
 export that cannot represent one fails rather than silently discarding it.
 `.pick` and the former `.oneof`, `.anyof`, and `.allof` names are rejected
 with guidance to use `.one`, `.any`, and `.all`.

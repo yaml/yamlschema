@@ -1,6 +1,6 @@
-# yamlschema
+# YAMLSchema
 
-`yamlschema` is an experimental schema language for YAML data.
+`YAMLSchema` is an experimental schema language for YAML data.
 
 The goal is to make schemas look like the data they describe while keeping
 common validation constraints short and readable.
@@ -39,7 +39,7 @@ This schema describes a mapping where:
 
 ## Repository Contents
 
-- [bin/ysd](bin/ysd) converts among succinct yamlschema, expanded yamlschema,
+- [bin/ysd](bin/ysd) converts among succinct YAMLSchema, expanded YAMLSchema,
   and JSON Schema.
 - [test/](test/) contains YAMLScript TAP tests for the converter.
 - [doc/design.md](doc/design.md) describes the language model, syntax,
@@ -53,9 +53,9 @@ This schema describes a mapping where:
 
 ## File Extensions
 
-yamlschema uses these file extensions:
+YAMLSchema uses these file extensions:
 
-- `.ysd.yaml` is the human-maintained yamlschema DSL form.
+- `.ysd.yaml` is the human-maintained YAMLSchema DSL form.
 - `.ysdc.yaml` is the YSD Canonical form serialized as YAML.
 - `.ysdc.json` is the YSD Canonical form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
@@ -114,10 +114,10 @@ ysd -R contact.ysd.yaml
 ## Converter Usage
 
 The current converter script is `ysd`.
-With no action option, it converts JSON Schema to YSD and yamlschema to JSON
+With no action option, it converts JSON Schema to YSD and YAMLSchema to JSON
 Schema on standard output.
 Input defaults to stdin.
-Use `-` explicitly to read JSON Schema or yamlschema from stdin.
+Use `-` explicitly to read JSON Schema or YAMLSchema from stdin.
 Supply `-f` / `--from` when stdin does not make the input format unambiguous:
 
 ```sh

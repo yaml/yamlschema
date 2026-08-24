@@ -1,7 +1,7 @@
 JSON Schema Roundtrip
 =====================
 
-`yamlschema` is designed to interoperate with JSON Schema in both directions:
+`YAMLSchema` is designed to interoperate with JSON Schema in both directions:
 
 ```text
 contact.schema.json
@@ -12,7 +12,7 @@ contact.schema.json
 
 The roundtrip goal is semantic equivalence, not byte-for-byte equality.
 JSON Schema has many equivalent ways to express the same constraint, and
-yamlschema has both succinct and explicit forms.
+YAMLSchema has both succinct and explicit forms.
 A roundtripped JSON Schema may normalize schema keyword positions or expand
 equivalent forms while still validating the same data.
 Property names, definition names, and arbitrary JSON object members retain
@@ -22,7 +22,7 @@ their input order through conversion and normalization.
 ## Roundtrip Model
 
 There are three useful semantic representations.
-Expanded yamlschema is YSD Canonical (YSDC), with YAML and JSON
+Expanded YAMLSchema is YSD Canonical (YSDC), with YAML and JSON
 serializations:
 
 ```text
@@ -75,9 +75,9 @@ The `.schema.json` JSON Schema output is generated from the explicit form:
 ```
 
 Use `.schema.json` for JSON Schema files and `.ysd.yaml` for human-maintained
-yamlschema DSL files.
+YAMLSchema DSL files.
 Use `.ysdc.yaml` or `.ysdc.json` for the same non-human, fully expanded
-yamlschema model.
+YAMLSchema model.
 
 
 ## Conversion Directions
@@ -99,7 +99,7 @@ contact.ysd.yaml -> contact.schema.json
 ```
 
 The compiler targets the explicit form because succinct syntax is sugar.
-Once succinct yamlschema has been expanded, JSON Schema generation is mostly a
+Once succinct YAMLSchema has been expanded, JSON Schema generation is mostly a
 directive-to-keyword mapping.
 
 
@@ -118,7 +118,7 @@ JSON Schema marks required keys in a sibling `required` array:
 }
 ```
 
-yamlschema marks optional keys locally:
+YAMLSchema marks optional keys locally:
 
 ```yaml
 name: +Str
@@ -143,11 +143,11 @@ If no keys are required, the `required` array can be omitted.
 
 ## JSON Schema Type Mapping
 
-The authoritative list and semantics of yamlschema built-ins are in the [DSL
+The authoritative list and semantics of YAMLSchema built-ins are in the [DSL
 built-in-types reference](dsl.md#built-in-types).
 Their direct JSON Schema mappings are:
 
-| JSON Schema | yamlschema |
+| JSON Schema | YAMLSchema |
 | --- | --- |
 | `{"type": "string"}` | `+Str` |
 | `{"type": "integer"}` | `+Int` |
@@ -201,7 +201,7 @@ JSON Schema:
 }
 ```
 
-yamlschema:
+YAMLSchema:
 
 ```yaml
 email: +Str =~"\S+@\S+"
@@ -307,7 +307,7 @@ JSON Schema:
 }
 ```
 
-yamlschema:
+YAMLSchema:
 
 ```yaml
 version: +Str ==v1
@@ -443,7 +443,7 @@ names: +Str[1+,!]
 
 Roundtrip mapping:
 
-| yamlschema | JSON Schema |
+| YAMLSchema | JSON Schema |
 | --- | --- |
 | `key: +Str[]` | `type: array`, `items: {type: string}` |
 | `key: +Str[1+]` | plus `minItems: 1` |
@@ -467,7 +467,7 @@ JSON Schema:
 }
 ```
 
-yamlschema:
+YAMLSchema:
 
 ```yaml
 port: +Int =8080
@@ -483,7 +483,7 @@ Generated `.schema.json` uses JSON Schema Draft 2020-12.
 The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
 dialect identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by `.schema.json` output and is not encoded
-in yamlschema.
+in YAMLSchema.
 
 When the input is a file, generated JSON Schema also has a root `$comment`:
 
@@ -492,14 +492,14 @@ When the input is a file, generated JSON Schema also has a root `$comment`:
 ```
 
 This generated note is transient. Import and normalized roundtrip discard it,
-so it is never represented in yamlschema or copied back to JSON Schema.
+so it is never represented in YAMLSchema or copied back to JSON Schema.
 Output generated from stdin omits the note because there is no input file.
 
-Other JSON Schema metadata roundtrips through explicit yamlschema directives.
+Other JSON Schema metadata roundtrips through explicit YAMLSchema directives.
 These fields do not affect validation, but keeping them preserves useful
 schema metadata.
 
-| JSON Schema | yamlschema |
+| JSON Schema | YAMLSchema |
 | --- | --- |
 | `$id` | `.ysid` |
 | `$anchor` | `.name` |
@@ -507,7 +507,7 @@ schema metadata.
 | `description` | Trailing `"description"` or `.desc` |
 | Known string `format` | `+JSONSchema/format` |
 
-`.ysid` is the first mapping entry in generated yamlschema.
+`.ysid` is the first mapping entry in generated YAMLSchema.
 `$anchor` becomes `.name` on the same schema node and exports back unchanged.
 The definition key and anchor name remain independent, so `$defs.product`
 with `$anchor: ProductSchema` becomes `+product` with
@@ -607,7 +607,7 @@ author:
 
 ## Nested Objects
 
-Nested JSON Schema objects become nested yamlschema mappings:
+Nested JSON Schema objects become nested YAMLSchema mappings:
 
 ```json
 {
@@ -641,7 +641,7 @@ Roundtrip back to JSON Schema restores each object level with its own
 ## Additional Properties
 
 The reserved `+Str` key describes otherwise-unmatched string keys.
-Its value is any yamlschema value schema:
+Its value is any YAMLSchema value schema:
 
 ```yaml
 labels:
@@ -653,7 +653,7 @@ config:
 
 Explicit JSON Schema values import as follows:
 
-| JSON Schema | yamlschema |
+| JSON Schema | YAMLSchema |
 | --- | --- |
 | `additionalProperties: true` | Inherited openness or `+Str: +Any` |
 | `additionalProperties: {"type":"string"}` | `+Map{+Str}` |
@@ -710,7 +710,7 @@ preceded by a blank line.
 
 JSON Schema combinators round-trip through explicit directives:
 
-| JSON Schema | yamlschema |
+| JSON Schema | YAMLSchema |
 | --- | --- |
 | `oneOf` | `.one` or `+One(...)` |
 | `anyOf` | `.any` or `+Any(...)` |
@@ -809,10 +809,10 @@ auth?:
 ```
 
 These passthrough directives preserve information but do not yet provide
-yamlschema-native semantics.
+YAMLSchema-native semantics.
 Open design areas include:
 
-| JSON Schema | Possible yamlschema direction |
+| JSON Schema | Possible YAMLSchema direction |
 | --- | --- |
 | `if` / `then` / `else` | `.when` |
 | `dependentSchemas` | Extended `.with` or conditional schema |
@@ -844,7 +844,7 @@ Semantic roundtrip does not preserve every textual detail:
 - Explicit `additionalProperties: true` and an empty schema normalize to
   omission.
 - `definitions` should export back as `$defs`.
-- Succinct yamlschema may expand to explicit yamlschema before JSON
+- Succinct YAMLSchema may expand to explicit YAMLSchema before JSON
   generation.
 - A compact enum and an explicit `.enum` with the same values are equivalent.
 - A one-element `.range` or `.size` sequence denotes a missing upper bound;
@@ -886,10 +886,10 @@ equivalence.
 
 JSON Schema roundtripping follows this path:
 
-1. Parse JSON Schema into explicit yamlschema.
-2. Render explicit yamlschema as succinct syntax where safe.
-3. Parse succinct yamlschema back to explicit yamlschema.
-4. Generate JSON Schema from explicit yamlschema.
+1. Parse JSON Schema into explicit YAMLSchema.
+2. Render explicit YAMLSchema as succinct syntax where safe.
+3. Parse succinct YAMLSchema back to explicit YAMLSchema.
+4. Generate JSON Schema from explicit YAMLSchema.
 5. Normalize both JSON Schema documents.
 6. Compare the normalized documents.
 

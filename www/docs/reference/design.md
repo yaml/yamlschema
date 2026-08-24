@@ -1,7 +1,7 @@
 YAMLSchema Design
 =================
 
-`yamlschema` is a YAML-native data validation schema language.
+`YAMLSchema` is a YAML-native data validation schema language.
 A schema is itself YAML, and its shape mirrors the YAML data it validates.
 The language has two layers:
 
@@ -15,8 +15,8 @@ compact form.
 
 ## File Extensions
 
-yamlschema uses separate extensions for human-authored source, compiled
-yamlschema, and JSON Schema interchange.
+YAMLSchema uses separate extensions for human-authored source, compiled
+YAMLSchema, and JSON Schema interchange.
 The compiled form is YSD Canonical (YSDC).
 
 ```text
@@ -24,7 +24,7 @@ contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
-- `.ysd.yaml` is the human-maintained yamlschema DSL form.
+- `.ysd.yaml` is the human-maintained YAMLSchema DSL form.
 - `.ysdc.yaml` is the YSD Canonical form serialized as YAML.
 - `.ysdc.json` is the YSD Canonical form serialized as JSON.
 - `.schema.json` is the JSON Schema export or import form.
@@ -254,7 +254,7 @@ dbRepository?:
 ```
 
 The whole value is a YAML plain scalar.
-The quote characters are yamlschema syntax, not YAML quoting syntax.
+The quote characters are YAMLSchema syntax, not YAML quoting syntax.
 The description starts after the schema expression and opening double quote.
 It ends at the scalar's final double quote.
 The two outer quote characters are removed.
@@ -834,11 +834,11 @@ Example compiled shape:
 
 ## JSON Schema Mapping
 
-The `bin/ysd` converter is a bootstrap path from JSON Schema into yamlschema.
+The `bin/ysd` converter is a bootstrap path from JSON Schema into YAMLSchema.
 It currently focuses on mappings that are direct and mostly lossless.
 Input JSON Schema files should conventionally use `.schema.json`.
-Generated human-facing yamlschema output should use `.ysd.yaml`.
-Expanded yamlschema should use `.ysdc.yaml` or `.ysdc.json`; both contain the
+Generated human-facing YAMLSchema output should use `.ysd.yaml`.
+Expanded YAMLSchema should use `.ysdc.yaml` or `.ysdc.json`; both contain the
 same canonical model.
 The converter can also generate `.schema.json` from `.ysd.yaml` for the same
 direct mapping subset.
@@ -848,9 +848,9 @@ property names, definition names, and arbitrary JSON object members.
 The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by the target and is not encoded in
-yamlschema.
+YAMLSchema.
 
-| JSON Schema | yamlschema |
+| JSON Schema | YAMLSchema |
 | --- | --- |
 | `type: "string"` | `+Str` |
 | `type: "integer"` | `+Int` |
@@ -928,14 +928,14 @@ tags: +Str[1+,!]
 
 `bin/ysd` works in these stages:
 
-1. Read JSON Schema or yamlschema from an input path, or from stdin by
+1. Read JSON Schema or YAMLSchema from an input path, or from stdin by
    default.
 2. Default to YSD for JSON Schema input and JSON Schema for YSD or YSDC input
    when no action option is supplied.
-3. Use `-t ysd` to parse JSON Schema and emit succinct yamlschema.
-4. Use `-t ysdc` or `-t ysdc.json` to emit fully expanded yamlschema as YAML or
+3. Use `-t ysd` to parse JSON Schema and emit succinct YAMLSchema.
+4. Use `-t ysdc` or `-t ysdc.json` to emit fully expanded YAMLSchema as YAML or
    JSON.
-5. Use `-t jsc` to parse yamlschema and emit Draft 2020-12 JSON Schema.
+5. Use `-t jsc` to parse YAMLSchema and emit Draft 2020-12 JSON Schema.
 6. Build a YAMLScript data structure for the output document.
 7. Prefer succinct scalar forms where possible.
 8. Use explicit directive maps when a schema cannot be represented as one
@@ -1003,5 +1003,5 @@ Still open or incomplete:
   content validation,
   and boolean schemas.
 
-Some of those may become first-class yamlschema features; some may remain
+Some of those may become first-class YAMLSchema features; some may remain
 outside the scope of the language.
