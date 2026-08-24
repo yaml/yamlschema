@@ -23,7 +23,7 @@ RELEASE-BUILD := $(CURDIR)/.cache/release
 version:
 	@echo '$(YSD-VERSION)'
 
-test: test-unit test-version test-release test-scripts
+test: test-unit test-version test-release test-installer test-scripts
 
 test-unit: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
@@ -34,8 +34,14 @@ test-version: $(YS)
 test-release: $(PERL)
 	PERL='$(PERL)' test/release
 
+test-installer:
+	test/installer
+
 test-scripts: $(SHELLCHECK)
-	$(SHELLCHECK) util/release util/release-dist test/release
+	$(SHELLCHECK) \
+	  util/release util/release-dist \
+	  test/release test/installer \
+	  www/docs/install
 
 json-schema-suite:
 	util/ysd-suite-roundtrip --fetch-only

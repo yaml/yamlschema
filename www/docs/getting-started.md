@@ -25,6 +25,44 @@ format.
     Open the [interactive editor](editor.md?source=ysd&example=person),
     change either pane, and watch the other representation update.
 
+## Install the command
+
+With Bash or Zsh:
+
+```bash
+source <(curl -sL yamlschema.org/install)
+```
+
+With Fish:
+
+```fish
+curl -sL yamlschema.org/install | source -
+```
+
+The installer adds `ysd` to the current shell's `PATH`.
+It also clones the matching release tag into
+`$HOME/.local/share/yamlschema/`.
+Root installations default to `/usr/local`.
+
+Choose another prefix or release by passing Make variables after the sourced
+command:
+
+=== "Bash and Zsh"
+
+    ```bash
+    source <(curl -sL yamlschema.org/install) \
+      PREFIX=/opt/yamlschema VERSION=0.1.3
+    ```
+
+=== "Fish"
+
+    ```fish
+    curl -sL yamlschema.org/install | \
+      source - PREFIX=/opt/yamlschema VERSION=0.1.3
+    ```
+
+Git, curl, GNU Make 3.81 or newer, and `tar` or `unzip` are required.
+
 ## Convert to JSON Schema
 
 The `ysd` command infers the output from the input filename:

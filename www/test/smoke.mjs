@@ -424,6 +424,21 @@ const cname = await readFile('site/CNAME', 'utf8');
 if (cname.trim() !== 'yamlschema.org') {
   throw new Error(`unexpected CNAME: ${cname}`);
 }
+for (const endpoint of ['install', 'install.mk']) {
+  const source = await readFile(`docs/${endpoint}`, 'utf8');
+  const built = await readFile(`site/${endpoint}`, 'utf8');
+  if (built !== source) {
+    throw new Error(`${endpoint} was not copied unchanged`);
+  }
+}
+const homeSource = await readFile('docs/index.md', 'utf8');
+if (
+  !homeSource.includes('source <(curl -sL yamlschema.org/install)') ||
+  !homeSource.includes('curl -sL yamlschema.org/install | source -') ||
+  !homeHTML.includes('yamlschema.org/install')
+) {
+  throw new Error('home page quick-install commands are missing');
+}
 for (const name of exampleFiles) {
   if (!jsonSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is missing from the JSON Schema selector`);

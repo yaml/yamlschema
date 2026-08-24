@@ -53,6 +53,24 @@ tags?: +Str[]</code></pre>
   </article>
 </section>
 
+## Install the CLI
+
+=== "Bash and Zsh"
+
+    ```bash
+    source <(curl -sL yamlschema.org/install)
+    ```
+
+=== "Fish"
+
+    ```fish
+    curl -sL yamlschema.org/install | source -
+    ```
+
+The installer adds `ysd` to the current shell and keeps the matching source
+release under `$PREFIX/share/yamlschema/`.
+[See installation options](getting-started.md#install-the-command).
+
 ## See the difference
 
 The same constraints stay close to the fields they describe.

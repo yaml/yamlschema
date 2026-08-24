@@ -82,10 +82,41 @@ The format targets and explicit `--from` values are:
 
 ## Installation
 
+Install the current release with Bash or Zsh:
+
+```sh
+source <(curl -sL yamlschema.org/install)
+```
+
+For Fish:
+
+```fish
+curl -sL yamlschema.org/install | source -
+```
+
+The installer puts `ysd` in `$HOME/.local/bin` for a normal user and in
+`/usr/local/bin` for root.
+It adds that directory to the current shell's `PATH` and clones the matching
+release tag into `$PREFIX/share/yamlschema/`.
+Set `PREFIX` or `VERSION` after the sourced installer command to override the
+defaults:
+
+```sh
+source <(curl -sL yamlschema.org/install) \
+  PREFIX=/opt/yamlschema VERSION=0.1.3
+```
+
+```fish
+curl -sL yamlschema.org/install | \
+  source - PREFIX=/opt/yamlschema VERSION=0.1.3
+```
+
+The installer requires Git, curl, GNU Make 3.81 or newer, and `tar` or
+`unzip` for the platform archive.
 Prebuilt releases are available for Linux Intel, macOS ARM, Windows Intel,
 and JavaScript WebAssembly.
-The native archives contain `ysc` or `ysc.exe` and this ReadMe.
-The `js_wasm` archive contains the raw `ysc.wasm` module for use with the Go
+The native archives contain `ysd` or `ysd.exe` and this ReadMe.
+The `js_wasm` archive contains the raw `ysd.wasm` module for use with the Go
 JavaScript WebAssembly runtime.
 
 For local development, source the repo `.rc` file to put `bin/` on your

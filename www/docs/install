@@ -1,0 +1,153 @@
+# shellcheck shell=bash
+#
+# Bash and Zsh:
+#   source <(curl -sL yamlschema.org/install)
+# Fish:
+#   curl -sL yamlschema.org/install | source -
+
+test -n "$BASH_VERSION$ZSH_VERSION" && eval '
+_yamlschema_install_file=${BASH_SOURCE[0]:-$0}
+
+_yamlschema_install_main() {
+  local install_file=$1
+  shift
+  local install_mk_url=${YAMLSCHEMA_INSTALL_MK_URL:-}
+  local install_dir install_mk temporary binary bin_dir prefix install_status
+
+  command -v curl >/dev/null || {
+    printf "%s\n" "YAMLSchema install: curl is required" >&2
+    return 1
+  }
+  command -v make >/dev/null || {
+    printf "%s\n" "YAMLSchema install: GNU Make is required" >&2
+    return 1
+  }
+  command -v git >/dev/null || {
+    printf "%s\n" "YAMLSchema install: git is required" >&2
+    return 1
+  }
+
+  if [ "${EUID:-${UID:-$(id -u)}}" = 0 ]; then
+    prefix=/usr/local
+  else
+    prefix=${HOME:?HOME is required}/.local
+  fi
+
+  install_dir=$(cd "$(dirname "$install_file")" 2>/dev/null && pwd -P || true)
+  if [ -z "$install_mk_url" ] && [ -f "$install_dir/install.mk" ]; then
+    binary=$(command make --no-print-directory \
+      -f "$install_dir/install.mk" install PREFIX="$prefix" "$@") || return
+  else
+    install_mk_url=${install_mk_url:-https://yamlschema.org/install.mk}
+    install_mk=$(command curl -fsSL "$install_mk_url") || return
+    temporary=$(mktemp) || return
+    printf "%s\n" "$install_mk" > "$temporary"
+    binary=$(command make --no-print-directory \
+      -f "$temporary" install PREFIX="$prefix" "$@")
+    install_status=$?
+    rm -f "$temporary"
+    [ "$install_status" -eq 0 ] || return "$install_status"
+  fi
+
+  [ -n "$binary" ] && [ -x "$binary" ] || {
+    printf "%s\n" \
+      "YAMLSchema install: did not install an executable: $binary" >&2
+    return 1
+  }
+  "$binary" --version >/dev/null || {
+    printf "%s\n" \
+      "YAMLSchema install: installed executable failed its version check" >&2
+    return 1
+  }
+
+  bin_dir=${binary%/*}
+  case ":${PATH-}:" in
+    *":$bin_dir:"*) ;;
+    *) PATH="$bin_dir${PATH:+:$PATH}" ;;
+  esac
+  export PATH
+  printf "Installed YAMLSchema to %s\n" "$binary"
+}
+
+_yamlschema_install_main "$_yamlschema_install_file" "$@" || {
+  unset -f _yamlschema_install_main
+  unset _yamlschema_install_file
+  return 1
+}
+unset -f _yamlschema_install_main
+unset _yamlschema_install_file
+return 0
+'
+
+test -n "$FISH_VERSION" && eval '
+function _yamlschema_install_main
+  set -l install_mk_url "$YAMLSCHEMA_INSTALL_MK_URL"
+  set -l install_file (status filename)
+  set -l install_dir (cd (dirname "$install_file") 2>/dev/null; and pwd -P)
+  set -l prefix
+  set -l binary
+
+  command -q curl; or begin
+    printf "%s\n" "YAMLSchema install: curl is required" >&2
+    return 1
+  end
+  command -q make; or begin
+    printf "%s\n" "YAMLSchema install: GNU Make is required" >&2
+    return 1
+  end
+  command -q git; or begin
+    printf "%s\n" "YAMLSchema install: git is required" >&2
+    return 1
+  end
+
+  if test (id -u) -eq 0
+    set prefix /usr/local
+  else
+    set prefix "$HOME/.local"
+  end
+
+  if test -z "$install_mk_url"; and test -f "$install_dir/install.mk"
+    set binary (command make --no-print-directory \
+      -f "$install_dir/install.mk" install PREFIX="$prefix" $argv)
+  else
+    test -n "$install_mk_url"; or \
+      set install_mk_url https://yamlschema.org/install.mk
+    set -l temporary (mktemp); or return
+    command curl -fsSL "$install_mk_url" > "$temporary"
+    or begin
+      rm -f "$temporary"
+      return 1
+    end
+    set binary (command make --no-print-directory \
+      -f "$temporary" install PREFIX="$prefix" $argv)
+    set -l status_value $status
+    rm -f "$temporary"
+    test $status_value -eq 0; or return $status_value
+  end
+
+  test -n "$binary"; and test -x "$binary"
+  or begin
+    printf "%s\n" \
+      "YAMLSchema install: did not install an executable: $binary" >&2
+    return 1
+  end
+  "$binary" --version >/dev/null
+  or begin
+    printf "%s\n" \
+      "YAMLSchema install: installed executable failed its version check" >&2
+    return 1
+  end
+
+  set -l bin_dir (path dirname "$binary")
+  contains -- "$bin_dir" $PATH; or set -gx PATH "$bin_dir" $PATH
+  printf "Installed YAMLSchema to %s\n" "$binary"
+end
+
+_yamlschema_install_main $argv
+set -l _yamlschema_install_status $status
+functions -e _yamlschema_install_main
+return $_yamlschema_install_status
+'
+
+echo "YAMLSchema install: unsupported shell '$0'" >&2
+false
