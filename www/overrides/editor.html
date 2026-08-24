@@ -8,6 +8,32 @@
      {% if page.meta.schema_slug %}
      data-schema-slug="{{ page.meta.schema_slug }}"
      {% endif %}>
+  <div class="editor-actions" aria-label="Editor actions">
+    <span id="editor-share-status" role="status" aria-live="polite"></span>
+    <button type="button" id="editor-share"
+            title="Share editor link" aria-label="Share editor link">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="
+          M18 16a3 3 0 0 0-2.4 1.2l-6.7-3.9a3.3 3.3 0 0 0 0-2.6
+          l6.7-3.9A3 3 0 1 0 15 5a3.3 3.3 0 0 0 0 .5L8.3 9.4a3 3 0
+          1 0 0 5.2l6.7 3.9a3.3 3.3 0 0 0 0 .5 3 3 0 1 0 3-3Z"/>
+      </svg>
+    </button>
+    <button type="button" id="editor-settings-open"
+            title="Open editor settings"
+            aria-label="Open editor settings"
+            aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="
+          M19.4 13a7.7 7.7 0 0 0 0-2l2.1-1.7-2-3.4-2.5 1a8.6 8.6
+          0 0 0-1.7-1L15 3.2h-4L10.6 6a8.6 8.6 0 0 0-1.7 1L6.4
+          6l-2 3.4L6.5 11a7.7 7.7 0 0 0 0 2l-2.1 1.7 2 3.4 2.5-1
+          a8.6 8.6 0 0 0 1.7 1l.4 2.7h4l.4-2.7a8.6 8.6 0 0 0 1.7-1
+          l2.5 1 2-3.4L19.4 13ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0
+          1 0 7.5Z"/>
+      </svg>
+    </button>
+  </div>
   <section class="editors" aria-label="Schema converter">
     <article>
       <div class="editor-heading">
@@ -82,6 +108,26 @@
     </div>
     <pre id="roundtrip-diff" tabindex="0"></pre>
   </dialog>
+  <dialog id="editor-settings-dialog"
+          aria-labelledby="editor-settings-title">
+    <div class="settings-dialog-heading">
+      <h2 id="editor-settings-title">Editor settings</h2>
+      <button type="button" id="editor-settings-close"
+              aria-label="Close editor settings">Close</button>
+    </div>
+    <div class="editor-settings-content">
+      <label class="editor-setting">
+        <input type="checkbox" id="scroll-sync" checked>
+        <span>
+          <strong>Scroll sync</strong>
+          <small>
+            Keep the generated pane aligned while the selected source pane
+            scrolls.
+          </small>
+        </span>
+      </label>
+    </div>
+  </dialog>
   <dialog id="editor-help-dialog" aria-labelledby="editor-help-title">
     <div class="help-dialog-heading">
       <h2 id="editor-help-title">Using the YAMLSchema editor</h2>
@@ -128,7 +174,19 @@
           schema can be shared without sending it to a server.
           Select a line number to highlight that line in the shared link.
           Shift-select another line number to extend the highlighted range.
+          Opening the shared link scrolls the selected range to the top of
+          its pane.
           Select in the editor or press Escape to clear the line highlight.
+        </p>
+      </section>
+      <section>
+        <h3>Adjust editor settings</h3>
+        <p>
+          Scroll sync keeps the generated pane aligned while the selected
+          source pane scrolls.
+          The source pane is the one with the roundtrip indicator.
+          You can scroll the other pane independently.
+          Open Settings to turn it off when comparing different sections.
         </p>
       </section>
       <section>

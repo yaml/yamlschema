@@ -1,6 +1,10 @@
 import '../docs/assets/editor/wasm_exec.js';
+import {json as jsonLanguage} from '@codemirror/lang-json';
+import {yaml as yamlLanguage} from '@codemirror/lang-yaml';
+import {EditorState} from '@codemirror/state';
 import {readFile} from 'node:fs/promises';
 import {normalizeJson} from '../docs/assets/editor/json.js';
+import {schemaSections} from '../src/editor/schema-sections.js';
 import {
   clampLineRange,
   decodeContent,
@@ -11,6 +15,46 @@ import {
   serializeEditorState,
 } from '../src/editor/url-state.js';
 await import('../docs/assets/editor/unified-diff.js');
+
+const sectionJSON = EditorState.create({
+  doc: `{
+  "$defs": {"thing": {"type": "string"}},
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "age": {"type": "integer"}
+  }
+}`,
+  extensions: [jsonLanguage()],
+});
+const sectionYSD = EditorState.create({
+  doc: `+thing: +Str
+name: +Str
+age?: +Int
+`,
+  extensions: [yamlLanguage()],
+});
+const sectionYSDC = EditorState.create({
+  doc: `+thing:
+  .type: +Str
+.root:
+  name: +Str
+  age?: +Int
+`,
+  extensions: [yamlLanguage()],
+});
+const expectedSections = 'defs/thing,properties/name,properties/age';
+for (const [state, format] of [
+  [sectionJSON, 'json'],
+  [sectionYSD, 'ysd'],
+  [sectionYSDC, 'ysdc'],
+]) {
+  const sections = schemaSections(state, format)
+    .map((section) => section.id).join(',');
+  if (sections !== expectedSections) {
+    throw new Error(`unexpected ${format} schema sections: ${sections}`);
+  }
+}
 
 const sharedContent = '.title: Caf\u00e9 \ud83c\udf0d\nname: +Str\n';
 const encodedContent = encodeContent(sharedContent);
@@ -306,8 +350,14 @@ if (
   throw new Error('roundtrip direction does not follow the edited pane');
 }
 if (
-  !appSource.includes('onFocus: () => roundtripOnFocus(jsonEditor)') ||
-  !appSource.includes('onFocus: () => roundtripOnFocus(yamlEditor)') ||
+  !appSource.includes('onFocus: () => editorFocused(jsonEditor)') ||
+  !appSource.includes('onFocus: () => editorFocused(yamlEditor)') ||
+  !appSource.includes(
+    "const source = editor === jsonEditor ? 'json' : 'ysd'",
+  ) ||
+  !appSource.includes('delete canonicalSourceValues[source]') ||
+  !appSource.includes('scheduleEditorURL();') ||
+  !appSource.includes('roundtripOnFocus(editor)') ||
   !appSource.includes("updateRoundtripStatus('json', json, 0)") ||
   !appSource.includes("updateRoundtripStatus('ysd', yamlEditor.value, 0)")
 ) {
@@ -320,6 +370,11 @@ for (const feature of [
   'EditorView.lineWrapping',
   'setReadOnly(readOnly)',
   'setLinkedLines(range, scroll = false)',
+  'scrollToLinkedLines(range)',
+  "EditorView.scrollIntoView(position, {y: 'start'})",
+  'schemaLocation(format)',
+  'scrollToSchemaLocation(location, format)',
+  "this.view.scrollDOM.addEventListener('scroll'",
 ]) {
   if (!codeEditorSource.includes(feature)) {
     throw new Error(`CodeMirror editor is missing: ${feature}`);
@@ -335,6 +390,13 @@ if (
   )
 ) {
   throw new Error('shareable editor URL state is incomplete');
+}
+if (
+  !appSource.includes('if (sharedState.content !== undefined)') ||
+  !appSource.includes('canonicalSourceValues = {};') ||
+  !appSource.includes('} else {\n    await loadSelectedSample(')
+) {
+  throw new Error('shared content does not bypass initial sample conversion');
 }
 if (
   !appSource.includes("setEditorValue(yamlEditor, 'Generating YSDC...')") ||
@@ -369,6 +431,22 @@ if (
   !appSource.includes('editorHelpDialog.getBoundingClientRect()')
 ) {
   throw new Error('editor help dialog behavior is incomplete');
+}
+if (
+  !appSource.includes('editorSettingsDialog.showModal()') ||
+  !appSource.includes('yamlschema.scroll-sync') ||
+  !appSource.includes('editor !== scrollSyncSourceEditor()') ||
+  !appSource.includes('scrollToSchemaLocation') ||
+  !appSource.includes('requestAnimationFrame')
+) {
+  throw new Error('editor settings or scroll synchronization is incomplete');
+}
+if (
+  !appSource.includes('navigator.share({title: \'YAMLSchema\', url})') ||
+  !appSource.includes('navigator.clipboard?.writeText') ||
+  !appSource.includes("setShareStatus('Link copied')")
+) {
+  throw new Error('editor sharing behavior is incomplete');
 }
 if (
   !appSource.includes('setRoundtripSource(side)') ||
@@ -544,6 +622,11 @@ if (
 if (
   !indexHTML.includes('id="normalize-json"') ||
   !indexHTML.includes('id="json-schema-title"') ||
+  !indexHTML.includes('id="editor-settings-open"') ||
+  !indexHTML.includes('aria-label="Open editor settings"') ||
+  !indexHTML.includes('class="editor-actions"') ||
+  !indexHTML.includes('id="editor-share"') ||
+  !indexHTML.includes('aria-label="Share editor link"') ||
   indexHTML.includes('data-schema-slug=')
 ) {
   throw new Error('base demo page has incorrect editor controls or routing');
@@ -582,6 +665,19 @@ if (
   !indexHTML.includes('Share content and lines')
 ) {
   throw new Error('editor help instructions are incomplete');
+}
+if (!indexHTML.includes(
+  'Opening the shared link scrolls the selected range to the top of',
+)) {
+  throw new Error('shared line links do not document automatic scrolling');
+}
+if (
+  !indexHTML.includes('id="editor-settings-dialog"') ||
+  !indexHTML.includes('id="scroll-sync" checked') ||
+  !indexHTML.includes('<strong>Scroll sync</strong>') ||
+  !styleSource.includes('.schema-editor #editor-settings-dialog')
+) {
+  throw new Error('editor settings dialog is incomplete');
 }
 if (
   !styleSource.includes('.cm-linked-line') ||
@@ -901,7 +997,7 @@ if (
   )}`);
 }
 const harborKeys = Object.keys(harborJSON).slice(0, 6).join(',');
-const expectedHarborKeys = '$id,$schema,title,description,type,properties';
+const expectedHarborKeys = '$id,$schema,title,description,$defs,type';
 if (harborKeys !== expectedHarborKeys) {
   throw new Error(`unexpected Harbor Next key order: ${harborKeys}`);
 }

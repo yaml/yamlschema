@@ -29,6 +29,7 @@ import {minimalSetup} from 'codemirror';
 import {tags} from '@lezer/highlight';
 
 import {clampLineRange, nextLineRange} from './url-state.js';
+import {schemaSections} from './schema-sections.js';
 
 const setLinkedLines = StateEffect.define();
 const schemaHighlightStyle = HighlightStyle.define([
@@ -114,12 +115,15 @@ export class CodeEditor {
     onChange,
     onFocus,
     onLinkedLines,
+    onScroll = () => {},
   }) {
     this.mount = mount;
     this.onChange = onChange;
     this.onFocus = onFocus;
     this.onLinkedLines = onLinkedLines;
+    this.onScroll = onScroll;
     this.settingValue = false;
+    this.linkedLineScrollFrame = undefined;
     this.readOnlyCompartment = new Compartment();
 
     const lineNumberExtension = lineNumbers({
@@ -200,6 +204,9 @@ export class CodeEditor {
         ]),
       ],
     });
+    this.view.scrollDOM.addEventListener('scroll', () => {
+      this.onScroll();
+    }, {passive: true});
   }
 
   get value() {
@@ -235,16 +242,64 @@ export class CodeEditor {
   setLinkedLines(range, scroll = false) {
     const clamped = clampLineRange(range, this.view.state.doc.lines);
     this.view.dispatch({effects: setLinkedLines.of(clamped)});
-    if (scroll && clamped) {
-      const position = this.view.state.doc.line(clamped.start).from;
-      this.view.dispatch({
-        effects: EditorView.scrollIntoView(position, {y: 'center'}),
-      });
-    }
+    if (scroll && clamped) this.scrollToLinkedLines(clamped);
     return clamped;
+  }
+
+  scrollToLinkedLines(range) {
+    const scroll = () => {
+      const line = Math.min(range.start, this.view.state.doc.lines);
+      const position = this.view.state.doc.line(line).from;
+      this.view.dispatch({
+        effects: EditorView.scrollIntoView(position, {y: 'start'}),
+      });
+    };
+    scroll();
+    cancelAnimationFrame(this.linkedLineScrollFrame);
+    this.linkedLineScrollFrame = requestAnimationFrame(scroll);
   }
 
   clearLinkedLines() {
     this.view.dispatch({effects: setLinkedLines.of(undefined)});
+  }
+
+  schemaLocation(format) {
+    const sections = schemaSections(this.view.state, format);
+    const top = this.view.scrollDOM.scrollTop;
+    let index = -1;
+    for (let current = 0; current < sections.length; current += 1) {
+      if (this.view.lineBlockAt(sections[current].from).top > top + 1) break;
+      index = current;
+    }
+    if (index < 0) return undefined;
+    const section = sections[index];
+    const start = this.view.lineBlockAt(section.from).top;
+    const next = sections[index + 1];
+    const end = next
+      ? this.view.lineBlockAt(next.from).top
+      : this.view.lineBlockAt(section.to).bottom;
+    const progress = end > start
+      ? Math.max(0, Math.min(1, (top - start) / (end - start)))
+      : 0;
+    return {id: section.id, progress};
+  }
+
+  scrollToSchemaLocation(location, format) {
+    if (!location) return false;
+    const sections = schemaSections(this.view.state, format);
+    const index = sections.findIndex((section) => section.id === location.id);
+    if (index < 0) return false;
+    const section = sections[index];
+    const start = this.view.lineBlockAt(section.from).top;
+    const next = sections[index + 1];
+    const end = next
+      ? this.view.lineBlockAt(next.from).top
+      : this.view.lineBlockAt(section.to).bottom;
+    const maximum = Math.max(0,
+      this.view.scrollDOM.scrollHeight - this.view.scrollDOM.clientHeight);
+    const top = Math.max(0, Math.min(maximum,
+      start + (end - start) * location.progress));
+    this.view.scrollDOM.scrollTop = top;
+    return true;
   }
 }

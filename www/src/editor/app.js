@@ -14,6 +14,14 @@ const yamlSampleSelect = document.querySelector('#yaml-sample-select');
 const jsonSampleSelect = document.querySelector('#json-sample-select');
 const jsonSchemaTitle = document.querySelector('#json-schema-title');
 const normalizeJsonButton = document.querySelector('#normalize-json');
+const editorSettingsOpen = document.querySelector('#editor-settings-open');
+const editorSettingsDialog = document.querySelector(
+  '#editor-settings-dialog',
+);
+const editorSettingsClose = document.querySelector('#editor-settings-close');
+const scrollSyncControl = document.querySelector('#scroll-sync');
+const editorShare = document.querySelector('#editor-share');
+const editorShareStatus = document.querySelector('#editor-share-status');
 const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
 const roundtripDiffDialog = document.querySelector(
   '#roundtrip-diff-dialog',
@@ -27,6 +35,7 @@ const formatControls = document.querySelectorAll(
   'input[name="yaml-format"]',
 );
 const formatStorageKey = 'yamlschema.yaml-format';
+const scrollSyncStorageKey = 'yamlschema.scroll-sync';
 const legacySampleStorageKey = 'yamlschema.sample';
 const sampleSourceStorageKey = 'yamlschema.sample-source';
 const sampleStorageKeys = {
@@ -94,6 +103,9 @@ let linkedPane;
 let linkedLines;
 let canonicalSourceValues = {};
 let sampleRouteSelected = false;
+let scrollSyncFrame;
+let scrollSyncEnabled = loadScrollSync();
+let shareStatusTimer;
 const workerCalls = new Map();
 const schemaWorker = new Worker(
   new URL('./schema-worker.js', import.meta.url),
@@ -108,16 +120,69 @@ const jsonEditor = new CodeEditor(jsonEditorMount, {
   language: json(),
   ariaLabel: 'JSON Schema editor',
   onChange: () => schedule(jsonEditor),
-  onFocus: () => roundtripOnFocus(jsonEditor),
+  onFocus: () => editorFocused(jsonEditor),
   onLinkedLines: (range) => linkedSelectionChanged('json', range),
+  onScroll: () => scheduleScrollSync(jsonEditor),
 });
 const yamlEditor = new CodeEditor(yamlEditorMount, {
   language: yaml(),
   ariaLabel: 'YAMLSchema editor',
   onChange: () => schedule(yamlEditor),
-  onFocus: () => roundtripOnFocus(yamlEditor),
+  onFocus: () => editorFocused(yamlEditor),
   onLinkedLines: (range) => linkedSelectionChanged(yamlFormat, range),
+  onScroll: () => scheduleScrollSync(yamlEditor),
 });
+
+function loadScrollSync() {
+  try {
+    return localStorage.getItem(scrollSyncStorageKey) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+function saveScrollSync(enabled) {
+  try {
+    localStorage.setItem(scrollSyncStorageKey, String(enabled));
+  } catch {
+    // Scroll sync still works when storage is unavailable.
+  }
+}
+
+function editorFocused(editor) {
+  if (!updating && (editor === jsonEditor || yamlFormat === 'ysd')) {
+    const source = editor === jsonEditor ? 'json' : 'ysd';
+    documentSource = source;
+    if (!sampleRouteSelected || source !== selectedSampleSource) {
+      delete canonicalSourceValues[source];
+    }
+    scheduleEditorURL();
+  }
+  roundtripOnFocus(editor);
+}
+
+function scrollSyncSourceEditor() {
+  if (roundtripSource === 'json') return jsonEditor;
+  if (roundtripSource === 'ysd') return yamlEditor;
+  return undefined;
+}
+
+function synchronizeScroll(editor) {
+  if (!scrollSyncEnabled || editor !== scrollSyncSourceEditor()) return;
+  const sourceFormat = editor === jsonEditor ? 'json' : yamlFormat;
+  const target = editor === jsonEditor ? yamlEditor : jsonEditor;
+  const targetFormat = target === jsonEditor ? 'json' : yamlFormat;
+  target.scrollToSchemaLocation(
+    editor.schemaLocation(sourceFormat),
+    targetFormat,
+  );
+}
+
+function scheduleScrollSync(editor) {
+  if (!scrollSyncEnabled || editor !== scrollSyncSourceEditor()) return;
+  cancelAnimationFrame(scrollSyncFrame);
+  scrollSyncFrame = requestAnimationFrame(() => synchronizeScroll(editor));
+}
 
 function loadYamlFormat() {
   try {
@@ -246,6 +311,48 @@ function updateEditorURL() {
 function scheduleEditorURL() {
   clearTimeout(editorURLTimer);
   editorURLTimer = setTimeout(updateEditorURL, 250);
+}
+
+function setShareStatus(message) {
+  clearTimeout(shareStatusTimer);
+  editorShareStatus.textContent = message;
+  if (message) {
+    shareStatusTimer = setTimeout(() => {
+      editorShareStatus.textContent = '';
+    }, 2500);
+  }
+}
+
+async function copyEditorURL(url) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+    return;
+  }
+  const input = document.createElement('textarea');
+  input.value = url;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.append(input);
+  input.select();
+  const copied = document.execCommand('copy');
+  input.remove();
+  if (!copied) throw new Error('Copy failed');
+}
+
+async function shareEditorURL() {
+  updateEditorURL();
+  const url = window.location.href;
+  try {
+    if (navigator.share) {
+      await navigator.share({title: 'YAMLSchema', url});
+      return;
+    }
+    await copyEditorURL(url);
+    setShareStatus('Link copied');
+  } catch (error) {
+    if (error.name !== 'AbortError') setShareStatus('Unable to share link');
+  }
 }
 
 function linkedSelectionChanged(pane, range) {
@@ -423,6 +530,7 @@ function showResult(source, target, sourceError, targetError, result) {
     sourceError.textContent = '';
     targetError.textContent = '';
     setEditorValue(target, result.value);
+    scheduleScrollSync(source);
   } else {
     source.classList.add('invalid');
     sourceError.textContent = result.error;
@@ -566,6 +674,16 @@ function closeHelpFromBackdrop(event) {
   if (outside) editorHelpDialog.close();
 }
 
+function closeSettingsFromBackdrop(event) {
+  if (event.target !== editorSettingsDialog) return;
+  const bounds = editorSettingsDialog.getBoundingClientRect();
+  const outside = event.clientX < bounds.left ||
+    event.clientX > bounds.right ||
+    event.clientY < bounds.top ||
+    event.clientY > bounds.bottom;
+  if (outside) editorSettingsDialog.close();
+}
+
 function siteCookiePaths() {
   const paths = ['/'];
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -704,6 +822,23 @@ editorHelpDialog.addEventListener('click', closeHelpFromBackdrop);
 editorHelpClose.addEventListener('click', () => {
   editorHelpDialog.close();
 });
+editorSettingsOpen.addEventListener('click', () => {
+  editorSettingsDialog.showModal();
+});
+editorSettingsDialog.addEventListener('click', closeSettingsFromBackdrop);
+editorSettingsClose.addEventListener('click', () => {
+  editorSettingsDialog.close();
+});
+editorShare.addEventListener('click', () => {
+  void shareEditorURL();
+});
+scrollSyncControl.checked = scrollSyncEnabled;
+scrollSyncControl.addEventListener('change', () => {
+  scrollSyncEnabled = scrollSyncControl.checked;
+  saveScrollSync(scrollSyncEnabled);
+  const source = scrollSyncSourceEditor();
+  if (scrollSyncEnabled && source) synchronizeScroll(source);
+});
 jsonSchemaTitle.addEventListener('dblclick', clearSiteCookies);
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();
@@ -756,19 +891,20 @@ for (const control of formatControls) {
 void selectYamlFormat(yamlFormat, false);
 
 async function initializeEditor() {
-  await loadSelectedSample(initialSampleSource);
-  canonicalSourceValues = {
-    ysd: ysdValue,
-    json: jsonEditor.value,
-  };
-
   if (sharedState.content !== undefined) {
     documentSource = sharedState.source;
+    canonicalSourceValues = {};
     if (sharedState.source === 'json') {
       await showJsonSample(sharedState.content);
     } else {
       await showSample(sharedState.content);
     }
+  } else {
+    await loadSelectedSample(initialSampleSource);
+    canonicalSourceValues = {
+      ysd: ysdValue,
+      json: jsonEditor.value,
+    };
   }
 
   if (sharedState.pane && sharedState.lines) {

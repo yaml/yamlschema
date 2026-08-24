@@ -13,7 +13,52 @@
   --editor-punctuation: #5d5751;
   --editor-linked-line: #f9e8eb;
   --editor-linked-number: #a32638;
+  position: relative;
   margin-top: 0;
+}
+
+.schema-editor .editor-actions {
+  display: flex;
+  position: absolute;
+  top: -2.7rem;
+  right: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.schema-editor .editor-actions button {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--editor-border);
+  border-radius: 0.25rem;
+  padding: 0;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+  cursor: pointer;
+}
+
+.schema-editor .editor-actions button:hover {
+  border-color: var(--editor-border-focus);
+  color: var(--editor-border-focus);
+}
+
+.schema-editor .editor-actions button:focus-visible {
+  outline: 2px solid var(--editor-border-focus);
+  outline-offset: 2px;
+}
+
+.schema-editor .editor-actions svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.schema-editor #editor-share-status {
+  color: var(--editor-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 
 body:has(.schema-editor) .md-main__inner {
@@ -108,7 +153,8 @@ body:has(.schema-editor) .md-main__inner {
 
 .schema-editor #normalize-json,
 .schema-editor #roundtrip-diff-close,
-.schema-editor #editor-help-close {
+.schema-editor #editor-help-close,
+.schema-editor #editor-settings-close {
   border: 1px solid var(--editor-border);
   border-radius: 0.2rem;
   padding: 0.2rem 0.45rem;
@@ -281,8 +327,60 @@ body:has(.schema-editor) .md-main__inner {
   color: var(--editor-text);
 }
 
-.schema-editor #editor-help-dialog::backdrop {
+.schema-editor #editor-help-dialog::backdrop,
+.schema-editor #editor-settings-dialog::backdrop {
   background: rgb(24 23 26 / 55%);
+}
+
+.schema-editor #editor-settings-dialog {
+  box-sizing: border-box;
+  width: min(90vw, 30rem);
+  max-width: none;
+  border: 1px solid var(--editor-border);
+  border-radius: 0.35rem;
+  padding: 0;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+}
+
+.schema-editor .settings-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--editor-border);
+  padding: 0.75rem 1rem;
+}
+
+.schema-editor .settings-dialog-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.schema-editor .editor-settings-content {
+  padding: 1rem;
+}
+
+.schema-editor .editor-setting {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.schema-editor .editor-setting input {
+  margin-top: 0.2rem;
+}
+
+.schema-editor .editor-setting span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.schema-editor .editor-setting small {
+  color: var(--editor-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .schema-editor .help-dialog-heading {
@@ -409,6 +507,12 @@ body:has(.schema-editor) .md-main__inner {
   color: #f4a2aa;
 }
 
+@media (min-width: 901px) {
+  .schema-editor .editor-actions {
+    top: calc(-2.7rem + 10px);
+  }
+}
+
 @media (max-width: 900px) and (orientation: portrait) {
   body:has(.schema-editor) .md-main__inner {
     margin-top: 0.4rem;
@@ -453,7 +557,8 @@ body:has(.schema-editor) .md-main__inner {
   }
 
   .schema-editor #roundtrip-diff-dialog,
-  .schema-editor #editor-help-dialog {
+  .schema-editor #editor-help-dialog,
+  .schema-editor #editor-settings-dialog {
     width: calc(100vw - 1.5rem);
   }
 }
