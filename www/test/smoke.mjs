@@ -355,6 +355,7 @@ const exampleFiles = [
   'movie',
   'user-profile',
   'ansible-builder',
+  'netbox-generated',
 ];
 const routedExamples = [
   ['person', 'ysd'],
@@ -441,9 +442,9 @@ if (yamlSelectHTML.indexOf('value="person"') >
     yamlSelectHTML.indexOf('value="harbor-next"')) {
   throw new Error('YAMLSchema example order is wrong');
 }
-if (jsonSelectHTML.indexOf('value="ansible-builder"') <
-    jsonSelectHTML.indexOf('value="user-profile"')) {
-  throw new Error('Ansible Builder is not the last JSON Schema example');
+if (jsonSelectHTML.indexOf('value="netbox-generated"') <
+    jsonSelectHTML.indexOf('value="ansible-builder"')) {
+  throw new Error('NetBox Generated is not the last JSON Schema example');
 }
 if (
   !indexHTML.includes('id="roundtrip-diff-dialog"') ||

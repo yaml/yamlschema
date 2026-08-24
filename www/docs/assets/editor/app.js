@@ -59,6 +59,9 @@ const sampleSources = {
     'ansible-builder': {
       url: assetURL('examples/ansible-builder.schema.json'),
     },
+    'netbox-generated': {
+      url: assetURL('examples/netbox-generated.schema.json'),
+    },
   },
 };
 
