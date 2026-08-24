@@ -91,6 +91,40 @@ test::
   want: |
     OK
 
+- name: object-property-combinators-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "single": {
+          "type": "object",
+          "properties": {
+            "package_pip": {"type": "string"}
+          },
+          "oneOf": [
+            {"required": ["package_pip"]}
+          ],
+          "additionalProperties": false
+        },
+        "multi": {
+          "type": "object",
+          "properties": {
+            "a": {"type": "string"},
+            "b": {"type": "integer"}
+          },
+          "oneOf": [
+            {"required": ["a"]},
+            {"required": ["b"]}
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: required-property-order-does-not-affect-roundtrip
   cmnd: bin/ysd -R -f jsc -
   stdi: |

@@ -355,4 +355,92 @@ test::
     ysd: unsupported yamlschema keyword: anyof; use any
     ysd: unsupported yamlschema keyword: allof; use all
 
+- name: object-property-combinators
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "single": {
+          "type": "object",
+          "properties": {
+            "package_pip": {"type": "string"}
+          },
+          "oneOf": [
+            {"required": ["package_pip"]}
+          ],
+          "additionalProperties": false
+        },
+        "multi": {
+          "type": "object",
+          "properties": {
+            "a": {"type": "string"},
+            "b": {"type": "integer"}
+          },
+          "oneOf": [
+            {"required": ["a"]},
+            {"required": ["b"]}
+          ],
+          "additionalProperties": false
+        },
+        "annotated": {
+          "type": "object",
+          "properties": {
+            "a": {"type": "string"}
+          },
+          "oneOf": [
+            {"title": "Branch", "required": ["a"]}
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    # Converted from JSON Schema
+    single?:
+      package_pip: +Str
+    multi?:
+      .one:
+      - .required:
+        - a
+      - .required:
+        - b
+      a?: +Str
+      b?: +Int
+    annotated?:
+      .one:
+      - .title: Branch
+        .required:
+        - a
+      a?: +Str
+
+- name: normalize-single-required-one-of
+  cmnd: bin/ysd -N -f jsc -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "package_pip": {"type": "string"}
+      },
+      "oneOf": [
+        {"required": ["package_pip"]}
+      ],
+      "additionalProperties": false
+    }
+  want: |
+    {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "package_pip": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "package_pip"
+      ],
+      "additionalProperties": false
+    }
+
 done:

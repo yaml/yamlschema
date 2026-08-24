@@ -574,6 +574,13 @@ An optional property constrains that property when present without requiring
 it again inside the branch.
 Directives such as `.xref` apply alongside the branch properties.
 
+A JSON Schema `oneOf` with exactly one required-only branch is equivalent to
+that ordinary `required` constraint.
+The importer therefore marks those property keys as required instead of
+emitting a redundant `.one` block.
+Other `oneOf` branches remain explicit, including branches with annotations
+or additional constraints.
+
 
 ## Canonical Expansion
 

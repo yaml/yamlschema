@@ -528,6 +528,7 @@ defn normalize-json-map(value root?):
   result =: normalize-ref(result)
   result =: normalize-single-ref-allof(result)
   result =: normalize-single-anyof-allof(result)
+  result =: canonicalize-single-required-oneof(result)
   result =: normalize-solo-list-anyof(result)
   if root?:
     then:
@@ -651,6 +652,34 @@ defn normalize-single-anyof-allof(result):
       alternatives =: result.allOf.0.anyOf
       normalized =: dissoc(result 'allOf')
       ordered-put: normalized 'anyOf' alternatives
+
+defn canonicalize-single-required-oneof(schema):
+  required =: singleton-required-oneof(schema)
+  if required:
+    then:
+      keys =: schema:keys.remove(\(_:S == 'oneOf'))
+      result =: select-keys(schema keys)
+      existing =: schema.required || []
+      required =: vec(distinct(existing + required))
+      ordered-put: result 'required' required
+    else: schema
+
+defn singleton-required-oneof(schema):
+  branches =: schema.oneOf
+  existing =: schema.required
+  valid-existing =: existing:nil? || sequential?(existing)
+  when sequential?(branches) && (branches.# == 1) && valid-existing:
+    branch =: branches.0
+    required =: branch.required
+    valid =:
+      and:
+        map?(branch)
+        branch.#.eq(1)
+        sequential?(required)
+        required:seq
+        required.every?(string?)
+    when valid:
+      =>: required
 
 defn normalize-solo-list-anyof(result):
   info =: solo-list-info(result)
@@ -1276,7 +1305,7 @@ defn ysdc-solo-list-info(value):
     and:
       map?(value)
       sequential?(branches)
-      branches.# == 2
+      branches.#.eq(2)
       value:keys.every?(\(allowed.has?(_:S)))
   when eligible:
     left right =: branches
@@ -2877,6 +2906,7 @@ defn supported-json-schema-dialect?(dialect):
 
 # Build the top-level data structure for the whole document.
 defn build-doc(schema):
+  schema =: canonicalize-single-required-oneof(schema)
   defs =: schema.'$defs' ||
           schema.definitions ||
           omap()
@@ -3088,6 +3118,7 @@ defn append-list-suffix(type suffix):
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
 defn build-value(schema inherited-open=true):
+  schema =: canonicalize-single-required-oneof(schema)
   info =: importable-solo-list-info(schema)
   if info:
     build-solo-list-value: schema info inherited-open
@@ -3199,7 +3230,25 @@ defn build-properties-map(schema inherited-open):
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: add-properties(result schema child-open)
-  add-wildcard-entry: result schema inherited-open
+  result =: add-wildcard-entry(result schema inherited-open)
+  result =: add-imported-combinators(result schema child-open)
+  result =: add-passthrough-directives(result schema)
+  ordered-directives: result
+
+defn add-imported-combinators(result schema inherited-open):
+  result =: result.add-combinator-directive(
+    schema 'oneOf' '.one' inherited-open)
+  result =: result.add-combinator-directive(
+    schema 'anyOf' '.any' inherited-open)
+  result =:
+    if singleton-ref-allof?(schema):
+      then: result
+      else:
+        result.add-combinator-directive(
+          schema 'allOf' '.all' inherited-open)
+  if schema.not.?:
+    then: ordered-put(result '.not' build-value(schema.not inherited-open))
+    else: result
 
 defn build-block-map(schema inherited-open=true):
   add-block(omap() schema inherited-open)

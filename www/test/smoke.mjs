@@ -445,14 +445,21 @@ const ansibleBuilderJSON = await readFile(
 const ansibleBuilderYSD = globalThis.gloat.exports[
   'json-schema-to-ysd'
 ](ansibleBuilderJSON);
+const ansibleBuilderRoundtrip = globalThis.gloat.exports[
+  'json-schema-roundtrip-works'
+](ansibleBuilderJSON);
 if (
   !ansibleBuilderYSD.ok ||
   !ansibleBuilderYSD.value.includes('python?: +Str[$]') ||
-  !ansibleBuilderYSD.value.includes('system?: +Str[$]')
+  !ansibleBuilderYSD.value.includes('system?: +Str[$]') ||
+  !ansibleBuilderYSD.value.includes('package_pip: +Str') ||
+  !ansibleBuilderRoundtrip.ok ||
+  ansibleBuilderRoundtrip.value !== true
 ) {
-  throw new Error(`scalar-or-list conversion failed: ${JSON.stringify(
-    ansibleBuilderYSD,
-  )}`);
+  throw new Error(`Ansible Builder conversion failed: ${JSON.stringify({
+    conversion: ansibleBuilderYSD,
+    roundtrip: ansibleBuilderRoundtrip,
+  })}`);
 }
 
 const exampleFiles = [
