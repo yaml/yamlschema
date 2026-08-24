@@ -1,7 +1,7 @@
-import '../site/wasm_exec.js';
+import '../docs/assets/editor/wasm_exec.js';
 import {readFile} from 'node:fs/promises';
-import {normalizeJson} from '../src/json.js';
-await import('../src/unified-diff.js');
+import {normalizeJson} from '../docs/assets/editor/json.js';
+await import('../docs/assets/editor/unified-diff.js');
 
 const unifiedDiff = globalThis.createUnifiedDiff;
 const changedDiff = unifiedDiff('a\nb\nc', 'a\nx\nc');
@@ -79,7 +79,7 @@ for (const invalidJSON of [
 }
 
 const go = new Go();
-const bytes = await readFile('ysd.wasm');
+const bytes = await readFile('docs/assets/editor/ysd.wasm');
 const {instance} = await WebAssembly.instantiate(bytes, go.importObject);
 go.run(instance);
 
@@ -108,7 +108,7 @@ if (
 }
 
 const blogText = await readFile(
-  '../src/examples/blog-post.schema.json',
+  'docs/assets/editor/examples/blog-post.schema.json',
   'utf8',
 );
 const normalizedBlogResult = globalThis.gloat.exports[
@@ -180,13 +180,16 @@ if (
   )}`);
 }
 
-const appSource = await readFile('../src/app.js', 'utf8');
-const styleSource = await readFile('../src/style.css', 'utf8');
+const appSource = await readFile('docs/assets/editor/app.js', 'utf8');
+const styleSource = await readFile(
+  'docs/assets/editor/editor.css',
+  'utf8',
+);
 if (appSource.includes('globalThis.gloat')) {
   throw new Error('the browser app calls Wasm on the UI thread');
 }
 for (const worker of ['schema-worker.js', 'roundtrip-worker.js']) {
-  if (!appSource.includes(`new Worker('${worker}`)) {
+  if (!appSource.includes(`new URL('./${worker}', import.meta.url)`)) {
     throw new Error(`${worker} is not used by the browser app`);
   }
 }
@@ -246,8 +249,8 @@ if (
   throw new Error('roundtrip status does not follow the source pane');
 }
 if (
-  !appSource.includes("person: {url: 'examples/person.ysd.yaml?v=1'}") ||
-  !appSource.includes("'harbor-next': {url: 'values.ysd.yaml?v=2'}") ||
+  !appSource.includes("person: {url: assetURL('examples/person.ysd.yaml')}") ||
+  !appSource.includes("'harbor-next': {url: assetURL('values.ysd.yaml')}") ||
   !appSource.includes("if (side === 'json') await showJsonSample(content)") ||
   !appSource.includes('else await showSample(content)')
 ) {
@@ -262,9 +265,16 @@ if (
 }
 if (
   !appSource.includes("if (current !== side) other.value = ''") ||
-  !appSource.includes('selectSampleSource(initialSampleSource)')
+  !appSource.includes('selectSampleSource(initialSampleSource,')
 ) {
   throw new Error('inactive example selector is not cleared');
+}
+if (
+  !appSource.includes("params.get('source')") ||
+  !appSource.includes("params.get('example')") ||
+  !appSource.includes('requestedSample?.source')
+) {
+  throw new Error('editor example links do not select their requested input');
 }
 if (
   !appSource.includes("callWorker('json-schema-normalize', json)") ||
@@ -281,8 +291,15 @@ if (
 if (!styleSource.includes('font-weight: 900')) {
   throw new Error('roundtrip status indicator is not strongly weighted');
 }
+if (
+  !styleSource.includes('@media (max-width: 900px) and ' +
+    '(orientation: portrait)') ||
+  !styleSource.includes('grid-template-columns: repeat(2, minmax(0, 1fr))')
+) {
+  throw new Error('editor panes do not use the requested responsive layout');
+}
 const roundtripWorkerSource = await readFile(
-  '../src/roundtrip-worker.js',
+  'docs/assets/editor/roundtrip-worker.js',
   'utf8',
 );
 if (
@@ -293,7 +310,7 @@ if (
   throw new Error('roundtrip worker does not generate browser diffs');
 }
 
-const pastedYSD = await readFile('../test/ansible-builder.ysd.yaml', 'utf8');
+const pastedYSD = await readFile('test/ansible-builder.ysd.yaml', 'utf8');
 const pastedResult = globalThis.gloat.exports['ysd-to-json-schema'](
   pastedYSD,
 );
@@ -323,7 +340,7 @@ const exampleFiles = [
   'movie',
   'user-profile',
 ];
-const indexHTML = await readFile('index.html', 'utf8');
+const indexHTML = await readFile('site/editor/index.html', 'utf8');
 if (!indexHTML.includes('id="normalize-json"')) {
   throw new Error('Normalize JSON button is missing');
 }
@@ -366,6 +383,42 @@ if (
 ) {
   throw new Error('roundtrip diff dialog is missing');
 }
+
+const homeHTML = await readFile('site/index.html', 'utf8');
+if (!homeHTML.includes('Define a lot more')) {
+  throw new Error('home page tagline is missing');
+}
+if ((homeHTML.match(/data-comparison-slide/g) || []).length !== 3) {
+  throw new Error('home page comparison carousel is incomplete');
+}
+for (const href of [
+  'editor/?source=ysd&amp;example=person',
+  'editor/?source=json&amp;example=address',
+  'editor/?source=json&amp;example=device-type',
+]) {
+  if (!homeHTML.includes(href)) {
+    throw new Error(`home page editor link is missing: ${href}`);
+  }
+}
+const carouselSource = await readFile(
+  'docs/javascripts/carousel.js',
+  'utf8',
+);
+if (
+  !carouselSource.includes('window.setInterval') ||
+  !carouselSource.includes('prefers-reduced-motion') ||
+  !carouselSource.includes('7000')
+) {
+  throw new Error('comparison carousel behavior is incomplete');
+}
+const cheatHTML = await readFile('site/cheat-sheet/index.html', 'utf8');
+if (!cheatHTML.includes('cheat-grid') || !cheatHTML.includes('Built-in types')) {
+  throw new Error('cheat sheet was not built');
+}
+const cname = await readFile('site/CNAME', 'utf8');
+if (cname.trim() !== 'yamlschema.org') {
+  throw new Error(`unexpected CNAME: ${cname}`);
+}
 for (const name of exampleFiles) {
   if (!jsonSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is missing from the JSON Schema selector`);
@@ -373,7 +426,10 @@ for (const name of exampleFiles) {
   if (yamlSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is incorrectly in the YAMLSchema selector`);
   }
-  const text = await readFile(`examples/${name}.schema.json`, 'utf8');
+  const text = await readFile(
+    `docs/assets/editor/examples/${name}.schema.json`,
+    'utf8',
+  );
   const schema = JSON.parse(text);
   if (schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
     throw new Error(`${name} does not use JSON Schema 2020-12`);
@@ -439,7 +495,10 @@ for (const name of exampleFiles) {
   }
 }
 
-const initialYSD = await readFile('examples/person.ysd.yaml', 'utf8');
+const initialYSD = await readFile(
+  'docs/assets/editor/examples/person.ysd.yaml',
+  'utf8',
+);
 const initialResult = globalThis.gloat.exports['ysd-to-json-schema'](
   initialYSD,
 );
@@ -486,7 +545,10 @@ if (
   )}`);
 }
 
-const harborYSD = await readFile('values.ysd.yaml', 'utf8');
+const harborYSD = await readFile(
+  'docs/assets/editor/values.ysd.yaml',
+  'utf8',
+);
 const harborResult = globalThis.gloat.exports['ysd-to-json-schema'](
   harborYSD,
 );

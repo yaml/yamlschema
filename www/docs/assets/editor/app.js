@@ -27,26 +27,27 @@ const sampleSelects = {
   ysd: yamlSampleSelect,
   json: jsonSampleSelect,
 };
+const assetURL = (path) => new URL(path, import.meta.url).href;
 const sampleSources = {
   ysd: {
-    person: {url: 'examples/person.ysd.yaml?v=1'},
-    'harbor-next': {url: 'values.ysd.yaml?v=2'},
+    person: {url: assetURL('examples/person.ysd.yaml')},
+    'harbor-next': {url: assetURL('values.ysd.yaml')},
   },
   json: {
-    address: {url: 'examples/address.schema.json?v=1'},
-    'blog-post': {url: 'examples/blog-post.schema.json?v=1'},
-    calendar: {url: 'examples/calendar.schema.json?v=2'},
-    'device-type': {url: 'examples/device-type.schema.json?v=2'},
+    address: {url: assetURL('examples/address.schema.json')},
+    'blog-post': {url: assetURL('examples/blog-post.schema.json')},
+    calendar: {url: assetURL('examples/calendar.schema.json')},
+    'device-type': {url: assetURL('examples/device-type.schema.json')},
     'ecommerce-system': {
-      url: 'examples/ecommerce-system.schema.json?v=1',
+      url: assetURL('examples/ecommerce-system.schema.json'),
     },
     'geographical-location': {
-      url: 'examples/geographical-location.schema.json?v=1',
+      url: assetURL('examples/geographical-location.schema.json'),
     },
-    'health-record': {url: 'examples/health-record.schema.json?v=1'},
-    'job-posting': {url: 'examples/job-posting.schema.json?v=1'},
-    movie: {url: 'examples/movie.schema.json?v=2'},
-    'user-profile': {url: 'examples/user-profile.schema.json?v=1'},
+    'health-record': {url: assetURL('examples/health-record.schema.json')},
+    'job-posting': {url: assetURL('examples/job-posting.schema.json')},
+    movie: {url: assetURL('examples/movie.schema.json')},
+    'user-profile': {url: assetURL('examples/user-profile.schema.json')},
   },
 };
 
@@ -65,7 +66,9 @@ let yamlFormat = loadYamlFormat();
 let ysdValue = '';
 let roundtripDiff = '';
 const workerCalls = new Map();
-const schemaWorker = new Worker('schema-worker.js?v=15');
+const schemaWorker = new Worker(
+  new URL('./schema-worker.js', import.meta.url),
+);
 
 function loadYamlFormat() {
   try {
@@ -119,9 +122,18 @@ function saveSample(source, sample) {
   }
 }
 
-function selectSampleSource(source) {
+function requestedSampleSelection() {
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get('source');
+  const sample = params.get('example');
+  if (!Object.hasOwn(sampleSources, source)) return undefined;
+  if (!Object.hasOwn(sampleSources[source], sample)) return undefined;
+  return {source, sample};
+}
+
+function selectSampleSource(source, sample = loadSample(source)) {
   for (const [current, select] of Object.entries(sampleSelects)) {
-    select.value = current === source ? loadSample(current) : '';
+    select.value = current === source ? sample : '';
   }
 }
 
@@ -235,7 +247,9 @@ function callWorker(operation, input) {
 
 function getRoundtripWorker() {
   if (roundtripWorker) return roundtripWorker;
-  roundtripWorker = new Worker('roundtrip-worker.js?v=16');
+  roundtripWorker = new Worker(
+    new URL('./roundtrip-worker.js', import.meta.url),
+  );
   roundtripWorker.addEventListener('message', ({data}) => {
     if (data.id !== undefined && data.id !== roundtripRequest) return;
     roundtripBusy = false;
@@ -513,8 +527,10 @@ roundtripDiffClose.addEventListener('click', () => {
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();
 });
-const initialSampleSource = loadSampleSource();
-selectSampleSource(initialSampleSource);
+const requestedSample = requestedSampleSelection();
+const initialSampleSource = requestedSample?.source || loadSampleSource();
+if (requestedSample) saveSample(requestedSample.source, requestedSample.sample);
+selectSampleSource(initialSampleSource, requestedSample?.sample);
 for (const [source, select] of Object.entries(sampleSelects)) {
   select.addEventListener('change', () => {
     saveSample(source, select.value);

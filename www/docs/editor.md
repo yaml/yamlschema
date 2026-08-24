@@ -1,0 +1,88 @@
+---
+title: Interactive Editor
+description: Convert between YAMLSchema and JSON Schema in your browser
+hide:
+- toc
+---
+
+# Interactive editor
+
+Edit either schema and the other side updates automatically.
+Conversion and roundtrip checks run locally in your browser.
+
+<div class="schema-editor">
+  <section class="editors" aria-label="Schema converter">
+    <article>
+      <div class="editor-heading">
+        <button type="button" class="roundtrip-status checking"
+                data-roundtrip-source="ysd"
+                title="Checking Roundtrip" aria-label="Checking Roundtrip"
+                disabled>…</button>
+        <label class="editor-title" for="yaml-schema">YAML Schema</label>
+        <div class="format-selector" role="radiogroup"
+             aria-label="YAML Schema format">
+          <label>
+            <input type="radio" name="yaml-format" value="ysd" checked>
+            YSD
+          </label>
+          <label>
+            <input type="radio" name="yaml-format" value="ysdc">
+            YSDC
+          </label>
+        </div>
+        <select id="yaml-sample-select" class="sample-select"
+                aria-label="YAML Schema example" disabled>
+          <option value="" disabled selected>Choose a schema</option>
+          <option value="person">Person</option>
+          <option value="harbor-next">
+            Harbor Next Helm Chart Values
+          </option>
+        </select>
+      </div>
+      <textarea id="yaml-schema" spellcheck="false"
+                aria-label="YAMLSchema editor"></textarea>
+      <p class="error" id="yaml-error" aria-live="polite"></p>
+    </article>
+    <article>
+      <div class="editor-heading">
+        <button type="button" class="roundtrip-status checking"
+                data-roundtrip-source="json"
+                title="Checking Roundtrip" aria-label="Checking Roundtrip"
+                disabled>…</button>
+        <label class="editor-title" for="json-schema">JSON Schema</label>
+        <button type="button" id="normalize-json"
+                title="Normalize JSON Schema" disabled>Normalize</button>
+        <select id="json-sample-select" class="sample-select"
+                aria-label="JSON Schema example" disabled>
+          <option value="" disabled selected>Choose a schema</option>
+          <option value="address">Address</option>
+          <option value="blog-post">Blog Post</option>
+          <option value="calendar">Calendar</option>
+          <option value="device-type">Device Type</option>
+          <option value="ecommerce-system">Ecommerce System</option>
+          <option value="geographical-location">
+            Geographical Location
+          </option>
+          <option value="health-record">Health Record</option>
+          <option value="job-posting">Job Posting</option>
+          <option value="movie">Movie</option>
+          <option value="user-profile">User Profile</option>
+        </select>
+      </div>
+      <textarea id="json-schema" spellcheck="false"
+                aria-label="JSON Schema editor"></textarea>
+      <p class="error" id="json-error" aria-live="polite"></p>
+    </article>
+  </section>
+  <dialog id="roundtrip-diff-dialog"
+          aria-labelledby="roundtrip-diff-title">
+    <div class="diff-dialog-heading">
+      <h2 id="roundtrip-diff-title">Roundtrip diff</h2>
+      <button type="button" id="roundtrip-diff-close"
+              aria-label="Close roundtrip diff">Close</button>
+    </div>
+    <pre id="roundtrip-diff" tabindex="0"></pre>
+  </dialog>
+</div>
+
+<script type="module" src="../assets/editor/app.js"></script>

@@ -1,0 +1,84 @@
+# Examples
+
+These examples show the compact YSD form.
+Each link opens the complete packaged example in the interactive editor.
+
+## Required and optional fields
+
+```yaml
+.title: Person
+age?: +Int 0..
+name: +Str
+```
+
+`name` is required.
+`age?` is optional and, when present, must be an integer greater than or equal
+to zero.
+
+[Open Person in the editor](editor.md?source=ysd&example=person){ .md-button }
+
+## Dependent fields
+
+```yaml
+postOfficeBox?: +Str :need(streetAddress)
+extendedAddress?: +Str :need(streetAddress)
+streetAddress?: +Str
+locality: +Str
+region: +Str
+postalCode?: +Str
+countryName: +Str
+```
+
+When either extended address field is present, `streetAddress` is required.
+The relationship maps to JSON Schema `dependentRequired`.
+
+[Open Address in the editor](editor.md?source=json&example=address){ .md-button }
+
+## Alternatives and external references
+
+```yaml
+deviceType: +Str
+.one:
+- .xref: https://example.com/smartphone.schema.json
+  deviceType?: +Str ==smartphone
+- .xref: https://example.com/laptop.schema.json
+  deviceType?: +Str ==laptop
+```
+
+Exactly one branch must match.
+Each branch combines a discriminating constant with an external schema
+reference.
+
+[Open Device Type in the editor](editor.md?source=json&example=device-type){ .md-button }
+
+## Named definitions
+
+```yaml
++address:
+  street: +Str
+  city: +Str
+
+billing: +address
+shipping?: +address
+```
+
+Definitions begin with `+` and can be referenced anywhere in the document.
+
+## Lists and maps
+
+```yaml
+tags?: +Str[1+,!]
+labels?: +Map{+Str}
+metadata?: +Map{+Any}
+```
+
+`tags` is a non-empty list of unique strings.
+The two map forms accept arbitrary string keys with string or unrestricted
+values.
+
+## Real-world schema
+
+The Harbor Next Helm chart example demonstrates nested definitions, maps,
+lists, ranges, annotations, and open subtrees in a production-sized schema.
+
+[Open Harbor Next in the editor](editor.md?source=ysd&example=harbor-next){ .md-button }

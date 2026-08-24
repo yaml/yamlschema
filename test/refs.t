@@ -269,7 +269,8 @@ test::
 - name: ecommerce-anchor-roundtrip
   cmnd: |
     sh -c '
-      bin/ysd -Rq www/src/examples/ecommerce-system.schema.json &&
+      bin/ysd -Rq \
+        www/docs/assets/editor/examples/ecommerce-system.schema.json &&
       echo OK
     '
   want: |

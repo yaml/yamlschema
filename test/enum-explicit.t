@@ -33,7 +33,7 @@ test::
       - false
 
 - name: heterogeneous-enum-roundtrip
-  cmnd: bin/ysc -R -f jsc -
+  cmnd: bin/ysd -R -f jsc -
   stdi: |
     {
       "type": "object",

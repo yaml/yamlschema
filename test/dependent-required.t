@@ -86,7 +86,9 @@ test::
     OK
 
 - name: address-roundtrip
-  cmnd: sh -c 'bin/ysd -Rq www/src/examples/address.schema.json && echo OK'
+  cmnd: >-
+    sh -c 'bin/ysd -Rq
+    www/docs/assets/editor/examples/address.schema.json && echo OK'
   want: |
     OK
 

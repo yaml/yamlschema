@@ -38,10 +38,10 @@ source_version=$(
        print "$1\n";
        exit;
      }' \
-    "$top/bin/ysc"
+    "$top/bin/ysd"
 )
 [[ $source_version == "$version" ]] || {
-  echo "release-dist: bin/ysc version $source_version does not match" \
+  echo "release-dist: bin/ysd version $source_version does not match" \
     "$version" >&2
   exit 1
 }
@@ -53,50 +53,50 @@ rm -rf -- "$dist_dir" "$build_dir"
 mkdir -p "$dist_dir" "$build_dir/bin" "$build_dir/packages"
 
 build_platform() {
-  local platform=$1 target output name=ysc
+  local platform=$1 target output name=ysd
   if [[ $platform == js_wasm ]]; then
-    name=ysc.wasm
+    name=ysd.wasm
     output="$build_dir/bin/$platform/$name"
     mkdir -p "${output%/*}"
     echo "* Building $platform"
-    "$gloat" "$top/bin/ysc" \
+    "$gloat" "$top/bin/ysd" \
       --out="$output" --to=js --force --quiet \
       --module=github.com/yaml/yamlschema
     return
   fi
 
   target=${platform/_//}
-  [[ $platform != windows_amd64 ]] || name=ysc.exe
+  [[ $platform != windows_amd64 ]] || name=ysd.exe
   output="$build_dir/bin/$platform/$name"
   mkdir -p "${output%/*}"
   echo "* Building $platform"
-  "$gloat" "$top/bin/ysc" \
+  "$gloat" "$top/bin/ysd" \
     --out="$output" --platform="$target" --force --quiet \
     --module=github.com/yaml/yamlschema
 }
 
 package_platform() {
   local platform=$1 package_name package_dir archive executable
-  package_name="ysc-$version-$platform"
+  package_name="ysd-$version-$platform"
   package_dir="$build_dir/packages/$package_name"
   mkdir -p "$package_dir"
   cp "$top/ReadMe.md" "$package_dir/"
 
   case $platform in
     windows_amd64)
-      executable=ysc.exe
+      executable=ysd.exe
       cp "$build_dir/bin/$platform/$executable" "$package_dir/"
       archive="$dist_dir/$package_name.zip"
       (cd "$build_dir/packages" && zip -qr "$archive" "$package_name")
       ;;
     js_wasm)
-      executable=ysc.wasm
+      executable=ysd.wasm
       cp "$build_dir/bin/$platform/$executable" "$package_dir/"
       archive="$dist_dir/$package_name.tar.gz"
       tar -czf "$archive" -C "$build_dir/packages" "$package_name"
       ;;
     *)
-      executable=ysc
+      executable=ysd
       cp "$build_dir/bin/$platform/$executable" "$package_dir/"
       chmod 0755 "$package_dir/$executable"
       archive="$dist_dir/$package_name.tar.gz"
@@ -114,9 +114,9 @@ done
 (
   cd "$dist_dir"
   sha256sum "${archives[@]}"
-) > "$dist_dir/ysc-checksums.txt"
+) > "$dist_dir/ysd-checksums.txt"
 
 echo '* Created release artifacts'
-for archive in "${archives[@]}" ysc-checksums.txt; do
+for archive in "${archives[@]}" ysd-checksums.txt; do
   echo "  $archive"
 done

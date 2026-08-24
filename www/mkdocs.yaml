@@ -1,0 +1,94 @@
+site_name: YAMLSchema
+site_url: https://yamlschema.org
+site_description: Define a lot more with a lot less
+site_author: Ingy dot Net
+
+repo_name: yaml/yamlschema
+repo_url: https://github.com/yaml/yamlschema
+edit_uri: edit/main/www/docs/
+
+exclude_docs: |
+  assets/editor/examples/README.md
+
+theme:
+  name: material
+  favicon: img/favicon.svg
+  features:
+  - navigation.tracking
+  - navigation.tabs
+  - navigation.sections
+  - navigation.top
+  - search.suggest
+  - search.highlight
+  - content.code.copy
+  - content.code.annotate
+  palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: custom
+    accent: custom
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: custom
+    accent: custom
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    logo: material/file-code-outline
+    repo: fontawesome/brands/github
+
+extra_css:
+- css/extra.css
+- assets/editor/editor.css
+
+extra_javascript:
+- javascripts/external-links.js
+- javascripts/carousel.js
+
+nav:
+- YAMLSchema: index.md
+- Editor: editor.md
+- Getting Started: getting-started.md
+- Examples: examples.md
+- Cheat Sheet: cheat-sheet.md
+- CLI: cli.md
+- Reference:
+  - Language: reference/dsl.md
+  - JSON Schema: reference/json-schema.md
+  - Design: reference/design.md
+
+markdown_extensions:
+- admonition
+- attr_list
+- md_in_html
+- tables
+- toc:
+    permalink: true
+- pymdownx.details
+- pymdownx.highlight:
+    anchor_linenums: true
+    line_spans: __span
+    pygments_lang_class: true
+- pymdownx.inlinehilite
+- pymdownx.superfences
+- pymdownx.tabbed:
+    alternate_style: true
+
+plugins:
+- search:
+    separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+extra:
+  social:
+  - icon: fontawesome/brands/github
+    link: https://github.com/yaml/yamlschema
+    name: YAMLSchema on GitHub
+
+copyright: Copyright &copy; 2026 Ingy dot Net

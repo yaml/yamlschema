@@ -16,7 +16,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .open: true
+    {}
 
 - name: generated-comment-does-not-roundtrip
   cmnd: bin/ysd -R -f jsc -

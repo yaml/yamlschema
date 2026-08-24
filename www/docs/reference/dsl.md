@@ -1,4 +1,4 @@
-yamlschema DSL
+YAMLSchema DSL
 ==============
 
 This page specifies the human-authored yamlschema DSL and its expansion to the

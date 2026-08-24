@@ -11,7 +11,7 @@ test::
       tmp=$(mktemp -d)
       trap "rm -r \"$tmp\"" EXIT
       printf "name: +Str\n" > "$tmp/contact.ysd.yaml"
-      bin/ysc -t jsc -C "$tmp/contact.ysd.yaml" |
+      bin/ysd -t jsc -C "$tmp/contact.ysd.yaml" |
         perl -pe "s/YAMLSCHEMA v[0-9]+[.][0-9]+[.][0-9]+/YAMLSCHEMA vVERSION/"
     '
   want: |

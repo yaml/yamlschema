@@ -1,4 +1,4 @@
-yamlschema Design
+YAMLSchema Design
 =================
 
 `yamlschema` is a YAML-native data validation schema language.

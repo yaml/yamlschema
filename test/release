@@ -12,7 +12,7 @@ trap 'rm -rf -- "$temporary"' EXIT
 
 current=$(
   "$perl" -ne '
-    if (/^YSC-VERSION := ([0-9]+\.[0-9]+\.)([0-9]+)$/) {
+    if (/^YSD-VERSION := ([0-9]+\.[0-9]+\.)([0-9]+)$/) {
       print "$1", $2 + 1, "\n";
       exit;
     }
@@ -26,7 +26,7 @@ make_log="$temporary/make.log"
 
 mkdir -p "$repo/bin" "$repo/util" "$fake_bin"
 cp "$top/Changes" "$top/Makefile" "$repo/"
-cp "$top/bin/ysc" "$repo/bin/"
+cp "$top/bin/ysd" "$repo/bin/"
 cp "$release" "$repo/util/"
 git init --quiet --initial-branch=main "$repo"
 git -C "$repo" config user.name 'Release Test'
@@ -80,14 +80,14 @@ grep -Fqx test "$make_log"
    "$remote_before" ]]
 [[ $(git -C "$repo" log -1 --format=%s) == \
    "Prepare release $version" ]]
-grep -Fqx "YSC-VERSION := $version" "$repo/Makefile"
-grep -Fqx "VERSION =: '$version'" "$repo/bin/ysc"
+grep -Fqx "YSD-VERSION := $version" "$repo/Makefile"
+grep -Fqx "VERSION =: '$version'" "$repo/bin/ysd"
 grep -Fqx -- "- version: $version" "$repo/Changes"
 
 changed=$(
   git -C "$repo" diff-tree --no-commit-id --name-only -r HEAD | sort
 )
-expected=$(printf '%s\n' Changes Makefile bin/ysc | sort)
+expected=$(printf '%s\n' Changes Makefile bin/ysd | sort)
 [[ $changed == "$expected" ]]
 [[ -z $(git -C "$repo" status --short) ]]
 [[ -z $(git -C "$repo" tag -l) ]]

@@ -6,6 +6,7 @@ include $M/init.mk
 
 GLOAT-VERSION := 0.1.78
 NODE-VERSION := 26.7.0
+PYTHON-VENV := $(ROOT)/venv
 
 LOCAL-GLOAT-DIR := $(or \
   $(if $(wildcard ../../gloat/bin/gloat),../../gloat), \
@@ -20,86 +21,63 @@ endif
 include $M/gloat.mk
 include $M/node.mk
 include $M/python.mk
+include $M/typos.mk
 include $M/clean.mk
+
+SHELL-DEPS += $(PYTHON-VENV)
+
 include $M/shell.mk
 
+export UV_LINK_MODE := copy
 export UV_CACHE_DIR := $(CURDIR)/.cache/uv
+export NO_MKDOCS_2_WARNING := 1
 
 REPO ?= git@github.com:yaml/yamlschema
 SERVE-HOST ?= localhost
 SERVE-PORT ?= 8000
 
-SITE := site
-EXAMPLE-SOURCES := $(wildcard src/examples/*)
-EXAMPLE-FILES := $(patsubst src/examples/%,$(SITE)/examples/%,\
-  $(EXAMPLE-SOURCES))
-WASM := $(SITE)/ysd.wasm
-WASM-EXEC := $(SITE)/wasm_exec.js
+EDITOR-ASSETS := docs/assets/editor
+WASM := $(EDITOR-ASSETS)/ysd.wasm
+WASM-EXEC := $(EDITOR-ASSETS)/wasm_exec.js
 YAMLSCRIPT-DIR := ../../yamlscript
 LOCAL-YS := $(wildcard $(YAMLSCRIPT-DIR)/ys/bin/ys)
 GLOAT-ENV := $(if $(LOCAL-YS),GLOAT_YS=$(abspath $(LOCAL-YS)))
+DEPS := $(PYTHON-VENV) $(WASM) $(WASM-EXEC)
 
-build: $(SITE)/index.html $(SITE)/app.js $(SITE)/json.js \
-  $(SITE)/schema-worker.js $(SITE)/roundtrip-worker.js \
-  $(SITE)/unified-diff.js $(SITE)/style.css $(SITE)/values.ysd.yaml \
-  $(EXAMPLE-FILES) $(WASM-EXEC) $(WASM)
+MAKES-CLEAN := site $(WASM) $(WASM-EXEC)
+MAKES-REALCLEAN := $(PYTHON-VENV)
 
-test: build $(NODE)
-	cd $(SITE) && $(NODE) ../test/smoke.mjs
+default:: site
 
-serve: build $(PYTHON)
+site: $(DEPS) FORCE
+	mkdocs build --strict -d $@
+
+build: site
+
+test: site $(NODE)
+	$(NODE) test/smoke.mjs
+
+serve: $(DEPS)
 	@printf '\nYAMLSchema: http://$(SERVE-HOST):$(SERVE-PORT)/\n\n'
-	cd $(SITE) && $(PYTHON) -m http.server $(SERVE-PORT) \
-	  --bind $(SERVE-HOST)
+	mkdocs serve --livereload -a $(SERVE-HOST):$(SERVE-PORT)
 
-publish: build
-	cd $(SITE) && \
+lint: $(TYPOS)
+	typos docs mkdocs.yaml
+
+publish: site
+	cd $< && \
 	  git init && \
 	  git add -A && \
-	  git commit -m 'Deploy to production' && \
+	  git commit -m 'Deploy YAMLSchema website' && \
 	  git push -f $(REPO) HEAD:gh-pages
-	$(RM) -r $(SITE)
+	$(RM) -r $<
 
-$(SITE):
-	mkdir -p $@
-
-$(SITE)/examples:
-	mkdir -p $@
-
-$(SITE)/examples/%: src/examples/% | $(SITE)/examples
-	cp $< $@
-
-$(SITE)/index.html: src/index.html | $(SITE)
-	cp $< $@
-
-$(SITE)/app.js: src/app.js | $(SITE)
-	cp $< $@
-
-$(SITE)/json.js: src/json.js | $(SITE)
-	cp $< $@
-
-$(SITE)/schema-worker.js: src/schema-worker.js | $(SITE)
-	cp $< $@
-
-$(SITE)/roundtrip-worker.js: src/roundtrip-worker.js | $(SITE)
-	cp $< $@
-
-$(SITE)/unified-diff.js: src/unified-diff.js | $(SITE)
-	cp $< $@
-
-$(SITE)/style.css: src/style.css | $(SITE)
-	cp $< $@
-
-$(SITE)/values.ysd.yaml: src/values.ysd.yaml | $(SITE)
-	cp $< $@
-
-$(WASM): ../bin/ysd $(GLOAT) | $(SITE)
+$(WASM): ../bin/ysd $(GLOAT)
 	$(GLOAT-ENV) $(GLOAT) -qf -t js -o $@ $<
 
-$(WASM-EXEC): $(GLOAT) | $(SITE)
+$(WASM-EXEC): $(GLOAT)
 	go_bin=$$($(GLOAT) --which=go); \
 	  go_root=$$($$go_bin env GOROOT); \
 	  cp $$go_root/lib/wasm/wasm_exec.js $@
 
-clean::
-	$(RM) -r $(SITE)
+FORCE:
