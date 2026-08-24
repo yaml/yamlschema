@@ -1,3 +1,4 @@
-.title: Person
-age?: +Int 0..
 name: +Str
+age?: +Int 0..120
+email?: +JSONSchema/email
+tags?: +Str[] [=good, bad, ugly]

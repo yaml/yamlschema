@@ -15,7 +15,7 @@ hide:
       and roundtrips with the JSON Schema ecosystem.
     </p>
     <div class="home-actions">
-      <a class="ys-button ys-button-primary" href="edit/">
+      <a class="ys-button ys-button-primary" href="demo/">
         Try the Editor
       </a>
       <a class="ys-button ys-button-secondary" href="getting-started/">
@@ -29,9 +29,9 @@ hide:
   <div class="home-proof" aria-label="YAMLSchema example">
     <span class="proof-label">A complete object schema</span>
     <pre><code>name: +Str
+age?: +Int 0..120
 email?: +JSONSchema/email
-age?: +Int 0..
-tags?: +Str[]</code></pre>
+tags?: +Str[] [=good, bad, ugly]</code></pre>
   </div>
 </section>
 
@@ -80,30 +80,43 @@ Choose an example, or click the comparison to continue in the editor.
          aria-label="YAMLSchema and JSON Schema comparisons">
   <div class="comparison-viewport">
     <article class="comparison-slide is-active" data-comparison-slide
-             data-editor-href="edit/person/"
+             data-editor-href="demo/person/"
              tabindex="0" aria-label="Open Person in the editor">
       <div class="comparison-title">
         <div><span>01</span><h3>Person</h3></div>
-        <a href="edit/person/">Open in editor</a>
+        <a href="demo/person/">Open in editor</a>
       </div>
       <div class="comparison-panes">
         <div>
           <h4>YAMLSchema</h4>
-          <pre><code>.title: Person
-age?: +Int 0..
-name: +Str</code></pre>
+          <pre><code>name: +Str
+age?: +Int 0..120
+email?: +JSONSchema/email
+tags?: +Str[] [=good, bad, ugly]</code></pre>
         </div>
         <div>
           <h4>JSON Schema</h4>
           <pre><code>{
-  "title": "Person",
   "type": "object",
   "properties": {
+    "name": {"type": "string"},
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
     "age": {
       "type": "integer",
-      "minimum": 0
+      "minimum": 0,
+      "maximum": 120
     },
-    "name": {"type": "string"}
+    "tags": {
+      "type": "array",
+      "default": "good",
+      "items": {
+        "type": "string",
+        "enum": ["good", "bad", "ugly"]
+      }
+    }
   },
   "required": ["name"],
   "additionalProperties": false
@@ -112,11 +125,11 @@ name: +Str</code></pre>
       </div>
     </article>
     <article class="comparison-slide" data-comparison-slide
-             data-editor-href="edit/address/"
+             data-editor-href="demo/address/"
              tabindex="0" aria-label="Open Address in the editor">
       <div class="comparison-title">
         <div><span>02</span><h3>Address</h3></div>
-        <a href="edit/address/">Open in editor</a>
+        <a href="demo/address/">Open in editor</a>
       </div>
       <div class="comparison-panes">
         <div>
@@ -148,11 +161,11 @@ countryName: +Str</code></pre>
       </div>
     </article>
     <article class="comparison-slide" data-comparison-slide
-             data-editor-href="edit/device-type/"
+             data-editor-href="demo/device-type/"
              tabindex="0" aria-label="Open Device Type in the editor">
       <div class="comparison-title">
         <div><span>03</span><h3>Device Type</h3></div>
-        <a href="edit/device-type/">
+        <a href="demo/device-type/">
           Open in editor
         </a>
       </div>
@@ -254,5 +267,5 @@ The interchange form for the existing JSON Schema ecosystem.
 
 <section class="home-closing">
   <p>Start with the shape of your data. Add only the constraints you need.</p>
-  <a class="ys-button ys-button-primary" href="edit/">Try YAMLSchema</a>
+  <a class="ys-button ys-button-primary" href="demo/">Try YAMLSchema</a>
 </section>

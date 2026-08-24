@@ -37,6 +37,12 @@
   background: linear-gradient(110deg, #791724, #b52538 62%, #8e1d2d);
 }
 
+@media screen and (min-width: 76.25em) {
+  .md-tabs__list {
+    padding-left: 2.8rem;
+  }
+}
+
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3 {

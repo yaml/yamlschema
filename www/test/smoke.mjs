@@ -257,6 +257,24 @@ if (
 }
 
 const appSource = await readFile('src/editor/app.js', 'utf8');
+if (
+  !appSource.includes(
+    "jsonSchemaTitle.addEventListener('dblclick', clearSiteCookies)",
+  ) ||
+  !appSource.includes('document.cookie =') ||
+  !appSource.includes('Max-Age=0') ||
+  !appSource.includes("window.location.assign('https://yamlschema.org/demo/')")
+) {
+  throw new Error('JSON Schema cookie-clearing shortcut is missing');
+}
+if (
+  !appSource.includes('sampleRouteSelected = Boolean(requestedSample)') ||
+  !appSource.includes(
+    'sampleRouteSelected ? selectedSample : undefined',
+  )
+) {
+  throw new Error('base demo route does not wait for a schema selection');
+}
 const codeEditorSource = await readFile('src/editor/editor.js', 'utf8');
 const bundledApp = await readFile('docs/assets/editor/app.js', 'utf8');
 const styleSource = await readFile(
@@ -311,7 +329,10 @@ if (
   !appSource.includes('parseEditorState(window.location.hash)') ||
   !appSource.includes('serializeEditorState({') ||
   !appSource.includes('Custom from ${origin}') ||
-  !appSource.includes("replaceEditorURL(selectedSample, hash)")
+  !appSource.includes(
+    'replaceEditorURL(sampleRouteSelected ? selectedSample : ' +
+    'undefined, hash)',
+  )
 ) {
   throw new Error('shareable editor URL state is incomplete');
 }
@@ -379,7 +400,9 @@ if (
 if (
   !appSource.includes('schemaEditor.dataset.schemaSlug') ||
   !appSource.includes('window.history.replaceState') ||
-  !appSource.includes('replaceEditorURL(\n  initialSample,')
+  !appSource.includes(
+    'replaceEditorURL(\n  sampleRouteSelected ? initialSample : undefined,',
+  )
 ) {
   throw new Error('editor schema routes do not select canonical inputs');
 }
@@ -503,9 +526,27 @@ const routedExamples = [
   ['harbor-next', 'ysd'],
   ...exampleFiles.map((name) => [name, 'json']),
 ];
-const indexHTML = await readFile('site/edit/index.html', 'utf8');
-if (!indexHTML.includes('id="normalize-json"')) {
-  throw new Error('Normalize JSON button is missing');
+const indexHTML = await readFile('site/demo/index.html', 'utf8');
+const mkdocsConfig = await readFile('mkdocs.yaml', 'utf8');
+if (
+  mkdocsConfig.includes('- YAMLSchema:') ||
+  !mkdocsConfig.includes('- Demo: demo/index.md')
+) {
+  throw new Error('site navigation has an incorrect home or demo tab');
+}
+if (
+  !indexHTML.includes('<a href=".." title="YAMLSchema"') ||
+  !indexHTML.includes('<a href=".." class="md-header__title"') ||
+  !indexHTML.includes('aria-label="YAMLSchema home"')
+) {
+  throw new Error('header icon and title do not link to the home page');
+}
+if (
+  !indexHTML.includes('id="normalize-json"') ||
+  !indexHTML.includes('id="json-schema-title"') ||
+  indexHTML.includes('data-schema-slug=')
+) {
+  throw new Error('base demo page has incorrect editor controls or routing');
 }
 if (
   indexHTML.includes('<textarea') ||
@@ -609,7 +650,7 @@ if (
   throw new Error('roundtrip diff dialog is missing');
 }
 for (const [slug] of routedExamples) {
-  const routeHTML = await readFile(`site/edit/${slug}/index.html`, 'utf8');
+  const routeHTML = await readFile(`site/demo/${slug}/index.html`, 'utf8');
   if (!routeHTML.includes(`data-schema-slug="${slug}"`)) {
     throw new Error(`${slug} editor route has the wrong schema slug`);
   }
@@ -620,7 +661,7 @@ for (const [slug] of routedExamples) {
 }
 let oldEditorExists = true;
 try {
-  await readFile('site/editor/index.html');
+  await readFile('site/edit/index.html');
 } catch (error) {
   if (error.code !== 'ENOENT') throw error;
   oldEditorExists = false;
@@ -637,9 +678,9 @@ if ((homeHTML.match(/data-comparison-slide/g) || []).length !== 3) {
   throw new Error('home page comparison carousel is incomplete');
 }
 for (const href of [
-  'edit/person/',
-  'edit/address/',
-  'edit/device-type/',
+  'demo/person/',
+  'demo/address/',
+  'demo/device-type/',
 ]) {
   if (!homeHTML.includes(href)) {
     throw new Error(`home page editor link is missing: ${href}`);
@@ -760,6 +801,14 @@ const initialYSD = await readFile(
   'docs/assets/editor/examples/person.ysd.yaml',
   'utf8',
 );
+const expectedInitialYSD = `name: +Str
+age?: +Int 0..120
+email?: +JSONSchema/email
+tags?: +Str[] [=good, bad, ugly]
+`;
+if (initialYSD !== expectedInitialYSD) {
+  throw new Error(`unexpected Person YSD: ${initialYSD}`);
+}
 const initialResult = globalThis.gloat.exports['ysd-to-json-schema'](
   initialYSD,
 );
@@ -772,16 +821,34 @@ const initialJSON = JSON.parse(initialResult.value);
 if (
   initialJSON.$schema !==
     'https://json-schema.org/draft/2020-12/schema' ||
-  initialJSON.title !== 'Person' ||
+  initialJSON.title !== undefined ||
   initialJSON.type !== 'object' ||
   initialJSON.additionalProperties !== false ||
   initialJSON.required.join(',') !== 'name' ||
-  Object.keys(initialJSON.properties).join(',') !== 'age,name' ||
+  Object.keys(initialJSON.properties).join(',') !== 'name,age,email,tags' ||
+  initialJSON.properties.name.type !== 'string' ||
+  initialJSON.properties.email.format !== 'email' ||
   initialJSON.properties.age.type !== 'integer' ||
   initialJSON.properties.age.minimum !== 0 ||
-  initialJSON.properties.name.type !== 'string'
+  initialJSON.properties.age.maximum !== 120 ||
+  initialJSON.properties.tags.type !== 'array' ||
+  initialJSON.properties.tags.default !== 'good' ||
+  initialJSON.properties.tags.items.enum.join(',') !== 'good,bad,ugly'
 ) {
   throw new Error(`unexpected initial JSON: ${initialResult.value}`);
+}
+const initialBackToYSD = globalThis.gloat.exports['json-schema-to-ysd'](
+  initialResult.value,
+);
+if (
+  !initialBackToYSD.ok ||
+  !initialBackToYSD.value.includes(
+    'tags?: +Str[] [=good, bad, ugly]',
+  )
+) {
+  throw new Error(`unexpected regenerated Person YSD: ${JSON.stringify(
+    initialBackToYSD,
+  )}`);
 }
 const initialRoundtrip = globalThis.gloat.exports[
   'ysd-roundtrip-works'

@@ -54,8 +54,7 @@ extra_javascript:
 - javascripts/carousel.js
 
 nav:
-- YAMLSchema: index.md
-- Editor: edit/index.md
+- Demo: demo/index.md
 - Getting Started: getting-started.md
 - Examples: examples.md
 - Cheat Sheet: cheat-sheet.md

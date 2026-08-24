@@ -9,20 +9,22 @@ constraints stay beside the values they describe.
 Create `person.ysd.yaml`:
 
 ```yaml
-.title: Person
 name: +Str
-age?: +Int 0..
+age?: +Int 0..120
 email?: +JSONSchema/email
+tags?: +Str[] [=good, bad, ugly]
 ```
 
 This schema requires `name`.
 The other fields are optional because their keys end in `?`.
-Age must be a non-negative integer, and email uses the JSON Schema email
-format.
+Age must be an integer from 0 through 120, and email uses the JSON Schema
+email format.
+Tags are strings chosen from `good`, `bad`, and `ugly`, with `good` as the
+default.
 
 !!! tip "Try it without installing anything"
 
-    Open the [interactive editor](edit/person.md),
+    Open the [interactive editor](demo/person.md),
     change either pane, and watch the other representation update.
 
 ## Install the command

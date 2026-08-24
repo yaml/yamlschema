@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="schema-editor"
-     data-edit-root="{{ base_url }}/edit/"
+     data-edit-root="{{ base_url }}/demo/"
      {% if page.meta.schema_slug %}
      data-schema-slug="{{ page.meta.schema_slug }}"
      {% endif %}>
@@ -47,7 +47,7 @@
                 data-roundtrip-source="json"
                 title="Checking Roundtrip" aria-label="Checking Roundtrip"
                 disabled>…</button>
-        <span class="editor-title">JSON Schema</span>
+        <span id="json-schema-title" class="editor-title">JSON Schema</span>
         <button type="button" id="normalize-json"
                 title="Normalize JSON Schema" disabled>Normalize</button>
         <select id="json-sample-select" class="sample-select"

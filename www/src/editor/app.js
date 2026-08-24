@@ -12,6 +12,7 @@ const jsonError = document.querySelector('#json-error');
 const yamlError = document.querySelector('#yaml-error');
 const yamlSampleSelect = document.querySelector('#yaml-sample-select');
 const jsonSampleSelect = document.querySelector('#json-sample-select');
+const jsonSchemaTitle = document.querySelector('#json-schema-title');
 const normalizeJsonButton = document.querySelector('#normalize-json');
 const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
 const roundtripDiffDialog = document.querySelector(
@@ -92,6 +93,7 @@ let loadingEditorState = true;
 let linkedPane;
 let linkedLines;
 let canonicalSourceValues = {};
+let sampleRouteSelected = false;
 const workerCalls = new Map();
 const schemaWorker = new Worker(
   new URL('./schema-worker.js', import.meta.url),
@@ -179,7 +181,9 @@ function routedSampleSelection() {
 }
 
 function replaceEditorURL(sample, hash = '') {
-  const url = new URL(`${sample}/`, editRootURL);
+  const url = sample
+    ? new URL(`${sample}/`, editRootURL)
+    : new URL(editRootURL);
   url.hash = hash;
   window.history.replaceState(null, '', url);
 }
@@ -231,7 +235,7 @@ function updateEditorURL() {
     pane: linkedPane,
     lines: linkedLines,
   });
-  replaceEditorURL(selectedSample, hash);
+  replaceEditorURL(sampleRouteSelected ? selectedSample : undefined, hash);
   if (custom === undefined) {
     selectSampleSource(selectedSampleSource, selectedSample);
   } else {
@@ -562,6 +566,36 @@ function closeHelpFromBackdrop(event) {
   if (outside) editorHelpDialog.close();
 }
 
+function siteCookiePaths() {
+  const paths = ['/'];
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  let path = '';
+  for (const part of parts) {
+    path += `/${part}`;
+    paths.push(path, `${path}/`);
+  }
+  return [...new Set(paths)];
+}
+
+function clearSiteCookies() {
+  const names = document.cookie.split(';')
+    .map((cookie) => cookie.split('=', 1)[0].trim())
+    .filter(Boolean);
+  const hostname = window.location.hostname;
+  const domains = ['', hostname, `.${hostname}`];
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  for (const name of names) {
+    for (const path of siteCookiePaths()) {
+      for (const domain of domains) {
+        const domainAttribute = domain ? `; Domain=${domain}` : '';
+        document.cookie = `${name}=; Max-Age=0; Expires=Thu, 01 Jan 1970 ` +
+          `00:00:00 GMT; Path=${path}${domainAttribute}${secure}`;
+      }
+    }
+  }
+  window.location.assign('https://yamlschema.org/demo/');
+}
+
 async function showSample(ysd) {
   ysdValue = ysd;
   setEditorValue(yamlEditor, ysdValue);
@@ -670,6 +704,7 @@ editorHelpDialog.addEventListener('click', closeHelpFromBackdrop);
 editorHelpClose.addEventListener('click', () => {
   editorHelpDialog.close();
 });
+jsonSchemaTitle.addEventListener('dblclick', clearSiteCookies);
 normalizeJsonButton.addEventListener('click', () => {
   void normalizeJsonSchema();
 });
@@ -677,18 +712,20 @@ const requestedSample = routedSampleSelection();
 const initialSampleSource = requestedSample?.source || loadSampleSource();
 const initialSample = requestedSample?.sample ||
   loadSample(initialSampleSource);
+sampleRouteSelected = Boolean(requestedSample);
 if (requestedSample) saveSample(requestedSample.source, requestedSample.sample);
 selectedSampleSource = initialSampleSource;
 selectedSample = initialSample;
 documentSource = initialSampleSource;
 selectSampleSource(initialSampleSource, initialSample);
 replaceEditorURL(
-  initialSample,
+  sampleRouteSelected ? initialSample : undefined,
   sharedStateResult.ok ? window.location.hash : '',
 );
 for (const [source, select] of Object.entries(sampleSelects)) {
   select.addEventListener('change', async () => {
     loadingEditorState = true;
+    sampleRouteSelected = true;
     saveSample(source, select.value);
     selectedSampleSource = source;
     selectedSample = select.value;
