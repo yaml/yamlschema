@@ -1,5 +1,32 @@
 # YAMLSchema release history
 
+- version: 0.1.3
+  date:    Mon Aug 24 08:56:19 AM EDT 2026
+  changes:
+  - Fix Zsh installer clobbering
+  - Add quick YAMLSchema installer
+  - Use official YAMLSchema branding
+  - Add Ansible Builder web example
+  - Build professional YAMLSchema website
+  - Clean up converter implementation
+  - Separate browser example selectors
+  - Normalize portable YAML sequences
+  - Support JSON Schema format types
+  - Preserve schema library anchors
+  - Use YSD identity metadata
+  - Rename converter and canonical format
+  - Infer default conversion direction
+  - Support root oneOf constraints
+  - Correct browser schema examples
+  - Preserve external schema references
+  - Improve browser conversion feedback
+  - Improve browser roundtrip workflow
+  - Improve schema roundtrip semantics
+  - Expand browser schema converter
+  - Extend schema conversion APIs
+  - Add browser schema converter
+  - Preserve mixed enum roundtrips
+
 - version: 0.1.2
   date:    Thu Aug 20 04:44:06 PM EDT 2026
   changes:
