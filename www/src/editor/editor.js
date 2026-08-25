@@ -266,6 +266,7 @@ export class CodeEditor {
   schemaLocation(format) {
     const sections = schemaSections(this.view.state, format);
     const top = this.view.scrollDOM.scrollTop;
+    if (top <= 1) return {top: true};
     let index = -1;
     for (let current = 0; current < sections.length; current += 1) {
       if (this.view.lineBlockAt(sections[current].from).top > top + 1) break;
@@ -286,6 +287,10 @@ export class CodeEditor {
 
   scrollToSchemaLocation(location, format) {
     if (!location) return false;
+    if (location.top) {
+      this.view.scrollDOM.scrollTop = 0;
+      return true;
+    }
     const sections = schemaSections(this.view.state, format);
     const index = sections.findIndex((section) => section.id === location.id);
     if (index < 0) return false;

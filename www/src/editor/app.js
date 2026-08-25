@@ -179,7 +179,8 @@ function synchronizeScroll(editor) {
 }
 
 function scheduleScrollSync(editor) {
-  if (!scrollSyncEnabled || editor !== scrollSyncSourceEditor()) return;
+  if (loadingEditorState || !scrollSyncEnabled ||
+      editor !== scrollSyncSourceEditor()) return;
   cancelAnimationFrame(scrollSyncFrame);
   scrollSyncFrame = requestAnimationFrame(() => synchronizeScroll(editor));
 }
