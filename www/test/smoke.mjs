@@ -821,9 +821,22 @@ const homeSource = await readFile('docs/index.md', 'utf8');
 if (
   !homeSource.includes('source <(curl -sL yamlschema.org/install)') ||
   !homeSource.includes('curl -sL yamlschema.org/install | source -') ||
+  !homeSource.includes(
+    'enables tab completion and the YAMLSchema man pages',
+  ) ||
   !homeHTML.includes('yamlschema.org/install')
 ) {
   throw new Error('home page quick-install commands are missing');
+}
+const gettingStartedSource = await readFile(
+  'docs/getting-started.md',
+  'utf8',
+);
+if (
+  !gettingStartedSource.includes('immediately enables tab completion') ||
+  !gettingStartedSource.includes('Try `ysd --<TAB>` or `man ysd`')
+) {
+  throw new Error('installation shell features are not documented');
 }
 for (const name of exampleFiles) {
   if (!jsonSelectHTML.includes(`value="${name}"`)) {

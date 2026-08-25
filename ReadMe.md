@@ -96,8 +96,10 @@ curl -sL yamlschema.org/install | source -
 
 The installer puts `ysd` in `$HOME/.local/bin` for a normal user and in
 `/usr/local/bin` for root.
-It adds that directory to the current shell's `PATH` and clones the matching
-release tag into `$PREFIX/share/yamlschema/`.
+Running the sourced command adds that directory to the current shell's `PATH`
+and immediately enables tab completion and the YAMLSchema man pages.
+The installer clones the matching release tag into
+`$PREFIX/share/yamlschema/` and prints the `.rc` line to add for future shells.
 Set `PREFIX` or `VERSION` after the sourced installer command to override the
 defaults:
 
@@ -120,11 +122,13 @@ The `js_wasm` archive contains the raw `ysd.wasm` module for use with the Go
 JavaScript WebAssembly runtime.
 
 For local development, source the repo `.rc` file to put `bin/` on your
-`PATH`:
+`PATH`, enable tab completion, and expose the man pages:
 
 ```sh
 . ./.rc
 ```
+
+After installation or local setup, try `ysd --<TAB>` or `man ysd`.
 
 After that, the converter can be run as `ysd`:
 

@@ -1,0 +1,995 @@
+'\" t
+.nh
+.TH yamlschema-json-schema 5 "" YAMLSchema YAMLSchema
+\fBYAMLSchema\fR is designed to interoperate with JSON Schema in both directions:
+
+.EX
+contact.schema.json
+  -> contact.ysd.yaml
+  -> contact.ysdc.yaml or contact.ysdc.json
+  -> contact.schema.json
+.EE
+
+.PP
+The roundtrip goal is semantic equivalence, not byte-for-byte equality.
+JSON Schema has many equivalent ways to express the same constraint, and
+YAMLSchema has both succinct and explicit forms.
+A roundtripped JSON Schema may normalize schema keyword positions or expand
+equivalent forms while still validating the same data.
+Property names, definition names, and arbitrary JSON object members retain
+their input order through conversion and normalization.
+
+.SH Roundtrip Model
+There are three useful semantic representations.
+Expanded YAMLSchema is YSD Canonical (YSDC), with YAML and JSON
+serializations:
+
+.EX
+contact.schema.json
+  -> contact.ysd.yaml
+  -> contact.ysdc.yaml or contact.ysdc.json
+  -> contact.schema.json
+.EE
+
+.PP
+The \fB\&.ysd.yaml\fR succinct form is optimized for humans:
+
+.EX
+name: +Str
+email?: +Str =~"\\S+@\\S+"
+tags: +Str[1+,!]
+.EE
+
+.PP
+The \fB\&.ysdc.json\fR explicit form is one serialization of the canonical internal
+shape:
+
+.EX
+{
+  "name": "+Str",
+  "email?": {".type": "+Str", ".like": "^\\\\S+@\\\\S+$"},
+  "tags": {
+    ".type": "+Str[]",
+    ".uniq": true,
+    ".size": [1]
+  }
+}
+.EE
+
+.PP
+The \fB\&.schema.json\fR JSON Schema output is generated from the explicit form:
+
+.EX
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "email": {"type": "string", "pattern": "^\\\\S+@\\\\S+$"},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true,
+      "minItems": 1
+    }
+  },
+  "required": ["name", "tags"]
+}
+.EE
+
+.PP
+Use \fB\&.schema.json\fR for JSON Schema files and \fB\&.ysd.yaml\fR for human-maintained
+YAMLSchema DSL files.
+Use \fB\&.ysdc.yaml\fR or \fB\&.ysdc.json\fR for the same non-human, fully expanded
+YAMLSchema model.
+
+.SH Conversion Directions
+\fBbin/ysd\fR implements all four direct conversion targets:
+
+.EX
+contact.schema.json -> contact.ysd.yaml
+contact.ysd.yaml -> contact.ysdc.yaml
+contact.ysd.yaml -> contact.ysdc.json
+contact.ysd.yaml -> contact.schema.json
+.EE
+
+.PP
+The explicit form is the shared expansion boundary:
+
+.EX
+contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
+contact.ysd.yaml -> contact.schema.json
+.EE
+
+.PP
+The compiler targets the explicit form because succinct syntax is sugar.
+Once succinct YAMLSchema has been expanded, JSON Schema generation is mostly a
+directive-to-keyword mapping.
+
+.SH Required and Optional Properties
+JSON Schema marks required keys in a sibling \fBrequired\fR array:
+
+.EX
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "email": {"type": "string"}
+  },
+  "required": ["name"]
+}
+.EE
+
+.PP
+YAMLSchema marks optional keys locally:
+
+.EX
+name: +Str
+email?: +Str
+.EE
+
+.PP
+Roundtrip back to JSON Schema:
+
+.EX
+{
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "email": {"type": "string"}
+  },
+  "required": ["name"]
+}
+.EE
+
+.PP
+If no keys are required, the \fBrequired\fR array can be omitted.
+
+.SH JSON Schema Type Mapping
+The authoritative list and semantics of YAMLSchema built-ins are in the DSL
+built-in-types reference
+\[la]dsl.md#built\-in\-types\[ra]\&.
+Their direct JSON Schema mappings are:
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBYAMLSchema\fP
+\fB{"type": "string"}\fR	\fB+Str\fR
+\fB{"type": "integer"}\fR	\fB+Int\fR
+\fB{"type": "number"}\fR	\fB+Num\fR
+\fB{"type": "boolean"}\fR	\fB+Bool\fR
+\fB{"type": "null"}\fR	\fB+Null\fR
+\fB{"type": "object"}\fR	\fB+Map{+Any}\fR or a mapping shape
+\fB{"type": "array"}\fR	\fB+Any[]\fR or another value-side \fB+Type[]\fR
+\fB{"type": ["string", "integer"]}\fR	\fB+Any(+Str,+Int)\fR
+.TE
+
+.PP
+JSON Schema \fBnumber\fR accepts integer and non-integer numeric values, so it maps
+to \fB+Num\fR\&.
+The YAML-specific \fB+Float\fR type exports as JSON Schema \fBnumber\fR, but \fBysd\fR
+warns because the exported schema also accepts integers.
+
+.PP
+Example:
+
+.EX
+{
+  "properties": {
+    "s": {"type": "string"},
+    "i": {"type": "integer"},
+    "n": {"type": "number"},
+    "b": {"type": "boolean"}
+  },
+  "required": ["s", "i", "n", "b"]
+}
+.EE
+
+.PP
+converts to:
+
+.EX
+s: +Str
+i: +Int
+n: +Num
+b: +Bool
+.EE
+
+.SH Regex Patterns
+JSON Schema:
+
+.EX
+{
+  "properties": {
+    "email": {"type": "string", "pattern": "^\\\\S+@\\\\S+$"},
+    "zip": {"pattern": "^\\\\d{5}$"}
+  },
+  "required": ["email", "zip"]
+}
+.EE
+
+.PP
+YAMLSchema:
+
+.EX
+email: +Str =~"\\S+@\\S+"
+zip: +Str =~"\\d{5}"
+.EE
+
+.PP
+Roundtrip notes:
+.IP \(bu 2
+JSON Schema regexes are strings.
+.IP \(bu 2
+YSD \fB\&.match\fR is a whole-string match; canonicalization bookends its value
+with \fB^\fR and \fB$\fR\&.
+.IP \(bu 2
+YSD \fB\&.find\fR is an unanchored search and canonicalization preserves its
+value.
+.IP \(bu 2
+Canonical YSDC uses \fB\&.like\fR for both and exports its value unchanged as the
+JSON Schema \fBpattern\fR\&.
+.IP \(bu 2
+\fB/pattern/\fR is shorthand for \fBfind:"pattern"\fR only when the body contains
+neither whitespace nor \fB/\fR\&.
+.IP \(bu 2
+\fB=~"..."\fR, its accepted \fBmatch:"..."\fR alias, and \fBfind:"..."\fR cannot contain
+\fB"\fR; use an explicit YSD \fB\&.match\fR or \fB\&.find\fR property when needed.
+Generated YSD uses \fB=~"..."\fR for \fB\&.match\fR\&.
+.IP \(bu 2
+In any tight double-quoted body, \fB:\\\fR represents colon-space and \fB\\#\fR
+represents space-hash.
+Other backslash sequences remain literal.
+.IP \(bu 2
+All regex forms imply string validation.
+
+.SH Enums
+Simple token enums roundtrip through a type-qualified compact list:
+
+.EX
+{
+  "properties": {
+    "role": {"enum": ["admin", "user", "guest"]}
+  },
+  "required": ["role"]
+}
+.EE
+
+.EX
+role: +Str [admin, user, guest]
+.EE
+
+.PP
+An enum default is marked on its member:
+
+.EX
+logLevel: +Str [debug, =info, warning, error, fatal]
+.EE
+
+.PP
+This expands to \fB\&.enum: [debug, info, warning, error, fatal]\fR plus \fB\&.init:
+info\fR\&.
+
+.PP
+Compact members may contain whitespace; surrounding whitespace is trimmed and
+interior whitespace is preserved.
+Thus \fB[foo,bar,foo bar]\fR and \fB[ foo, bar, foo bar ]\fR are equivalent.
+Quoted members and punctuation other than \fB\&.\fR, \fB-\fR, \fB_\fR, and \fB+\fR use explicit
+\fB\&.enum\fR:
+
+.EX
+{
+  "properties": {
+    "symbol": {"enum": ["ok", "bad/value"]}
+  },
+  "required": ["symbol"]
+}
+.EE
+
+.EX
+symbol:
+  .type: +Str
+  .enum: [ok, bad/value]
+.EE
+
+.PP
+Both forms roundtrip back to:
+
+.EX
+{"enum": ["ok", "bad/value"]}
+.EE
+
+.PP
+when used as a property schema.
+
+.PP
+Enums whose values have different JSON types use an expanded \fB+Any\fR block so
+that strings resembling other YAML scalars remain distinct:
+
+.EX
+enabled:
+  .type: +Any
+  .enum: ['true', 'false', true, false]
+.EE
+
+.SH Constants
+JSON Schema:
+
+.EX
+{
+  "properties": {
+    "version": {"const": "v1"},
+    "kind": {"const": "User"}
+  },
+  "required": ["version", "kind"]
+}
+.EE
+
+.PP
+YAMLSchema:
+
+.EX
+version: +Str ==v1
+kind: +Str ==User
+.EE
+
+.PP
+\fB==value\fR maps to \fBconst\fR; \fB=="foo bar"\fR is the quoted form and \fBconst:value\fR
+is the labeled alternative.
+A following \fB=value\fR independently adds JSON Schema \fBdefault\fR:
+
+.EX
+fixed: +Str ==User =User
+.EE
+
+.EX
+{"const": "User", "default": "User"}
+.EE
+
+.PP
+Roundtrip back to JSON Schema should preserve this as \fBconst\fR, not as an enum
+with one value:
+
+.EX
+{
+  "properties": {
+    "version": {"const": "v1"},
+    "kind": {"const": "User"}
+  },
+  "required": ["version", "kind"]
+}
+.EE
+
+.SH Ranges and Sizes
+Numeric ranges:
+
+.EX
+{
+  "properties": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "age": {"type": "integer", "minimum": 0},
+    "ratio": {"type": "number", "minimum": 0, "maximum": 1}
+  },
+  "required": ["port", "age", "ratio"]
+}
+.EE
+
+.EX
+port: +Int 1..65535
+age: +Int 0..
+ratio: +Num 0..1
+.EE
+
+.PP
+String lengths use \fB\&.size\fR:
+
+.EX
+{
+  "properties": {
+    "bio": {"type": "string", "minLength": 1, "maxLength": 500},
+    "code": {"type": "string", "minLength": 3}
+  },
+  "required": ["bio", "code"]
+}
+.EE
+
+.EX
+bio: +Str 1-500
+code: +Str 3+
+.EE
+
+.PP
+Roundtrip rule:
+.IP \(bu 2
+\fB\&.range\fR on \fB+Int\fR, \fB+Float\fR, or \fB+Num\fR maps its optional bounds to
+\fBminimum\fR and \fBmaximum\fR\&.
+.IP \(bu 2
+\fB\&.size\fR on \fB+Str\fR maps to \fBminLength\fR and \fBmaxLength\fR\&.
+.IP \(bu 2
+\fB\&.size\fR on lists maps to \fBminItems\fR and \fBmaxItems\fR\&.
+.IP \(bu 2
+\fB\&.size\fR on maps maps to \fBminProperties\fR and \fBmaxProperties\fR\&.
+.IP \(bu 2
+A one-number canonical sequence such as \fB\&.size: [3]\fR means that the upper
+bound is absent.
+
+.SH Arrays
+Homogeneous arrays use suffixes on the value type:
+
+.EX
+{
+  "properties": {
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "names": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1
+    },
+    "triple": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "subset": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "maxItems": 3
+    }
+  },
+  "required": ["tags", "names", "triple", "subset"]
+}
+.EE
+
+.EX
+tags: +Str[]
+names: +Str[1+]
+triple: +Int[3]
+subset: +Str[1-3]
+.EE
+
+.PP
+Unique arrays add \fB!\fR:
+
+.EX
+{
+  "type": "array",
+  "items": {"type": "string"},
+  "uniqueItems": true,
+  "minItems": 1
+}
+.EE
+
+.EX
+names: +Str[1+,!]
+.EE
+
+.PP
+Roundtrip mapping:
+
+.TS
+allbox;
+l l
+l l .
+\fBYAMLSchema\fP	\fBJSON Schema\fP
+\fBkey: +Str[]\fR	\fBtype: array\fR, \fBitems: {type: string}\fR
+\fBkey: +Str[1+]\fR	plus \fBminItems: 1\fR
+\fBkey: +Int[3]\fR	plus \fBminItems: 3\fR, \fBmaxItems: 3\fR
+\fBkey: +Str[1-3]\fR	plus \fBminItems: 1\fR, \fBmaxItems: 3\fR
+\fBkey: +Str[!]\fR	plus \fBuniqueItems: true\fR
+\fBkey: +Str[1+,!]\fR	plus \fBuniqueItems: true\fR, \fBminItems: 1\fR
+.TE
+
+.SH Defaults
+JSON Schema:
+
+.EX
+{
+  "properties": {
+    "port": {"type": "integer", "default": 8080},
+    "host": {"type": "string", "default": "localhost"}
+  },
+  "required": ["port", "host"]
+}
+.EE
+
+.PP
+YAMLSchema:
+
+.EX
+port: +Int =8080
+host: +Str =localhost
+.EE
+
+.PP
+Roundtrip rule: \fB\&.init\fR maps to JSON Schema \fBdefault\fR\&.
+
+.SH Annotations
+Generated \fB\&.schema.json\fR uses JSON Schema Draft 2020-12.
+The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
+dialect identifiers for the direct mappings it supports.
+The \fB$schema\fR keyword is implied by \fB\&.schema.json\fR output and is not encoded
+in YAMLSchema.
+
+.PP
+When the input is a file, generated JSON Schema also has a root \fB$comment\fR:
+
+.EX
+"$comment": "DO NOT EDIT. THIS FILE GENERATED BY YAMLSCHEMA vX.Y.Z"
+.EE
+
+.PP
+This generated note is transient. Import and normalized roundtrip discard it,
+so it is never represented in YAMLSchema or copied back to JSON Schema.
+Output generated from stdin omits the note because there is no input file.
+
+.PP
+Other JSON Schema metadata roundtrips through explicit YAMLSchema directives.
+These fields do not affect validation, but keeping them preserves useful
+schema metadata.
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBYAMLSchema\fP
+\fB$id\fR	\fB\&.ysid\fR
+\fB$anchor\fR	\fB\&.name\fR
+\fBtitle\fR	\fB\&.title\fR
+\fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR
+Known string \fBformat\fR	\fB+JSONSchema/format\fR
+.TE
+
+.PP
+\fB\&.ysid\fR is the first mapping entry in generated YAMLSchema.
+\fB$anchor\fR becomes \fB\&.name\fR on the same schema node and exports back unchanged.
+The definition key and anchor name remain independent, so \fB$defs.product\fR
+with \fB$anchor: ProductSchema\fR becomes \fB+product\fR with
+\fB\&.name: ProductSchema\fR\&.
+The recognized Draft 2020-12 formats become qualified YAMLSchema types, such
+as \fB+JSONSchema/date\fR, \fB+JSONSchema/email\fR, and \fB+JSONSchema/uuid\fR\&.
+A known format is converted this way only when its JSON Schema type is string,
+which avoids adding a string constraint to an annotation-only schema.
+Unknown formats and formats without a string type remain lossless passthrough
+directives with a warning.
+YSD and both YSDC serializations use \fB\&.ysd.yaml\fR to identify the source YSD
+document.
+JSON Schema uses \fB\&.schema.json\fR\&.
+Conversion replaces one of those recognized suffixes or appends the target
+suffix when none is present.
+Query strings and fragments are preserved.
+
+.SH Definitions and References
+JSON Schema definitions become top-level symbols:
+
+.EX
+{
+  "$defs": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "email": {"type": "string", "pattern": "^\\\\S+@\\\\S+$"}
+  },
+  "properties": {
+    "host": {"type": "string"},
+    "port": {"$ref": "#/$defs/port"},
+    "admin": {"$ref": "#/$defs/email"}
+  },
+  "required": ["host", "port"]
+}
+.EE
+
+.EX
++port: +Int 1..65535
++email: +Str =~"\\S+@\\S+"
+
+host: +Str
+port: +port
+admin?: +email
+.EE
+
+.PP
+Roundtrip back to JSON Schema:
+
+.EX
+{
+  "$defs": {
+    "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+    "email": {"type": "string", "pattern": "^\\\\S+@\\\\S+$"}
+  },
+  "type": "object",
+  "properties": {
+    "host": {"type": "string"},
+    "port": {"$ref": "#/$defs/port"},
+    "admin": {"$ref": "#/$defs/email"}
+  },
+  "required": ["host", "port"]
+}
+.EE
+
+.PP
+Roundtrip notes:
+.IP \(bu 2
+\fB$defs\fR and older \fBdefinitions\fR both import as \fB+name\fR\&.
+.IP \(bu 2
+A local reference such as \fB#/$defs/email\fR imports as \fB+email\fR\&.
+.IP \(bu 2
+Every other \fB$ref\fR imports as \fB+Ref(reference)\fR when the exact reference is
+safe in the compact grammar, or as \fB\&.xref: reference\fR otherwise.
+.IP \(bu 2
+A document containing named definitions but no root shape exports only
+metadata and \fB$defs\fR; it does not gain a root \fBtype\fR, \fBproperties\fR, or
+\fBadditionalProperties\fR constraint.
+.IP \(bu 2
+\fB\&.xref\fR preserves the exact reference string without fetching or resolving
+it and can be combined with sibling constraints.
+.IP \(bu 2
+A singleton \fBallOf\fR containing only a reference normalizes to a sibling
+\fB$ref\fR under Draft 2020-12.
+.IP \(bu 2
+A singleton \fBallOf\fR containing only an \fBanyOf\fR normalizes to a sibling
+\fBanyOf\fR\&.
+.IP \(bu 2
+A referenced mapping refined by local properties puts \fB+name\fR under \fB\&.type\fR
+and keeps those property definitions as siblings.
+.IP \(bu 2
+Exporting back to JSON Schema should prefer \fB$defs\fR\&.
+
+.PP
+For example, an external reference can stay succinct:
+
+.EX
+author: +Ref(https://example.com/user-profile.schema.json)
+.EE
+
+.PP
+Its canonical form is:
+
+.EX
+author:
+  .xref: https://example.com/user-profile.schema.json
+.EE
+
+.SH Nested Objects
+Nested JSON Schema objects become nested YAMLSchema mappings:
+
+.EX
+{
+  "type": "object",
+  "properties": {
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {"type": "string"},
+        "city": {"type": "string"},
+        "country": {"type": "string"}
+      },
+      "required": ["street", "city"]
+    }
+  },
+  "required": ["address"]
+}
+.EE
+
+.EX
+address:
+  street: +Str
+  city: +Str
+  country?: +Str
+.EE
+
+.PP
+Roundtrip back to JSON Schema restores each object level with its own
+\fBproperties\fR and \fBrequired\fR array.
+
+.SH Additional Properties
+The reserved \fB+Str\fR key describes otherwise-unmatched string keys.
+Its value is any YAMLSchema value schema:
+
+.EX
+labels:
+  +Str: +Str
+config:
+  enabled?: +Bool
+  +Str: +Any
+.EE
+
+.PP
+Explicit JSON Schema values import as follows:
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBYAMLSchema\fP
+\fBadditionalProperties: true\fR	Inherited openness or \fB+Str: +Any\fR
+\fBadditionalProperties: {"type":"string"}\fR	\fB+Map{+Str}\fR
+\fBadditionalProperties: {"$ref":"..."}\fR	\fB+Map{+name}\fR
+constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
+\fBadditionalProperties: false\fR	No wildcard
+.TE
+
+.PP
+Generated YSD starts with \fB\&.open: true\fR only when the root object permits
+undeclared properties.
+Otherwise mappings are closed by default.
+A shaped mapping with omitted \fBadditionalProperties\fR is open in JSON Schema.
+Under a closed YSD default, the importer represents that local openness with
+a final \fB+Str: +Any\fR wildcard.
+Under an open YSD default, \fBadditionalProperties: false\fR becomes
+\fB\&.open: false\fR\&.
+
+.PP
+On export, an open shape omits \fBadditionalProperties\fR, while a closed shape
+gets \fBadditionalProperties: false\fR\&.
+An explicit \fB+Str: +Any\fR also omits \fBadditionalProperties\fR, since the JSON
+Schema default has the same semantics; other wildcard values emit the
+corresponding schema.
+Top-level \fB\&.open\fR controls the root mapping as well as the mapping shapes
+defined beneath it.
+
+.PP
+Canonical YSDC keeps \fB\&.open: true\fR only at the top.
+It preserves \fB\&.open: false\fR where an open inherited default must be closed,
+and uses a final \fB+Str: +Any\fR wildcard where a closed inherited default must
+be opened.
+
+.PP
+An incomplete \fB+Map\fR requires sibling properties.
+The importer emits a wildcard block for pure unconstrained open objects.
+The \fB+Map{+Any}\fR shorthand remains valid input.
+
+.PP
+When named properties coexist with \fBadditionalProperties\fR, the importer emits
+an explicit wildcard after the named properties:
+
+.EX
+labels:
+  fixed?: +Str
+  +Str: +Str
+.EE
+
+.PP
+\fB+Map{+Type}\fR accepts one built-in, user-defined, or namespaced reference.
+It is shorthand for the future \fB+Map{+Str,+Type}\fR form.
+Two-reference maps are reserved for YAML key schemas but are not implemented.
+More complex value constraints continue to use explicit \fB+Str\fR syntax.
+
+.PP
+Generated \fB\&.ysd.yaml\fR begins with \fB# Converted from JSON Schema\fR\&.
+Root annotations and \fB\&.open\fR follow, then each top-level \fB+type\fR definition is
+preceded by a blank line.
+
+.SH Schema Combinators
+JSON Schema combinators round-trip through explicit directives:
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBYAMLSchema\fP
+\fBoneOf\fR	\fB\&.one\fR or \fB+One(...)\fR
+\fBanyOf\fR	\fB\&.any\fR or \fB+Any(...)\fR
+\fBallOf\fR	\fB\&.all\fR or \fB+All(...)\fR
+\fBnot\fR	\fB\&.not\fR or \fB+Not(...)\fR
+.TE
+
+.PP
+The compact forms contain type references only.
+\fBOne\fR, \fBAny\fR, and \fBAll\fR require at least two references.
+\fBNot\fR requires at least one; multiple references mean \fBnot(anyOf(...))\fR\&.
+
+.PP
+When every \fB+Any(...)\fR branch is a simple built-in type, JSON Schema output
+uses a \fBtype\fR array.
+References and richer alternatives use \fBanyOf\fR\&.
+
+.PP
+A root \fBoneOf\fR imports as document-level \fB\&.one\fR\&.
+Its branches are partial root constraints, so they export without an implied
+\fBtype: object\fR or \fBadditionalProperties\fR keyword:
+
+.EX
+deviceType: +Str
+\&.one:
+- .xref: https://example.com/smartphone.schema.json
+  deviceType?: +Str ==smartphone
+- .xref: https://example.com/laptop.schema.json
+  deviceType?: +Str ==laptop
+.EE
+
+.PP
+The \fB\&.xref\fR and \fBdeviceType\fR constraint in each branch are siblings in the
+corresponding JSON Schema \fBoneOf\fR member.
+
+.PP
+Root \fBanyOf\fR branches made only from \fBproperties\fR and \fBrequired\fR import as an
+ordered \fB\&.keys\fR rule:
+
+.EX
+\&.keys:
+- .any:
+  - token: +Str 8+
+  - existingSecret: +Str 1+
+.EE
+
+.PP
+Each branch is a partial mapping constraint rather than an object type.
+One rule exports directly as \fBanyOf\fR\&.
+Multiple \fB\&.keys\fR rules export as ordered members of \fBallOf\fR\&.
+
+.PP
+A \fBrequired\fR schema without a corresponding \fBproperties\fR mapping cannot use
+property-key requiredness.
+Inside combinators, it is preserved as a \fB\&.required\fR interop directive:
+
+.EX
+\&.one:
+- .required: [Action]
+- .required: [NotAction]
+.EE
+
+.SH Property Dependencies
+JSON Schema \fBdependentRequired\fR maps to a property-local \fB:need(...)\fR clause:
+
+.EX
+postOfficeBox?: +Str :need(streetAddress)
+extendedAddress?: +Str :need(streetAddress)
+.EE
+
+.PP
+The annotated property is the trigger.
+Its dependency names are sibling properties that must also be present.
+Multiple names are comma separated, and \fB:need()\fR preserves an empty list.
+
+.PP
+When a property value already needs an explicit block, or a dependency name
+is not safe in a tight scalar, use \fB\&.need\fR with a flow sequence:
+
+.EX
+extendedAddress?:
+  .type: +Str
+  .need: [streetAddress]
+.EE
+
+.PP
+Dependency targets do not need declarations in the same object.
+For now, importing JSON Schema requires every \fBdependentRequired\fR trigger to
+exist in the same \fBproperties\fR map.
+Supporting undeclared triggers needs a future object-level representation.
+
+.SH Unsupported or Open JSON Schema Features
+The converter keeps unsupported keywords as same-named dotted directives and
+warns for every occurrence.
+Their values remain data and export under the original JSON Schema keyword
+rather than being converted into comments:
+
+.EX
+auth?:
+  .if:
+    required:
+    - token
+.EE
+
+.PP
+These passthrough directives preserve information but do not yet provide
+YAMLSchema-native semantics.
+Open design areas include:
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBPossible YAMLSchema direction\fP
+\fBif\fR / \fBthen\fR / \fBelse\fR	\fB\&.when\fR
+\fBdependentSchemas\fR	Extended \fB\&.with\fR or conditional schema
+\fBpatternProperties\fR	Regex keys
+\fBpropertyNames\fR	Key constraints
+\fBprefixItems\fR	Positional list schemas
+\fBcontains\fR	List membership constraints
+\fBunevaluatedItems\fR	Strict list mode
+\fBunevaluatedProperties\fR	Strict map mode
+\fBexclusiveMinimum\fR / \fBexclusiveMaximum\fR	Open-bound range syntax
+\fBformat\fR	Semantic format annotations
+.TE
+
+.PP
+Likely out of scope or JSON Schema-specific:
+.IP \(bu 2
+Dynamic references.
+.IP \(bu 2
+Anchors.
+.IP \(bu 2
+Vocabularies.
+.IP \(bu 2
+Boolean schemas.
+.IP \(bu 2
+Content/media validation.
+
+.SH Information That May Not Roundtrip
+Semantic roundtrip does not preserve every textual detail:
+.IP \(bu 2
+JSON object key order is preserved where the conversion retains the object.
+.IP \(bu 2
+Whitespace and comments in JSON Schema are not preserved.
+.IP \(bu 2
+Equivalent JSON Schema spellings may normalize to one spelling.
+.IP \(bu 2
+Explicit \fBadditionalProperties: true\fR and an empty schema normalize to
+omission.
+.IP \(bu 2
+\fBdefinitions\fR should export back as \fB$defs\fR\&.
+.IP \(bu 2
+Succinct YAMLSchema may expand to explicit YAMLSchema before JSON
+generation.
+.IP \(bu 2
+A compact enum and an explicit \fB\&.enum\fR with the same values are equivalent.
+.IP \(bu 2
+A one-element \fB\&.range\fR or \fB\&.size\fR sequence denotes a missing upper bound;
+generated YSD uses \fBn..\fR or \fBn+\fR rather than the obsolete \fB*\fR marker.
+
+.PP
+Lossless source-preserving roundtrip would require storing source metadata in
+addition to the schema semantics.
+
+.PP
+Use \fB-R\fR to roundtrip either JSON Schema or YSD through the other format:
+
+.EX
+ysd -R values.schema.json
+ysd -Rq values.schema.json
+ysd -R values.ysd.yaml
+ysd -Rq values.ysd.yaml
+.EE
+
+.PP
+For JSON Schema input, \fBysd\fR compares normalized JSON Schema before and after
+conversion through YSD.
+For YSD input, it compares canonical YSD before and after conversion through
+JSON Schema.
+Canonical YSD expands lexical defaults, normalizes equivalent open-map forms,
+preserves mapping key order, and retains YAML-specific type distinctions.
+
+.PP
+An explicit \fB-f\fR selects the input format.
+Without \fB-f\fR, a first non-whitespace character of \fB{\fR selects JSON Schema;
+anything else selects YSD.
+
+.PP
+The first command prints \fBOK\fR or a unified diff.
+The quiet form prints nothing.
+When \fBless\fR is available, the diff is displayed with \fBless -FRX\fR; otherwise it
+is written directly to standard output.
+Both forms return status 0 for a match and status 1 for a difference.
+This is a normalized structural comparison, not proof of validation
+equivalence.
+
+.SH Roundtrip Paths
+JSON Schema roundtripping follows this path:
+.IP "  1." 5
+Parse JSON Schema into explicit YAMLSchema.
+.IP "  2." 5
+Render explicit YAMLSchema as succinct syntax where safe.
+.IP "  3." 5
+Parse succinct YAMLSchema back to explicit YAMLSchema.
+.IP "  4." 5
+Generate JSON Schema from explicit YAMLSchema.
+.IP "  5." 5
+Normalize both JSON Schema documents.
+.IP "  6." 5
+Compare the normalized documents.
+
+.PP
+YSD roundtripping reverses that path:
+.IP "  1." 5
+Parse and canonicalize the original YSD.
+.IP "  2." 5
+Generate JSON Schema from the YSD.
+.IP "  3." 5
+Parse the generated JSON Schema.
+.IP "  4." 5
+Render it back to YSD.
+.IP "  5." 5
+Canonicalize the generated YSD.
+.IP "  6." 5
+Compare the canonical documents.

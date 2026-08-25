@@ -1,5 +1,4 @@
-YAMLSchema Design
-=================
+# yamlschema-design -- YAMLSchema design
 
 `YAMLSchema` is a YAML-native data validation schema language.
 A schema is itself YAML, and its shape mirrors the YAML data it validates.

@@ -1,0 +1,719 @@
+'\" t
+.nh
+.TH yamlschema 5 "" YAMLSchema YAMLSchema
+This page specifies the human-authored YAMLSchema DSL and its expansion to the
+YSD Canonical (YSDC) model, serialized as \fB\&.ysdc.yaml\fR or \fB\&.ysdc.json\fR\&.
+A schema defines types: sets of constraints for a scalar, mapping, or list of
+another type.
+
+.PP
+The optional top-level \fB\&.ysid\fR is a non-empty document identity string:
+
+.EX
+\&.ysid: https://example.com/contact.ysd.yaml
+.EE
+
+.PP
+Generated output places \fB\&.ysid\fR first, although input may place it anywhere.
+YSD and YSDC use \fB\&.ysd.yaml\fR, while JSON Schema uses \fB\&.schema.json\fR\&.
+Conversion replaces a recognized suffix and appends the target suffix when
+none is present.
+
+.PP
+The optional \fB\&.name\fR directive gives a schema node an externally addressable
+name:
+
+.EX
+\&.name: PersonSchema
+
++address:
+  .name: AddressSchema
+  street: +Str
+.EE
+
+.PP
+At the document top it names the root schema.
+Inside a definition or property type it names that schema node.
+It maps directly to JSON Schema \fB$anchor\fR, while a definition key such as
+\fB+address\fR remains the local YAMLSchema type name.
+Names must match \fB[A-Za-z_][A-Za-z0-9._-]*\fR and must be unique in one schema
+document.
+
+.PP
+The optional \fB\&.root\fR directive distinguishes an explicit root type from a
+document that only publishes named definitions:
+
+.EX
+\&.root: {}
+
++kind: +Str
+.EE
+
+.PP
+This example has a closed, empty mapping as its root type, so only \fB{}\fR is
+valid at the document root.
+Without \fB\&.root\fR, the document only defines \fB+kind\fR and leaves its JSON Schema
+root unconstrained.
+\fB\&.root\fR may also reference a named type, as in \fB\&.root: +kind\fR\&.
+
+.SH Types in Mappings
+A normal mapping entry has the data key on the left and its type on the right:
+
+.EX
+name: +Str
+nickname?: +Str
+.EE
+
+.PP
+Keys are required unless they end in \fB?\fR\&.
+The \fB?\fR remains on the key in canonical YAMLSchema.
+A value may be a reference, an anonymous type, or a reference refined by more
+constraints:
+
+.EX
+email: +email
+code: +Str /[A-Z][0-9]+/
+work_email: +email /@example\\.com$/
+.EE
+
+.PP
+Definitions use a \fB+slug\fR key.
+The key names the type and references use the same slug:
+
+.EX
++resources:
+  requests?: +Map{+Any}
+  limits?: +Map{+Any}
+
+resources?: +resources
+.EE
+
+.PP
+Local references name definitions with \fB+name\fR\&.
+External JSON Schema references use \fB+Ref(...)\fR and preserve the reference
+text without fetching or resolving it:
+
+.EX
+author: +Ref(https://example.com/user-profile.schema.json)
+profile?: +Ref(../schemas/profile.json#/$defs/profile)
+.EE
+
+.PP
+The compact form requires a non-empty reference without whitespace or \fB)\fR\&.
+It accepts the normal list and nullable suffixes, such as \fB+Ref(#item)[]\fR and
+\fB+Ref(profile.json)~\fR\&.
+Use the canonical \fB\&.xref\fR directive for every other reference string or when
+the reference has sibling constraints:
+
+.EX
+author:
+  .xref: https://example.com/user-profile.schema.json
+  .desc: An externally defined author
+empty:
+  .xref: ''
+.EE
+
+.PP
+\fB\&.xref\fR accepts any string and exports it unchanged as JSON Schema \fB$ref\fR\&.
+It is separate from \fB\&.from\fR, which imports schemas or namespaces.
+
+.PP
+Anonymous mapping shapes need no \fB\&.type\fR marker.
+Shaped mappings are closed by default; key-side \fB+Str\fR admits otherwise
+unmatched string keys:
+
+.EX
+labels:
+  fixed?: +Str
+  +Str: +Str
+.EE
+
+.PP
+String-keyed maps can name their value type directly:
+
+.EX
+config: +Map{+Any}
+labels: +Map{+Str}
+flags: +Map{+flag}
+.EE
+
+.PP
+\fB+Map{+Type}\fR expands to \fB+Str: +Type\fR\&.
+The value type must be one built-in, user-defined, or namespaced reference.
+An incomplete \fB+Map\fR must be completed by sibling key/value pairs.
+
+.PP
+Lists of maps append the list suffix to the value type:
+
+.EX
+maps: +Map{+Any}[]
+other: +Map{+Str}[]
+.EE
+
+.PP
+The reserved future form \fB+Map{+Key,+Value}\fR will support YAML key schemas.
+It is not implemented yet.
+The current one-reference form is shorthand for \fB+Map{+Str,+Value}\fR and
+therefore fixes keys to strings.
+
+.PP
+Mappings are closed by default.
+Top-level \fB\&.open: true\fR changes the default for the document mapping and every
+mapping shape defined beneath it:
+
+.EX
+\&.open: true
+
++person:
+  name: +Str
+
+server:
+  .open: false
+  host: +Str
+.EE
+
+.PP
+Here the document and \fB+person\fR are open, while \fBserver\fR and every mapping
+shape nested beneath it are closed unless locally reopened.
+
+.PP
+A nested \fB\&.open\fR must be Boolean and overrides the inherited value.
+An explicit \fB+Str\fR wildcard controls the current shape directly.
+Combining \fB\&.open: false\fR with such a wildcard is an error.
+Canonical YSDC keeps \fB\&.open: true\fR only at the document top.
+It uses \fB\&.open: false\fR to close a shape under an open default and a final
+\fB+Str: +Any\fR wildcard to open a shape under a closed default.
+
+.SH Key/Value Pair Constraints
+Use a top-level \fB\&.keys\fR sequence when a constraint relates multiple mapping
+pairs:
+
+.EX
+token?: +Str
+existingSecret?: +Str
+
+\&.keys:
+- .any:
+  - token: +Str 8+
+  - existingSecret: +Str 1+
+.EE
+
+.PP
+Each \fB\&.any\fR branch is a partial mapping constraint.
+The example requires at least one branch to match: \fBtoken\fR must be present and
+have at least eight characters, or \fBexistingSecret\fR must be present and have
+at least one character.
+
+.PP
+Plain branch keys are required.
+A branch key ending in \fB?\fR is optional.
+Unmentioned properties remain unaffected, and a branch does not create or
+close an object type.
+
+.PP
+One \fB\&.keys\fR rule becomes a root JSON Schema \fBanyOf\fR\&.
+Multiple rules all apply and become ordered members of a root \fBallOf\fR\&.
+Each rule must currently contain exactly one \fB\&.any\fR entry with at least two
+non-empty property-to-type mappings.
+
+.SH Built-in Types
+.TS
+allbox;
+l l
+l l .
+\fBType\fP	\fBAccepted value\fP
+\fB+Any\fR	Any YAML value
+\fB+Str\fR	A string
+\fB+Int\fR	An integer
+\fB+Float\fR	A YAML float-tagged value
+\fB+Num\fR	Any numeric value: \fB+Int\fR or \fB+Float\fR
+\fB+Bool\fR	\fBtrue\fR or \fBfalse\fR
+\fB+Null\fR	\fBnull\fR
+\fB+Map\fR	T{
+A mapping shape completed by sibling property definitions
+T}
+\fB+Map{+Type}\fR	T{
+A mapping with string keys and \fB+Type\fR values
+T}
+.TE
+
+.PP
+Capitalized type names are reserved for these built-ins and the \fB+One\fR,
+\fB+All\fR, and \fB+Not\fR combinator heads.
+A type reference beginning with a capital letter is rejected when it is not
+one of those known names.
+User-defined type references must not begin with a capital letter.
+
+.PP
+Examples:
+
+.EX
+anything: +Any
+name: +Str
+age: +Int
+ratio: +Float
+number: +Num
+enabled: +Bool
+nothing: +Null
+metadata: +Map{+Any}
+labels: +Map{+Str}
+person:
+  .type: +Map
+  name: +Str
+  age?: +Int
+.EE
+
+.PP
+\fB+Float\fR follows YAML tagging rather than JSON Schema numeric semantics.
+It accepts float-tagged values such as \fB1.0\fR, \fB\&.inf\fR, and \fB\&.nan\fR, but not the
+integer-tagged value \fB1\fR\&.
+Use \fB+Num\fR when both integer- and float-tagged values are valid.
+
+.PP
+JSON Schema has no float-only numeric type.
+Exporting \fB+Float\fR therefore emits \fBtype: "number"\fR and a warning for that
+loss of precision.
+
+.PP
+Draft 2020-12 string formats use qualified YAMLSchema types:
+
+.EX
+dateOfBirth: +JSONSchema/date
+createdAt: +JSONSchema/date-time
+contact?: +JSONSchema/email
+.EE
+
+.PP
+The complete supported set is:
+
+.EX
+date-time date time duration email idn-email hostname idn-hostname
+ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
+json-pointer relative-json-pointer regex
+.EE
+
+.PP
+Each \fB+JSONSchema/name\fR type exports as JSON Schema \fBtype: string\fR with
+\fBformat: name\fR\&.
+Normal nullable and list suffixes apply, for example
+\fB+JSONSchema/date-time~\fR and \fB+JSONSchema/email[]\fR\&.
+Unknown qualified format names are rejected.
+
+.PP
+Bare \fB+Map\fR is intentionally incomplete.
+It must have sibling property definitions, as in \fBperson\fR, and its \fB\&.type\fR
+marker disappears during canonical expansion because the mapping shape already
+implies the type.
+Use \fB+Map{+Any}\fR for an otherwise unconstrained string-keyed mapping, or
+\fB+Map{+Type}\fR to constrain every value.
+The future two-argument form \fB+Map{+Key,+Value}\fR is reserved for mappings
+whose keys also have a schema.
+
+.PP
+Built-ins can be modified by the rest of the DSL.
+\fB+Type[]\fR is a list of that type, \fB+Type~\fR also accepts null, and \fB+Any(...)\fR,
+\fB+One(...)\fR, \fB+All(...)\fR, and \fB+Not(...)\fR combine referenced types.
+These are type expressions built from the built-ins, not additional built-in
+scalar types.
+
+.SH Tight Type Expressions
+A tight type expression is a YAML plain scalar.
+A type reference is normally first, but labeled clauses may appear in any
+order:
+
+.EX
++Base [(alternatives)] [list-suffix] [~] [pattern-or-range]
+      [enum] [size] [constant] [default] [title] [description]
+.EE
+
+.PP
+The core is normally a \fB+Type\fR reference, which later clauses refine:
+
+.EX
+foo: +Str /a.*b/
+port: +Int 1..65535
+mode: +Str [debug, info, error]
+.EE
+
+.PP
+A bare regex or numeric range can still infer a built-in type.
+A fractional range infers \fB+Num\fR because its interval may include integers.
+Generated YSD includes the inferred reference explicitly.
+
+.PP
+These expand to explicit directives.
+Refined types are always materialized:
+
+.EX
+foo:
+  .type: +Str
+  .like: a.*b
+port:
+  .type: +Int
+  .range: [1, 65535]
+mode:
+  .type: +Str
+  .enum: [debug, info, error]
+.EE
+
+.PP
+\fB=~"pattern"\fR matches the complete string; leading \fB^\fR and trailing \fB$\fR
+anchors are implied.
+\fBmatch:"pattern"\fR is an accepted alias.
+\fBfind:"pattern"\fR searches within the string.
+The \fB/pattern/\fR form is shorthand for \fBfind:"pattern"\fR and is available only
+when the pattern contains neither whitespace nor \fB/\fR\&.
+The quoted bodies cannot contain \fB"\fR\&.
+In YSD, use explicit \fB\&.match\fR or \fB\&.find\fR when no tight form can represent the
+pattern.
+Both imply \fB+Str\fR\&.
+Generated YSD uses the canonical \fB=~"pattern"\fR spelling.
+
+.PP
+Canonical YSDC stores both forms as \fB\&.like\fR, containing the exact JSON Schema
+pattern.
+A match is bookended with \fB^\fR and \fB$\fR; a find is stored unchanged:
+
+.EX
+whole:
+  .type: +Str
+  .like: ^pattern$
+search:
+  .type: +Str
+  .like: pattern
+.EE
+
+.PP
+\fB\&.like\fR is accepted only in \fB\&.ysdc.yaml\fR and \fB\&.ysdc.json\fR\&.
+Conversely, \fB\&.match\fR and \fB\&.find\fR are YSD directives and are rejected in YSDC
+input.
+
+.PP
+Compact enums require an explicit type reference and comma-separated members:
+
+.EX
+mode: +Str [debug, info, error]
+level: +Int [1, 2, 3]
+logLevel: +Str [debug, =info, warning, error, fatal]
+.EE
+
+.PP
+Members may contain letters, digits, whitespace, \fB\&.\fR, \fB-\fR, \fB_\fR, and \fB+\fR\&.
+Whitespace around each comma-separated member is trimmed; whitespace inside a
+member is preserved.
+Thus \fB[foo,bar,foo bar]\fR and \fB[ foo, bar, foo bar ]\fR have the same meaning.
+Quotes are not supported inside compact enums; use explicit \fB\&.enum\fR with a
+YAML sequence for quoted or other punctuated values.
+The base controls scalar parsing, so \fB+Str [true,1]\fR contains two strings.
+Prefix one member with \fB=\fR to also set \fB\&.init\fR to that value.
+At most one member may be marked.
+Generated YSD uses one space after every compact-enum comma.
+
+.PP
+\fB+Str ==User\fR becomes \fB\&.const: User\fR, the exact-value constraint corresponding
+to JSON Schema \fBconst\fR\&.
+\fB+Str =="foo bar"\fR is the quoted form, and \fBconst:User\fR is the labeled
+alternative.
+A bare literal remains an accepted inferred-type shorthand.
+It also means a constant, while \fB=value\fR means only a default.
+
+.SH Lists and Sizes
+List suffixes are part of the value-side type expression:
+
+.EX
+names?: +Str[1+]
+.EE
+
+.PP
+This expands to \fB\&.type: +Str[]\fR and \fB\&.size: [1]\fR\&.
+The \fB[]\fR is part of the list type; \fB\&.size\fR carries its bounds.
+Key-side list suffixes are rejected.
+
+.TS
+allbox;
+l l
+l l .
+\fBSuffix\fP	\fBMeaning\fP
+\fB[]\fR	List with no size constraint
+\fB[n]\fR	Exactly \fBn\fR items
+\fB[n-m]\fR	Between \fBn\fR and \fBm\fR items
+\fB[n+]\fR	At least \fBn\fR items
+\fB[!]\fR	Unique items
+\fB[$]\fR	Scalar or list
+\fB[n-m,$!]\fR	T{
+Scalar or a unique list with the given size
+T}
+.TE
+
+.PP
+The scalar-or-list form is the compact spelling of a JSON Schema \fBanyOf\fR
+whose two branches are the same item schema and a list of that item schema:
+
+.EX
+python?: +Str[$]
+.EE
+
+.EX
+{
+  "anyOf": [
+    {"type": "string"},
+    {"type": "array", "items": {"type": "string"}}
+  ]
+}
+.EE
+
+.PP
+The converter recognizes either branch order and matching item constraints,
+references, and JSON Schema format types.
+An \fBanyOf\fR with extra branches or different scalar and item schemas stays
+explicit.
+
+.PP
+A list of shaped mappings uses the incomplete \fB+Map\fR base and defines the item
+properties alongside it:
+
+.EX
+extraEnv?:
+  .type: +Map[1-10,$!]
+  name: +Str
+  value?: +Str
+.EE
+
+.PP
+Here the value is either one mapping or a unique list of one through ten
+mappings.
+Each mapping has the sibling \fBname\fR and \fBvalue\fR properties.
+
+.PP
+List properties may be comma-separated, whitespace-separated, or adjacent.
+For example, \fB[1-10,$!]\fR, \fB[1-10,$,!]\fR, \fB[1-10 $ !]\fR, and \fB[1-10$!]\fR are
+equivalent.
+Generated DSL uses the canonical \fB[size,$!]\fR order.
+\fB[+]\fR is an input alias for \fB[1+]\fR\&.
+The former \fB|\fR separator is rejected.
+Multiple sizes or repeated \fB$\fR and \fB!\fR flags are errors.
+
+.PP
+A size clause also works after string, list, or mapping constraints:
+
+.EX
+code: +Str 8
+names: +Str[] 1+
+labels: +Map{+Any} 1-20
+.EE
+
+.PP
+Canonical sizes contain one number for an open upper bound and two for a
+bounded or exact size:
+
+.EX
+1+    -> [1]
+10    -> [10, 10]
+10-20 -> [10, 20]
+.EE
+
+.PP
+Canonical ranges use the same structural convention, with \fBnull\fR for a missing
+lower bound:
+
+.EX
+0..    -> [0]
+1..10  -> [1, 10]
+\&..-1   -> [null, -1]
+.EE
+
+.PP
+The old \fB"*"\fR bound is invalid.
+
+.SH Nulls and Annotations
+Nullability is a value-side suffix:
+
+.EX
+enabled?: +Bool~
+.EE
+
+.PP
+Tight annotations follow all constraints:
+
+.EX
+enabled?: +Bool~ =false title:"Enabled" "Enable the service"
+label?: +Str ="pretty good"
+mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
+.EE
+
+.IP \(bu 2
+\fB=value\fR is a single YAML scalar default.
+.IP \(bu 2
+\fB="..."\fR is a string default that may contain spaces.
+.IP \(bu 2
+\fBtitle:"..."\fR is \fB\&.title\fR\&.
+.IP \(bu 2
+A final \fB"..."\fR is \fB\&.desc\fR\&.
+.IP \(bu 2
+Labeled scalar clauses may occur in any order.
+They are \fBtype\fR, \fBmatch\fR, \fBfind\fR, \fBconst\fR, \fBrange\fR, \fBsize\fR, \fBitem\fR, \fBsolo\fR,
+\fBuniq\fR, \fBnull\fR, \fBinit\fR, \fBtitle\fR, \fBdesc\fR, and scalar \fBalso\fR\&.
+.IP \(bu 2
+\fBenum:[...]\fR is the compact enum form.
+.IP \(bu 2
+\fB:need(name1,name2)\fR lists sibling properties required when this property
+is present.
+Structural \fB\&.one\fR, \fB\&.any\fR, \fB\&.all\fR, \fB\&.not\fR, \fB\&.with\fR, and \fB\&.when\fR values
+remain explicit.
+
+.PP
+Two exact triplets protect text that YAML forbids in a plain scalar: \fB:\\\fR
+represents colon-space, and \fB\\#\fR represents space-hash.
+No other backslash sequence is special, so \fBfoo\\ bar\fR, \fB\\n\fR, and \fB\\t\fR remain
+literal.
+A body cannot contain a double quote.
+Use the explicit directive when that is needed.
+A scalar consisting entirely of a YAML-quoted string is a literal value, not
+an annotation, because YAML does not preserve its original quote style.
+The obsolete trailing single-quoted description form is an error.
+
+.SH Hybrid Explicit Types
+When one constraint is clearer explicitly, \fB\&.type\fR may contain the complete
+tight expression and sibling directives add the exceptional parts:
+
+.EX
+foo:
+  .type: +Str[] /a.*b/ 10-20
+  .title: The "Good" Parts
+.EE
+
+.PP
+This is equivalent to:
+
+.EX
+foo:
+  .type: +Str[]
+  .like: a.*b
+  .size: [10, 20]
+  .title: The "Good" Parts
+.EE
+
+.PP
+Directive order is insignificant.
+Expansion normalizes \fB\&.size\fR and emits a stable directive order.
+A directive supplied by both the \fB\&.type\fR expression and a sibling is an error,
+even when the values agree.
+
+.SH Combinators
+Reference-only alternatives have compact forms:
+
+.EX
+one: +One(+Str,+Int)
+any: +Any(+foo,+bar)
+all: +All(+foo,+bar)
+neither: +Not(+foo,+bar)
+values: +Any(+foo,+bar)[]
+.EE
+
+.PP
+\fBOne\fR, \fBAny\fR, and \fBAll\fR require at least two references.
+\fBNot\fR requires at least one; multiple references mean the value must match
+none of them.
+A list suffix follows the complete combinator type.
+
+.PP
+Multiple references without parentheses are an implicit conjunction.
+The first is the base and the rest are additional constraint groups:
+
+.EX
+value: +base +constraint +other
+.EE
+
+.PP
+Branches containing complete type definitions use explicit directives:
+
+.EX
+value:
+  .one:
+  - +Str 1+
+  - name: +Str
+.EE
+
+.PP
+At the document root, \fB\&.one\fR constrains the root value in addition to its
+declared properties:
+
+.EX
+deviceType: +Str
+\&.one:
+- .xref: https://example.com/smartphone.schema.json
+  deviceType?: +Str ==smartphone
+- .xref: https://example.com/laptop.schema.json
+  deviceType?: +Str ==laptop
+.EE
+
+.PP
+Root branches are partial constraints, not standalone closed object types.
+An optional property constrains that property when present without requiring
+it again inside the branch.
+Directives such as \fB\&.xref\fR apply alongside the branch properties.
+
+.PP
+A JSON Schema \fBoneOf\fR with exactly one required-only branch is equivalent to
+that ordinary \fBrequired\fR constraint.
+The importer therefore marks those property keys as required instead of
+emitting a redundant \fB\&.one\fR block.
+Other \fBoneOf\fR branches remain explicit, including branches with annotations
+or additional constraints.
+
+.SH Canonical Expansion
+Compile human-authored YAML to canonical JSON with:
+
+.EX
+ysd -t ysdc.json contact.ysd.yaml
+ysd -t ysdc.json -C contact.ysd.yaml
+ysd -t ysdc.json values.schema.json
+.EE
+
+.PP
+Use \fBysdc\fR or \fBysdc.yaml\fR instead of \fBysdc.json\fR for canonical YAML.
+Use \fB-f/--from ysd\fR, \fBysdc.json\fR, \fBysdc\fR, or \fBjsc\fR when a filename or stdin does
+not make the source format clear.
+File suffixes \fB\&.ysd.yaml\fR, \fB\&.ysdc.json\fR, \fB\&.ysdc.yaml\fR, and \fB\&.schema.json\fR are
+inferred automatically.
+
+.PP
+Canonical directives are emitted in this order:
+
+.EX
+\&.name .type .xref .open .need .item .one .any .all .not .like
+\&.enum .const .range .size .solo .uniq .null .init .title
+\&.desc .also .with .when
+.EE
+
+.PP
+An unrefined built-in or named reference is emitted directly as a \fB+Type\fR
+scalar.
+This is the compact form of a mapping whose only pair would be \fB\&.type: +Type\fR\&.
+An external reference may similarly use \fB+Ref(...)\fR; its canonical form is
+\fB\&.xref\fR rather than \fB\&.type\fR\&.
+When annotations, validation constraints, or shape entries share the mapping,
+the reference or complete tight expression remains under \fB\&.type\fR\&.
+
+.PP
+List types append \fB[]\fR to the reference.
+An unconstrained list is therefore emitted as a scalar such as \fB+Any[]\fR;
+constrained lists use forms such as \fB\&.type: +Str[]\fR with \fB\&.size\fR or \fB\&.uniq\fR\&.
+\fB\&.list\fR is currently rejected and reserved for a possible future
+list-constraint model; it does not mean "convert this type into a list."
+
+.PP
+Unknown directives are errors.
+\fB\&.need\fR is valid only in a property definition and contains a sequence of
+sibling property names.
+For example, \fB\&.need: [password]\fR on \fBuser\fR means that the presence of \fBuser\fR
+requires \fBpassword\fR\&.
+\fB\&.also\fR, \fB\&.with\fR, and \fB\&.when\fR may be retained in explicit YAMLSchema, but an
+export that cannot represent one fails rather than silently discarding it.
+\fB\&.pick\fR and the former \fB\&.oneof\fR, \fB\&.anyof\fR, and \fB\&.allof\fR names are rejected
+with guidance to use \fB\&.one\fR, \fB\&.any\fR, and \fB\&.all\fR\&.
+
+.PP
+The former names \fB\&.titl\fR, \fB\&.just\fR, \fB\&.only\fR, \fB\&.mini\fR, and \fB\&.maxi\fR are rejected
+with replacement diagnostics.
+Their replacements are \fB\&.title\fR, \fB\&.const\fR, and \fB\&.range\fR\&.

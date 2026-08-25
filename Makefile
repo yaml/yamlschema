@@ -33,7 +33,8 @@ ysd: bin/ysd $(GLOAT)
 	  --out='$@' --force --quiet \
 	  --module=github.com/yaml/yamlschema
 
-test: test-unit test-version test-release test-installer test-scripts
+test: \
+  test-unit test-version test-release test-installer test-man test-scripts
 
 test-unit: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
@@ -47,17 +48,28 @@ test-release: $(PERL)
 test-installer:
 	test/installer
 
-test-scripts: $(SHELLCHECK)
+test-man:
+	$(MAKE) -C man test
+
+test-scripts: $(SHELLCHECK) $(YS)
 	$(SHELLCHECK) \
+	  .rc \
 	  util/release util/release-dist \
 	  test/release test/installer \
 	  www/docs/install
+	bin/ysd --complete=bash | $(SHELLCHECK) -s bash -
 
 json-schema-suite:
 	util/ysd-suite-roundtrip --fetch-only
 
 suite-roundtrip:
 	util/ysd-suite-roundtrip draft4
+
+.PHONY: man
+man:
+	$(MAKE) -C man
+
+update: man
 
 release-prep: $(PERL)
 	@$(if $(filter command line,$(origin VERSION)),,\
@@ -95,7 +107,7 @@ release: $(GH) $(PERL)
 	$Q PERL='$(PERL)' GH='$(GH)' \
 	  '$(RELEASE)' release '$(VERSION)'
 
-MAKES-CLEAN += .cache/release dist ysd
+MAKES-CLEAN += .cache/man-test .cache/release dist ysd
 
 serve publish:
 	$(MAKE) -C www $@

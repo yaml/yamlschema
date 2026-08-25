@@ -12,7 +12,8 @@ _yamlschema_install_main() {
   local install_file=$1
   shift
   local install_mk_url=${YAMLSCHEMA_INSTALL_MK_URL:-}
-  local install_dir install_mk temporary binary bin_dir prefix install_status
+  local install_dir install_mk temporary binary bin_dir rc_file prefix
+  local install_status
 
   command -v curl >/dev/null || {
     printf "%s\n" "YAMLSchema install: curl is required" >&2
@@ -61,12 +62,18 @@ _yamlschema_install_main() {
   }
 
   bin_dir=${binary%/*}
-  case ":${PATH-}:" in
-    *":$bin_dir:"*) ;;
-    *) PATH="$bin_dir${PATH:+:$PATH}" ;;
-  esac
-  export PATH
+  rc_file=${bin_dir%/bin}/share/yamlschema/.rc
+  [ -r "$rc_file" ] || {
+    printf "%s\n" \
+      "YAMLSchema install: setup file not found: $rc_file" >&2
+    return 1
+  }
+  source "$rc_file" || return
+
   printf "Installed YAMLSchema to %s\n" "$binary"
+  printf "%s\n" "Enabled tab completion and man pages for this shell."
+  printf "%s\n" "To enable them in future shells, add:"
+  printf "  source %s\n" "$rc_file"
 }
 
 _yamlschema_install_main "$_yamlschema_install_file" "$@" || {
@@ -138,14 +145,35 @@ function _yamlschema_install_main
     return 1
   end
 
-  set -l bin_dir (path dirname "$binary")
-  contains -- "$bin_dir" $PATH; or set -gx PATH "$bin_dir" $PATH
-  printf "Installed YAMLSchema to %s\n" "$binary"
+  set -g _yamlschema_install_binary "$binary"
 end
 
 _yamlschema_install_main $argv
 set -l _yamlschema_install_status $status
 functions -e _yamlschema_install_main
+
+if test $_yamlschema_install_status -eq 0
+  set -l bin_dir (path dirname "$_yamlschema_install_binary")
+  set -l rc_file (path dirname "$bin_dir")/share/yamlschema/.rc
+  if not test -r "$rc_file"
+    printf "%s\n" \
+      "YAMLSchema install: setup file not found: $rc_file" >&2
+    set _yamlschema_install_status 1
+  else
+    source "$rc_file"
+    set _yamlschema_install_status $status
+    if test $_yamlschema_install_status -eq 0
+      printf "Installed YAMLSchema to %s\n" \
+        "$_yamlschema_install_binary"
+      printf "%s\n" \
+        "Enabled tab completion and man pages for this shell."
+      printf "%s\n" "To enable them in future shells, add:"
+      printf "  source %s\n" "$rc_file"
+    end
+  end
+end
+
+set -e _yamlschema_install_binary
 return $_yamlschema_install_status
 '
 

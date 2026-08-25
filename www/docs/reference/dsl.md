@@ -1,5 +1,4 @@
-YAMLSchema DSL
-==============
+# yamlschema -- YAMLSchema language reference
 
 This page specifies the human-authored YAMLSchema DSL and its expansion to the
 YSD Canonical (YSDC) model, serialized as `.ysdc.yaml` or `.ysdc.json`.

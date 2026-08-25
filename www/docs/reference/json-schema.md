@@ -1,5 +1,4 @@
-JSON Schema Roundtrip
-=====================
+# yamlschema-json-schema -- JSON Schema interoperability
 
 `YAMLSchema` is designed to interoperate with JSON Schema in both directions:
 

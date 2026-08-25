@@ -1,4 +1,4 @@
-# Command Line Interface
+# ysd -- Convert YAMLSchema and JSON Schema
 
 `ysd` converts between YSD, YSD Canonical, and JSON Schema.
 It reads standard input when no input path is given and writes to standard
@@ -24,8 +24,25 @@ ysd -R, --roundtrip [-q, --quiet] [INPUT]
 | `-R`, `--roundtrip` | Test a JSON Schema or YSD roundtrip |
 | `-q`, `--quiet` | Suppress successful roundtrip output |
 | `-C`, `--compact` | Emit compact JSON |
+| `--complete=SHELL` | Generate completion for Bash, Zsh, or Fish |
 | `--help` | Show command help |
 | `--version` | Show the installed version |
+
+## Shell completion
+
+The sourced installer enables completion automatically in Bash, Zsh, and
+Fish.
+Completion scripts can also be generated directly:
+
+```bash
+ysd --complete=bash
+ysd --complete=zsh
+ysd --complete=fish
+```
+
+The installed `.rc` also adds the bundled manuals to `MANPATH`.
+Use `man ysd`, `man yamlschema`, `man yamlschema-design`, or
+`man yamlschema-json-schema`.
 
 ## Default direction
 

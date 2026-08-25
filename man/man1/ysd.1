@@ -1,0 +1,111 @@
+'\" t
+.nh
+.TH ysd 1 "" YAMLSchema YAMLSchema
+\fBysd\fR converts between YSD, YSD Canonical, and JSON Schema.
+It reads standard input when no input path is given and writes to standard
+output unless \fB-o\fR names a file.
+
+.SH Usage
+.EX
+ysd [INPUT]
+ysd (-t FORMAT | -o FILE) [INPUT]
+ysd -N, --norm [INPUT]
+ysd -R, --roundtrip [-q, --quiet] [INPUT]
+.EE
+
+.SH Options
+.TS
+allbox;
+l l
+l l .
+\fBOption\fP	\fBMeaning\fP
+\fB-t\fR, \fB--to FORMAT\fR	Select \fBysd\fR, \fBysdc\fR, \fBysdc.yaml\fR, \fBysdc.json\fR, or \fBjsc\fR
+\fB-f\fR, \fB--from FORMAT\fR	T{
+Override the detected input format
+T}
+\fB-o\fR, \fB--output FILE\fR	Write to a file, or use \fB-\fR for standard output
+\fB-N\fR, \fB--norm\fR	T{
+Normalize to draft 2020-12 JSON Schema
+T}
+\fB-R\fR, \fB--roundtrip\fR	T{
+Test a JSON Schema or YSD roundtrip
+T}
+\fB-q\fR, \fB--quiet\fR	T{
+Suppress successful roundtrip output
+T}
+\fB-C\fR, \fB--compact\fR	Emit compact JSON
+\fB--complete=SHELL\fR	T{
+Generate completion for Bash, Zsh, or Fish
+T}
+\fB--help\fR	Show command help
+\fB--version\fR	Show the installed version
+.TE
+
+.SH Shell completion
+The sourced installer enables completion automatically in Bash, Zsh, and
+Fish.
+Completion scripts can also be generated directly:
+
+.EX
+ysd --complete=bash
+ysd --complete=zsh
+ysd --complete=fish
+.EE
+
+.PP
+The installed \fB\&.rc\fR also adds the bundled manuals to \fBMANPATH\fR\&.
+Use \fBman ysd\fR, \fBman yamlschema\fR, \fBman yamlschema-design\fR, or
+\fBman yamlschema-json-schema\fR\&.
+
+.SH Default direction
+The first non-whitespace character and the filename extension determine the
+input form.
+JSON input converts to YSD, while YSD and YSDC input convert to JSON Schema.
+
+.EX
+ysd contact.schema.json
+ysd contact.ysd.yaml
+ysd contact.ysdc.yaml
+ysd contact.ysdc.json
+.EE
+
+.PP
+Use \fB-f\fR when reading standard input or when a filename is ambiguous:
+
+.EX
+cat contact.yaml | ysd -f ysd -t jsc
+.EE
+
+.SH Explicit targets
+.EX
+ysd -t ysd contact.schema.json
+ysd -t ysdc.yaml contact.ysd.yaml
+ysd -t ysdc.json contact.ysd.yaml
+ysd -t jsc contact.ysd.yaml
+.EE
+
+.SH Normalize JSON Schema
+Normalization adds the draft 2020-12 dialect, chooses canonical keyword
+positions, and preserves property order.
+
+.EX
+ysd -N contact.schema.json
+.EE
+
+.SH Roundtrip reports
+Roundtrip checks begin from the input representation:
+
+.EX
+ysd -R contact.schema.json
+ysd -R contact.ysd.yaml
+.EE
+
+.PP
+Use quiet mode in automation:
+
+.EX
+ysd -Rq contact.ysd.yaml
+.EE
+
+.PP
+A successful quiet check produces no output and exits successfully.

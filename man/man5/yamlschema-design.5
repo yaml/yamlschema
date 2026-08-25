@@ -1,0 +1,1118 @@
+'\" t
+.nh
+.TH yamlschema-design 5 "" YAMLSchema YAMLSchema
+\fBYAMLSchema\fR is a YAML-native data validation schema language.
+A schema is itself YAML, and its shape mirrors the YAML data it validates.
+The language has two layers:
+.IP \(bu 2
+A succinct form meant for people to author and read.
+.IP \(bu 2
+An explicit directive form meant to be canonical and mechanically produced.
+
+.PP
+Every succinct form should expand to explicit directives.
+Validators can consume the explicit form directly, while humans can write the
+compact form.
+
+.SH File Extensions
+YAMLSchema uses separate extensions for human-authored source, compiled
+YAMLSchema, and JSON Schema interchange.
+The compiled form is YSD Canonical (YSDC).
+
+.EX
+contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
+contact.ysd.yaml -> contact.schema.json
+.EE
+
+.IP \(bu 2
+\fB\&.ysd.yaml\fR is the human-maintained YAMLSchema DSL form.
+.IP \(bu 2
+\fB\&.ysdc.yaml\fR is the YSD Canonical form serialized as YAML.
+.IP \(bu 2
+\fB\&.ysdc.json\fR is the YSD Canonical form serialized as JSON.
+.IP \(bu 2
+\fB\&.schema.json\fR is the JSON Schema export or import form.
+
+.PP
+The \fB\&.ysd.yaml\fR form is ordinary YAML and should be pleasant to edit by hand.
+The \fBysdc\fR forms contain the same non-human, fully expanded data and are
+intended for validators, caches, publication, and generated artifacts.
+The \fB\&.schema.json\fR form is the JSON Schema representation used for interop
+with the JSON Schema ecosystem.
+
+.SH Core Model
+.SS Shape Mirrors Data
+A mapping in a schema describes a mapping in the data:
+
+.EX
+name: +Str
+email?: +Str =~"\\S+@\\S+"
+address:
+  street: +Str
+  city: +Str
+.EE
+
+.PP
+This describes data like:
+
+.EX
+name: Alice
+email: alice@example.com
+address:
+  street: 1 Main St
+  city: Toronto
+.EE
+
+.PP
+Schema keys are data keys unless they start with a reserved prefix such as \fB+\fR
+for definitions or \fB\&.\fR for directives.
+
+.SS Required By Default
+Fields are required unless marked optional:
+
+.EX
+name: +Str       # required
+email?: +Str     # optional
+.EE
+
+.PP
+The optional marker is part of the key syntax.
+The optional marker remains on the key in the canonical explicit model.
+
+.PP
+A property can require sibling properties when it is present:
+
+.EX
+postOfficeBox?: +Str :need(streetAddress)
+extendedAddress?: +Str :need(streetAddress)
+.EE
+
+.PP
+This relationship is directional.
+For example, \fBextendedAddress\fR requires \fBstreetAddress\fR, but the reverse is
+not implied.
+
+.SS Constraints Refine Types
+The succinct syntax puts a base type before the constraints that refine it:
+
+.EX
+email: +Str =~"\\S+@\\S+"  # whole-string regex match
+role: +Str [admin, user, guest]  # enum with explicit type
+port: +Int 1..65535      # numeric range
+tags: +Str[1+]           # list of one or more strings
+.EE
+
+.PP
+Regexes and numeric ranges can infer a built-in type in handwritten YSD, but
+generated YSD includes that type explicitly.
+
+.PP
+The corresponding canonical form uses type references and directives such as
+\fB\&.type\fR, \fB\&.like\fR, \fB\&.enum\fR, and \fB\&.size\fR\&.
+
+.SH Symbols and Definitions
+Symbols begin with \fB+\fR\&.
+
+.EX
++email: +Str =~"\\S+@\\S+"
++port: +Int 1..65535
+
+admin_email: +email
+listen_port: +port
+.EE
+
+.PP
+Built-in symbols use uppercase names.
+The complete list and special mapping forms are defined in the DSL
+built-in-types reference
+\[la]dsl.md#built\-in\-types\[ra]\&.
+
+.PP
+User-defined symbols are normally lowercase:
+
+.EX
++email: +Str =~"\\S+@\\S+"
++address:
+  street: +Str
+  city: +Str
+.EE
+
+.PP
+Definitions are declarative.
+Order is not significant.
+A symbol may refer to a base type, a regex, a range, an enum, a map shape, or
+another schema construct.
+
+.PP
+Private definitions use \fB:+name\fR as the key and are still referenced as
+\fB+name\fR inside the same schema:
+
+.EX
+:+local-part: +Str /[a-zA-Z0-9._%+-]+/
++email: +Str /{+local-part}@example\\.com/
+.EE
+
+.PP
+Namespaced references are written with \fB/\fR:
+
+.EX
+server:
+  port: +net/port
+  email: +contact/email
+.EE
+
+.SH Directives
+Directives begin with \fB\&.\fR\&.
+The design keeps directive names short and regular.
+
+.TS
+allbox;
+l l
+l l .
+\fBDirective\fP	\fBMeaning\fP
+\fB\&.name\fR	T{
+JSON Schema anchor name for this schema node
+T}
+\fB\&.need\fR	T{
+Sibling properties required when this property is present
+T}
+\fB\&.type\fR	T{
+Complete built-in or named type expression
+T}
+\fB\&.xref\fR	Exact external JSON Schema \fB$ref\fR string
+\fB\&.like\fR	T{
+Canonical raw regex pattern; implies string
+T}
+\fB\&.match\fR	T{
+YSD whole-string regex; canonicalization adds \fB^\fR and \fB$\fR
+T}
+\fB\&.find\fR	T{
+YSD regex search; canonicalization preserves the pattern
+T}
+\fB\&.enum\fR	Enumeration of allowed values
+\fB\&.const\fR	T{
+The one exact allowed value; JSON Schema \fBconst\fR
+T}
+\fB\&.range\fR	T{
+Inclusive numeric range, with either bound optional
+T}
+\fB\&.size\fR	T{
+Number, string, list, or map size
+T}
+\fB\&.item\fR	Explicit sequence item type
+\fB\&.one\fR	T{
+Exactly one alternative must match
+T}
+\fB\&.any\fR	T{
+One or more alternatives must match
+T}
+\fB\&.all\fR	Every alternative must match
+\fB\&.not\fR	The nested type must not match
+\fB\&.solo\fR	T{
+A scalar is also accepted where a list is declared
+T}
+\fB\&.uniq\fR	List items must be unique
+\fB\&.null\fR	Null is accepted
+\fB\&.init\fR	Default value
+\fB\&.title\fR	Human-facing display title
+\fB\&.desc\fR	Description annotation
+\fB\&.open\fR	T{
+Lexical open-mapping default or local override
+T}
+\fB\&.also\fR	Alternate key names
+\fB\&.with\fR	Co-dependent keys
+\fB\&.when\fR	T{
+Conditional requirement or constraint
+T}
+.TE
+
+.PP
+\fB\&.one\fR may also occur at the document root.
+Its mapping branches are partial root constraints, so branch properties do
+not imply a closed object schema.
+This lets an external \fB\&.xref\fR and a discriminating property constraint apply
+as siblings in one branch.
+
+.PP
+Meta directives are top-level schema metadata:
+
+.TS
+allbox;
+l l
+l l .
+\fBDirective\fP	\fBMeaning\fP
+\fB\&.from\fR	Import schemas or namespaces
+\fB\&.name\fR	T{
+JSON Schema anchor name for the root schema
+T}
+\fB\&.root\fR	T{
+Explicit root type when a document also has named types
+T}
+\fB\&.ysid\fR	T{
+Representation-aware document identity
+T}
+\fB\&.title\fR	Human-facing display title
+\fB\&.desc\fR	JSON Schema \fBdescription\fR annotation
+\fB\&.open\fR	T{
+Lexical default for mapping types defined in the document
+T}
+\fB\&.one\fR	T{
+Exactly one partial root constraint must match
+T}
+.TE
+
+.SH Succinct Values
+A succinct value is a YAML plain scalar.
+A type reference is conventionally first, and labeled clauses can occur in any
+order.
+The scalar labels are \fBtype\fR, \fBmatch\fR, \fBfind\fR, \fBconst\fR, \fBrange\fR, \fBsize\fR,
+\fBitem\fR, \fBsolo\fR, \fBuniq\fR, \fBnull\fR, \fBinit\fR, \fBtitle\fR, \fBdesc\fR, and scalar \fBalso\fR\&.
+\fBenum:[...]\fR uses the compact enum grammar.
+\fB:need(name1,name2)\fR is the property dependency clause.
+Structural \fB\&.one\fR, \fB\&.any\fR, \fB\&.all\fR, \fB\&.not\fR, \fB\&.with\fR, and \fB\&.when\fR values remain
+explicit.
+
+.EX
+foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
+.EE
+
+.PP
+The canonical explicit form uses the period-prefixed directive names.
+The old names \fBtitl\fR, \fBjust\fR, and \fBonly\fR are errors with diagnostics naming
+\fBtitle\fR and \fBconst\fR\&.
+The tight \fBlike:\fR label is also rejected in favor of YSD \fBmatch:\fR or \fBfind:\fR;
+canonical YSDC \fB\&.like\fR stores the resulting raw pattern.
+
+.SS Descriptions
+A schema scalar may end with a double-quoted description:
+
+.EX
+repository?: +Str "Repository path without registry host"
+right: +Str "This isn't wrong"
+dbRepository?: +Str[] "Repositories for the vulnerability DB"
+.EE
+
+.PP
+This expands to:
+
+.EX
+repository?:
+  .type: +Str
+  .desc: Repository path without registry host
+right:
+  .type: +Str
+  .desc: This isn't wrong
+dbRepository?:
+  .type: +Str[]
+  .desc: Repositories for the vulnerability DB
+.EE
+
+.PP
+The whole value is a YAML plain scalar.
+The quote characters are YAMLSchema syntax, not YAML quoting syntax.
+The description starts after the schema expression and opening double quote.
+It ends at the scalar's final double quote.
+The two outer quote characters are removed.
+Inside them, \fB:\\\fR represents colon-space and \fB\\#\fR represents space-hash so
+the containing YAML value can remain a plain scalar.
+These are exact triplets: \fBfoo\\ bar\fR, \fB\\n\fR, and \fB\\t\fR remain literal.
+Internal double quotes are not representable.
+List suffixes may follow the schema expression before the description.
+
+.PP
+YAML plain-scalar folding is allowed:
+
+.EX
+repository?: +Str
+  "Repository path without registry host"
+.EE
+
+.PP
+Generated YSD keeps a tight scalar on one physical line when that line is at
+most 80 columns.
+When the complete line is longer, its base expression, compact enum, and
+description are placed on separate lines.
+Long enums wrap after commas and long descriptions wrap at safe spaces.
+Every continuation line uses the same indentation, so YAML folding
+reconstructs the original single scalar:
+
+.EX
+mode?: +Str
+  [debug, info, warning, error, fatal]
+  "The logging mode used by every component in this deployment."
+.EE
+
+.PP
+A YAML-quoted scalar such as \fB"Description"\fR loses its quote style when loaded
+and therefore is not this shorthand.
+Descriptions that cannot be safely represented in a YAML plain scalar use the
+explicit \fB\&.desc\fR form.
+
+.SS Regex
+Use \fB=~"..."\fR for a whole-string match.
+\fBmatch:"..."\fR is also accepted:
+
+.EX
+email: +Str =~"\\S+@\\S+"
+zip: +Str =~"\\d{5}(-\\d{4})?"
+.EE
+
+.PP
+Equivalent canonical YSDC form:
+
+.EX
+email:
+  .type: +Str
+  .like: ^\\S+@\\S+$
+zip:
+  .type: +Str
+  .like: ^\\d{5}(-\\d{4})?$
+.EE
+
+.PP
+Use \fBfind:"..."\fR for an unanchored search.
+\fB/pattern/\fR is its compact form when \fBpattern\fR contains neither whitespace nor
+\fB/\fR:
+
+.EX
+word: +Str /good/
+path: +Str find:"usr/local"
+.EE
+
+.SS Enums
+Simple enum values use an explicit type and a compact list:
+
+.EX
+role: +Str [admin, user, guest]
+level: +Str [LOW, MED, HIGH]
+logLevel: +Str [debug, =info, warning, error, fatal]
+.EE
+
+.PP
+Equivalent explicit form:
+
+.EX
+role:
+  .type: +Str
+  .enum: [admin, user, guest]
+level:
+  .type: +Str
+  .enum: [LOW, MED, HIGH]
+.EE
+
+.PP
+Compact members may contain letters, digits, whitespace, \fB\&.\fR, \fB-\fR, \fB_\fR, and
+\fB+\fR\&.
+Whitespace surrounding members is trimmed and interior whitespace is
+preserved.
+A leading \fB=\fR marks the one member that is also the default.
+Quoted or otherwise punctuated values use explicit \fB\&.enum\fR:
+
+.EX
+label: +Str [has space, ok]
+symbol:
+  .type: +Str
+  .enum: [ok, bad/value]
+.EE
+
+.SS Numeric Ranges
+.EX
+port: +Int 1..65535
+age: +Int 0..
+ratio: +Num 0..1
+.EE
+
+.PP
+Equivalent explicit form:
+
+.EX
+port:
+  .type: +Int
+  .range: [1, 65535]
+age:
+  .type: +Int
+  .range: [0]
+ratio:
+  .type: +Num
+  .range: [0, 1]
+.EE
+
+.SS Literal Constants
+A type-qualified \fB==\fR clause is a constant constraint:
+
+.EX
+version: +Str ==v1
+kind: +Str ==User
+label: +Str =="foo bar"
+.EE
+
+.PP
+Equivalent explicit form:
+
+.EX
+version:
+  .type: +Str
+  .const: v1
+kind:
+  .type: +Str
+  .const: User
+.EE
+
+.PP
+\fBconst:User\fR is the labeled alternative.
+\fB=User\fR is independently a default, so \fB+Str ==User =User\fR exports both
+\fBconst\fR and \fBdefault\fR\&.
+
+.SH Property Keys
+The property key syntax carries only pair-level optionality:
+
+.EX
+name ? :
+.EE
+
+.TS
+allbox;
+l l
+l l .
+\fBForm\fP	\fBMeaning\fP
+\fBkey:\fR	Required key
+\fBkey?:\fR	Optional key
+.TE
+
+.PP
+Lists, sizes, uniqueness, and scalar-or-list constraints belong to the value
+type:
+
+.EX
+tags: +Str[]
+names: +Str[1+]
+triple: +Int[3]
+subset: +Str[1-3]
+unique_tags: +Str[1+,!]
+.EE
+
+.PP
+The complete property-key grammar is:
+
+.EX
+key_expr = name "?"? ":"
+.EE
+
+.PP
+Key-side list syntax such as \fBkey[]\fR and \fBkey?[1+]\fR is rejected.
+
+.SH Key/Value Pair Constraints
+Optionality belongs to one key/value pair, but some mapping constraints relate
+several pairs.
+The properties remain ordinary sibling entries so their order is preserved.
+The \fB\&.keys\fR sequence holds ordered relationship rules without requiring
+duplicate YAML keys:
+
+.EX
+aaa: +Bool
+foo?: +Str
+fool?: +Int
+bbb: +bar
+
+\&.keys:
+- .any:
+  - foo: +Str
+  - fool: +Int
+.EE
+
+.PP
+Each \fB\&.any\fR branch is a partial mapping constraint.
+A plain branch key is required, while a branch key ending in \fB?\fR is optional.
+Keys not mentioned by the branch are unaffected.
+The branch itself does not create an object type or close the surrounding
+mapping.
+
+.PP
+The example means that either \fBfoo\fR must be a string or \fBfool\fR must be an
+integer.
+It maps directly to JSON Schema \fBanyOf\fR branches containing \fBproperties\fR and
+\fBrequired\fR\&.
+One \fB\&.keys\fR rule exports directly as \fBanyOf\fR\&.
+Multiple rules all apply and export as members of \fBallOf\fR, preserving their
+order.
+
+.PP
+Property dependencies are attached directly to the triggering property:
+
+.EX
+user?: +Str :need(password)
+token?:
+  .type: +Str
+  .need: [expires, issuer]
+.EE
+
+.PP
+The compact form is used when every dependency name is safe in a tight
+scalar.
+The explicit form supports arbitrary property names.
+An empty dependency list is valid, and dependency targets do not need to be
+declared in the same mapping.
+JSON Schema imports currently require each \fBdependentRequired\fR trigger to be
+declared in the same \fBproperties\fR map.
+
+.PP
+Other presence relationships may fit the ordered rule model:
+
+.EX
+\&.keys:
+- .one: [host, socket, url]
+- .excl: [debug, quiet]
+- .when: key1
+  .then: [key2]
+  .else: [key3]
+.EE
+
+.PP
+These name-list forms are planned but are not accepted yet.
+\fB\&.one\fR would require exactly one property, \fB\&.excl\fR would permit at most one,
+\fB\&.when\fR tests whether its property is present; \fB\&.then\fR and \fB\&.else\fR select
+additional required properties.
+For example, the last rule corresponds to JSON Schema \fBif\fR with \fBrequired:
+[key1]\fR, followed by \fBthen\fR and \fBelse\fR schemas requiring \fBkey2\fR or \fBkey3\fR\&.
+
+.SH Wildcard Keys
+Mappings with declared keys are closed by default.
+Use the reserved \fB+Str\fR key to allow otherwise-unmatched string keys and
+constrain their values:
+
+.EX
+labels:
+  +Str: +Str
+config:
+  known?: +Bool
+  +Str: +Any
+.EE
+
+.PP
+The first mapping accepts any string key with a string value.
+The second accepts \fBknown\fR plus any other string key with any value.
+Pure arbitrary mappings use \fB+Map{+Any}\fR\&.
+
+.PP
+The succinct typed-map form constrains values for otherwise-unmatched string
+keys:
+
+.EX
+config: +Map{+Any}
+labels: +Map{+Str}
+custom: +Map{+value}
+.EE
+
+.PP
+It expands to the existing canonical wildcard model:
+
+.EX
+labels:
+  +Str: +Str
+.EE
+
+.PP
+\fB+Map\fR is an incomplete mapping type that requires sibling key/value pairs.
+\fB+Map[]\fR is therefore a list of shaped mappings whose item properties follow
+as siblings.
+The complete open form \fB+Map{+Value}\fR is shorthand for \fB+Map{+Str,+Value}\fR\&.
+The two-reference form is reserved for future YAML key schemas but is not
+implemented yet.
+
+.EX
+extraEnv?:
+  .type: +Map[1-10,$!]
+  name: +Str
+  value?: +Str
+  valueFrom?: +Map{+Any}
+.EE
+
+.PP
+This is a scalar or unique list of one through ten closed mapping values.
+The sibling pairs complete the list item shape.
+In list brackets, size, \fB$\fR, and \fB!\fR are independent properties.
+Commas, whitespace, and adjacency are accepted separators, while generated YSD
+uses canonical \fB[size,$!]\fR order.
+
+.SH Explicit Form
+The canonical explicit form represents all constraints with directives:
+
+.EX
+port:
+  .type: +Int
+  .range: [1, 65535]
+
+email:
+  .type: +Str
+  .like: ^\\S+@\\S+$
+
+tags:
+  .type: +Str[]
+  .size: [1]
+  .uniq: true
+.EE
+
+.PP
+Optional fields retain \fB?\fR on the key:
+
+.EX
+port?: +port
+.EE
+
+.SH Base Inheritance
+Custom definitions can inherit from other definitions:
+
+.EX
++port:
+  .type: +Int
+  .range: [1, 65535]
+
++secure-port:
+  .type: +port
+  .range: [443, 443]
+.EE
+
+.PP
+Implicit typing applies where possible:
+.IP \(bu 2
+\fB\&.like\fR implies \fB+Str\fR in canonical YSDC; YSD \fB\&.match\fR and \fB\&.find\fR normalize
+to \fB\&.like\fR\&.
+.IP \(bu 2
+\fB\&.enum\fR implies the common value type, or \fB+Any\fR for heterogeneous values.
+.IP \(bu 2
+A mapping shape implies the mapping type without emitting a base marker.
+.IP \(bu 2
+Integer-only numeric range syntax implies \fB+Int\fR when no explicit type
+exists.
+.IP \(bu 2
+A fractional numeric range implies \fB+Num\fR because its interval may include
+integers.
+
+.PP
+Emit an unrefined built-in or named reference as a \fB+Type\fR scalar when it is
+the type's entire value.
+Use \fB\&.type\fR when the reference or complete tight type expression shares a
+mapping with annotations, constraints, or shape entries.
+Emit an external reference as \fB+Ref(reference)\fR when its exact string is
+non-empty and contains neither whitespace nor \fB)\fR\&.
+Use \fB\&.xref\fR for the canonical form, unsafe compact strings, and external
+references with sibling constraints.
+External references are opaque strings and are never fetched or resolved.
+
+.SH Schema Combinators
+Compact combinators contain type references:
+
+.EX
++scalar: +One(+Str,+Int)
++value: +Any(+foo,+bar)
++both: +All(+foo,+bar)
++neither: +Not(+foo,+bar)
+.EE
+
+.PP
+\fBOne\fR, \fBAny\fR, and \fBAll\fR require two or more references.
+\fBNot\fR requires one or more and excludes every listed type.
+Complete branch definitions use the explicit form:
+
+.EX
++auth:
+  .one:
+  - api_key: +Str
+  - token: +Str
+  - username: +Str
+    password: +Str
+.EE
+
+.PP
+Multiple unparenthesized references are conjunctive.
+The first becomes \fB\&.type\fR and the remaining references become \fB\&.all\fR branches.
+
+.SH Regex Composition
+Regex-valued definitions can be composed by reference:
+
+.EX
+:+user: +Str /[a-zA-Z0-9._%+-]+/
+:+host: +Str /[a-zA-Z0-9.-]+/
+:+tld: +Str /[a-zA-Z]{2,}/
+
++email: +Str /^{+user}@{+host}\\.{+tld}$/
+.EE
+
+.PP
+The composed result expands to:
+
+.EX
++email: +Str /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/
+.EE
+
+.PP
+Rules:
+.IP \(bu 2
+Referenced regexes have their \fB/\fR delimiters removed.
+.IP \(bu 2
+Leading \fB^\fR and trailing \fB$\fR anchors are stripped before inlining.
+.IP \(bu 2
+References must resolve to regex-valued definitions.
+.IP \(bu 2
+Circular references are errors.
+
+.SH Schema File Types
+.SS Document Schema
+A document schema exports one shape.
+It may have \fB\&.name\fR and bare data keys.
+Top-level \fB+symbols\fR are private by default.
+
+.EX
+\&.from: https://yaml.org/schema/base/v1
+\&.name: contact
+
++email: +Str =~"\\S+@\\S+"
+
+name: +Str
+email?: +email
+address:
+  street: +Str
+  city: +Str
+  zip: +Str =~"\\d{5}"
+.EE
+
+.SS Type Library
+A type library exports symbols.
+It has no bare data keys.
+Its JSON Schema form contains metadata and \fB$defs\fR without an implied root
+object constraint.
+Public symbols use \fB+name\fR; private symbols use \fB:+name\fR\&.
+
+.EX
+\&.from: https://yaml.org/schema/base/v1
+
++port: +Int 1..65535
++email: +Str =~"\\S+@\\S+"
++hostname: +Str =~"[a-z0-9.-]+"
+.EE
+
+.SH Imports
+Imports use \fB\&.from\fR:
+
+.EX
+\&.from: https://yaml.org/schema/base/v1
+.EE
+
+.PP
+Multiple imports can be namespaced:
+
+.EX
+\&.from:
+  net: https://yaml.org/schema/net/v1
+  <: https://yaml.org/schema/base/v1
+
+server:
+  port: +net/port
+  host: +Str
+.EE
+
+.PP
+\fB<\fR means import exported names without a namespace prefix.
+
+.SH Binding Data to Schemas
+The language does not require one binding mechanism.
+Applications can decide how documents declare or receive schemas.
+
+.PP
+One option is a document tag:
+
+.EX
+--- !yaml://yaml.org/schema/contact/v1
+name: Alice
+.EE
+
+.PP
+Relative and application-local names are also possible:
+
+.EX
+--- !yaml:./contact.ysd.yaml
+name: Alice
+
+--- !yaml:contact/v1
+name: Alice
+.EE
+
+.PP
+Another option is a \fB!!yaml\fR meta document:
+
+.EX
+--- !!yaml
+schema: yaml://yaml.org/schema/contact/v1
+strict: true
+format:
+  indent: 2
+---
+name: Alice
+email: alice@example.com
+.EE
+
+.PP
+Inline schema is also possible:
+
+.EX
+--- !!yaml
+schema:
+  name: +Str
+  age?: +Int 0..
+  email?: +Str =~"\\S+@\\S+"
+---
+name: Alice
+age: 30
+.EE
+
+.PP
+Loader configuration is application-defined.
+It can cover validation, strictness, unknown keys, security limits, tag
+resolution, duplicate keys, merge keys, coercion, null handling, and dumping
+style.
+
+.SH Compiled Output
+Published schemas are expected to compile to a fully expanded JSON-compatible
+form.
+The succinct YAML form is for authors; the expanded form is for validators and
+interchange.
+
+.PP
+Workflow:
+
+.EX
+author succinct YAML -> compile explicit form -> publish JSON -> validate data
+.EE
+
+.PP
+Example compiled shape:
+
+.EX
+{
+  "+port": {
+    ".type": "+Int",
+    ".range": [1, 65535]
+  },
+  "+auth": {
+    ".one": [
+      {"api_key": "+Str"},
+      {"token": "+Str"}
+    ]
+  },
+  "host": "+Str",
+  "port": "+port"
+}
+.EE
+
+.SH JSON Schema Mapping
+The \fBbin/ysd\fR converter is a bootstrap path from JSON Schema into YAMLSchema.
+It currently focuses on mappings that are direct and mostly lossless.
+Input JSON Schema files should conventionally use \fB\&.schema.json\fR\&.
+Generated human-facing YAMLSchema output should use \fB\&.ysd.yaml\fR\&.
+Expanded YAMLSchema should use \fB\&.ysdc.yaml\fR or \fB\&.ysdc.json\fR; both contain the
+same canonical model.
+The converter can also generate \fB\&.schema.json\fR from \fB\&.ysd.yaml\fR for the same
+direct mapping subset.
+The \fB\&.schema.json\fR target emits JSON Schema Draft 2020-12.
+Canonical JSON output orders schema keywords but preserves the input order of
+property names, definition names, and arbitrary JSON object members.
+The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
+identifiers for the direct mappings it supports.
+The \fB$schema\fR keyword is implied by the target and is not encoded in
+YAMLSchema.
+
+.TS
+allbox;
+l l
+l l .
+\fBJSON Schema\fP	\fBYAMLSchema\fP
+\fBtype: "string"\fR	\fB+Str\fR
+\fBtype: "integer"\fR	\fB+Int\fR
+\fBtype: "number"\fR	\fB+Num\fR
+\fBtype: "boolean"\fR	\fB+Bool\fR
+\fBtype: "null"\fR	\fB+Null\fR
+\fBtype: "object"\fR	\fB+Map{+Any}\fR or a nested mapping shape
+\fBproperties\fR	Bare mapping keys
+\fBrequired\fR	T{
+Default required keys; omitted names get \fB?\fR
+T}
+\fBadditionalProperties: true\fR	Inherited openness or \fB+Str: +Any\fR
+simple schema-valued \fBadditionalProperties\fR	\fB+Map{+Type}\fR
+constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
+\fBadditionalProperties: false\fR	Closed mapping; no wildcard
+\fBenum\fR	Compact enum or \fB\&.enum\fR list
+\fBpattern\fR	\fB\&.match\fR for outer \fB^...$\fR; otherwise \fB\&.find\fR or \fB/.../\fR
+\fBminimum\fR / \fBmaximum\fR	Range scalar or structural \fB\&.range\fR sequence
+\fBminLength\fR / \fBmaxLength\fR	\fB\&.size\fR on strings
+\fBminItems\fR / \fBmaxItems\fR	List suffix or \fB\&.size\fR
+\fBminProperties\fR / \fBmaxProperties\fR	\fB\&.size\fR on maps
+\fBuniqueItems\fR	\fB!\fR list suffix or \fB\&.uniq\fR
+\fBitems\fR	List value type or \fB\&.item\fR
+\fBconst\fR	Literal value constraint
+\fBdefault\fR	\fB\&.init\fR
+\fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR
+\fBtitle\fR	\fB\&.title\fR
+\fB$id\fR	\fB\&.ysid\fR
+\fB$anchor\fR	\fB\&.name\fR
+known string \fBformat\fR	\fB+JSONSchema/format\fR
+\fB$defs\fR / \fBdefinitions\fR	Top-level \fB+name\fR definitions
+local \fB$ref\fR	\fB+name\fR symbol reference
+other \fB$ref\fR	\fB+Ref(reference)\fR or \fB\&.xref\fR
+.TE
+
+.PP
+Mappings are closed by default.
+Top-level \fB\&.open: true\fR opens the document mapping and establishes the
+inherited default for nested mappings.
+Generated YSD uses \fB\&.open: false\fR only to close a mapping under that open
+default, and uses a final \fB+Str: +Any\fR wildcard to open a mapping under a
+closed default.
+Generated JSON Schema omits \fBadditionalProperties\fR for open mappings and
+emits \fBadditionalProperties: false\fR for closed mappings.
+
+.PP
+Example:
+
+.EX
+{
+  "$defs": {
+    "email": {"type": "string", "pattern": "^\\\\S+@\\\\S+$"}
+  },
+  "properties": {
+    "name": {"type": "string"},
+    "email": {"$ref": "#/$defs/email"},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true,
+      "minItems": 1
+    }
+  },
+  "required": ["name", "tags"]
+}
+.EE
+
+.PP
+Converts to:
+
+.EX
++email: +Str =~"\\S+@\\S+"
+
+name: +Str
+email?: +email
+tags: +Str[1+,!]
+.EE
+
+.SH Converter Behavior
+\fBbin/ysd\fR works in these stages:
+.IP "  1." 5
+Read JSON Schema or YAMLSchema from an input path, or from stdin by
+default.
+.IP "  2." 5
+Default to YSD for JSON Schema input and JSON Schema for YSD or YSDC input
+when no action option is supplied.
+.IP "  3." 5
+Use \fB-t ysd\fR to parse JSON Schema and emit succinct YAMLSchema.
+.IP "  4." 5
+Use \fB-t ysdc\fR or \fB-t ysdc.json\fR to emit fully expanded YAMLSchema as YAML or
+JSON.
+.IP "  5." 5
+Use \fB-t jsc\fR to parse YAMLSchema and emit Draft 2020-12 JSON Schema.
+.IP "  6." 5
+Build a YAMLScript data structure for the output document.
+.IP "  7." 5
+Prefer succinct scalar forms where possible.
+.IP "  8." 5
+Use explicit directive maps when a schema cannot be represented as one
+scalar.
+.IP "  9." 5
+Dump \fBysd.yaml\fR and \fBysdc.yaml\fR results as YAML.
+Dump \fBysdc.json\fR and \fBschema.json\fR results as canonical, two-space-indented
+JSON.
+Use \fB-C\fR / \fB--compact\fR for compact JSON output.
+.IP " 10." 5
+Preserve unsupported JSON Schema keywords as same-named dotted
+directives and report each occurrence with a warning.
+.IP " 11." 5
+Prefix generated YSD with \fB# Converted from JSON Schema\fR\&.
+.IP " 12." 5
+Put a blank line before every top-level type definition and between the
+final definition and the document body.
+
+.PP
+Unsupported JSON Schema keywords remain data rather than becoming comments:
+
+.EX
+auth?:
+  .if:
+    required:
+    - token
+.EE
+
+.PP
+Current passthrough keywords include:
+
+.EX
+$dynamicRef $dynamicAnchor $vocabulary $comment
+prefixItems contains patternProperties dependentSchemas propertyNames
+if then else unevaluatedItems unevaluatedProperties multipleOf
+exclusiveMaximum exclusiveMinimum maxContains minContains
+deprecated readOnly writeOnly examples format
+contentEncoding contentMediaType contentSchema
+.EE
+
+.SH Current Scope and Open Design
+Implemented or directly represented by the design:
+.IP \(bu 2
+Scalar built-ins.
+.IP \(bu 2
+Draft 2020-12 string formats as \fB+JSONSchema/format\fR types.
+.IP \(bu 2
+Required and optional object properties.
+.IP \(bu 2
+Property-local dependent required constraints.
+.IP \(bu 2
+Nested object properties.
+.IP \(bu 2
+Closed shaped mappings and typed wildcard keys.
+.IP \(bu 2
+Regex patterns.
+.IP \(bu 2
+Compact type-qualified enums and explicit enums.
+.IP \(bu 2
+Numeric ranges.
+.IP \(bu 2
+String/list/map sizes.
+.IP \(bu 2
+Array item schemas for simple homogeneous arrays.
+.IP \(bu 2
+Unique arrays.
+.IP \(bu 2
+Constants and defaults.
+.IP \(bu 2
+\fBallOf\fR, \fBanyOf\fR, \fBoneOf\fR, and \fBnot\fR combinators.
+.IP \(bu 2
+\fB$defs\fR, \fBdefinitions\fR, and \fB$ref\fR\&.
+
+.PP
+Still open or incomplete:
+.IP \(bu 2
+\fBif\fR / \fBthen\fR / \fBelse\fR\&.
+.IP \(bu 2
+Dependency schemas and conditional constraints.
+.IP \(bu 2
+Regex property names and pattern properties.
+.IP \(bu 2
+Positional list schemas.
+.IP \(bu 2
+\fBcontains\fR, \fBminContains\fR, and \fBmaxContains\fR\&.
+.IP \(bu 2
+Unevaluated item/property handling.
+.IP \(bu 2
+JSON Schema dynamic references, dynamic anchors, vocabularies,
+content validation,
+and boolean schemas.
+
+.PP
+Some of those may become first-class YAMLSchema features; some may remain
+outside the scope of the language.

@@ -65,8 +65,9 @@ tags?: +Str[] [=good, bad, ugly]</code></pre>
     curl -sL yamlschema.org/install | source -
     ```
 
-The installer adds `ysd` to the current shell and keeps the matching source
-release under `$PREFIX/share/yamlschema/`.
+Running the sourced command adds `ysd` to the current shell and immediately
+enables tab completion and the YAMLSchema man pages.
+The matching source release is kept under `$PREFIX/share/yamlschema/`.
 [See installation options](getting-started.md#install-the-command).
 
 ## See the difference

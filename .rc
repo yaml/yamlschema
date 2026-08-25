@@ -1,8 +1,106 @@
-yamlschema_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck shell=bash
 
-case ":$PATH:" in
-  *":$yamlschema_root/bin:"*) ;;
-  *) PATH="$yamlschema_root/bin:$PATH" ;;
+# Works for Bash, Fish, and Zsh.
+
+test -n "$BASH_VERSION" && eval '
+YAMLSCHEMA_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+_yamlschema_bin_dir=$YAMLSCHEMA_ROOT/bin
+_yamlschema_parent=$(dirname "$YAMLSCHEMA_ROOT")
+
+if [[ $(basename "$_yamlschema_parent") == share ]]; then
+  _yamlschema_prefix=$(dirname "$_yamlschema_parent")
+  if [[ -x $_yamlschema_prefix/bin/ysd ]]; then
+    _yamlschema_bin_dir=$_yamlschema_prefix/bin
+  fi
+fi
+
+case :$PATH: in
+  *:$_yamlschema_bin_dir:*) ;;
+  *) PATH=$_yamlschema_bin_dir${PATH:+:$PATH} ;;
 esac
+MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
+export YAMLSCHEMA_ROOT PATH MANPATH
 
-export PATH
+_yamlschema_completion_path=$PATH
+if [[ -x $YAMLSCHEMA_ROOT/.cache/local/bin/ys-0 ]]; then
+  _yamlschema_completion_path=
+  _yamlschema_completion_path+=\
+$YAMLSCHEMA_ROOT/.cache/local/bin:$PATH
+fi
+if _yamlschema_completion=$(PATH=$_yamlschema_completion_path \
+    ysd --complete=bash 2>/dev/null); then
+  eval "$_yamlschema_completion"
+fi
+
+unset _yamlschema_bin_dir _yamlschema_completion
+unset _yamlschema_completion_path _yamlschema_parent _yamlschema_prefix
+return 0
+'
+
+test -n "$FISH_VERSION" && eval '
+set -gx YAMLSCHEMA_ROOT (cd (dirname (status filename)); and pwd -P)
+set -l yamlschema_bin_dir "$YAMLSCHEMA_ROOT/bin"
+set -l yamlschema_parent (path dirname "$YAMLSCHEMA_ROOT")
+
+if test (path basename "$yamlschema_parent") = share
+  set -l yamlschema_prefix (path dirname "$yamlschema_parent")
+  if test -x "$yamlschema_prefix/bin/ysd"
+    set yamlschema_bin_dir "$yamlschema_prefix/bin"
+  end
+end
+
+contains -- "$yamlschema_bin_dir" $PATH
+or set -gx PATH "$yamlschema_bin_dir" $PATH
+set -gx MANPATH "$YAMLSCHEMA_ROOT/man" (manpath 2>/dev/null)
+
+set -l yamlschema_completion_path (string join : $PATH)
+if test -x "$YAMLSCHEMA_ROOT/.cache/local/bin/ys-0"
+  set yamlschema_completion_path \
+    "$YAMLSCHEMA_ROOT/.cache/local/bin:$yamlschema_completion_path"
+end
+set -l yamlschema_completion \
+  (env PATH="$yamlschema_completion_path" ysd --complete=fish 2>/dev/null)
+if test $status -eq 0
+  printf "%s\n" $yamlschema_completion | source
+end
+
+return 0
+'
+
+test -n "$ZSH_VERSION" && eval '
+YAMLSCHEMA_ROOT=$(cd "$(dirname "$0")" && pwd -P)
+_yamlschema_bin_dir=$YAMLSCHEMA_ROOT/bin
+_yamlschema_parent=$(dirname "$YAMLSCHEMA_ROOT")
+
+if [[ $(basename "$_yamlschema_parent") == share ]]; then
+  _yamlschema_prefix=$(dirname "$_yamlschema_parent")
+  if [[ -x $_yamlschema_prefix/bin/ysd ]]; then
+    _yamlschema_bin_dir=$_yamlschema_prefix/bin
+  fi
+fi
+
+case :$PATH: in
+  *:$_yamlschema_bin_dir:*) ;;
+  *) PATH=$_yamlschema_bin_dir${PATH:+:$PATH} ;;
+esac
+MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
+export YAMLSCHEMA_ROOT PATH MANPATH
+
+_yamlschema_completion_path=$PATH
+if [[ -x $YAMLSCHEMA_ROOT/.cache/local/bin/ys-0 ]]; then
+  _yamlschema_completion_path=
+  _yamlschema_completion_path+=\
+$YAMLSCHEMA_ROOT/.cache/local/bin:$PATH
+fi
+if _yamlschema_completion=$(PATH=$_yamlschema_completion_path \
+    ysd --complete=zsh 2>/dev/null); then
+  eval "$_yamlschema_completion"
+fi
+
+unset _yamlschema_bin_dir _yamlschema_completion
+unset _yamlschema_completion_path _yamlschema_parent _yamlschema_prefix
+return 0
+'
+
+echo "YAMLSchema: unsupported shell '$0'" >&2
+false

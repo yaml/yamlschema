@@ -41,9 +41,12 @@ With Fish:
 curl -sL yamlschema.org/install | source -
 ```
 
-The installer adds `ysd` to the current shell's `PATH`.
-It also clones the matching release tag into
-`$HOME/.local/share/yamlschema/`.
+Running the sourced command adds `ysd` to the current shell's `PATH` and
+immediately enables tab completion and the YAMLSchema man pages.
+Try `ysd --<TAB>` or `man ysd` after it finishes.
+The installer also clones the matching release tag into
+`$HOME/.local/share/yamlschema/` and prints the `.rc` line to add for future
+shells.
 Root installations default to `/usr/local`.
 
 Choose another prefix or release by passing Make variables after the sourced
