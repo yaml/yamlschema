@@ -1415,24 +1415,63 @@ defn remove-first-token-step(state token target):
     else: state + {'tokens' (state.tokens + token)}
 
 defn tight-tokens(value):
-  pattern =:
-    re-pattern:
-      str: +
-        '\+Ref\([^\)]*\)(?:\[[^\]]*\])?~?'
-        '|\+(?:One|Any|All|Not)\([^\)]*\)(?:\[[^\]]*\])?~?'
-        '|\+Map\{[^\}]*\}(?:\[[^\]]*\])?~?'
-        '|\+[A-Za-z_][A-Za-z0-9_\/-]*\[[^\]]*\]~?'
-        '|(?:[A-Za-z]+:|=~|==|=)?"[^"]*"'
-        '|(?:enum:)?\[[^\]]*\]|\S+'
-  tokens =: vec(re-seq(pattern value))
-  quote =: C(34):S
-  bad-quote =:
-    tokens.some(\(quote.in?(_) &&
-      tight-token-quoted?(_).! &&
-      compact-enum-token?(_).!))
+  tokens =: tight-token-scan(value)
+  bad-quote =: tokens.some(bad-tight-token-quote?)
   when bad-quote:
     usage: 'tight quoted values cannot contain a double quote'
   =>: tokens
+
+defn tight-token-scan(value):
+  tight-token-loop: value:seq '' [] false 0 0 0
+
+defn tight-token-loop(chars token tokens quoted parens brackets braces):
+  if chars:empty?:
+    then: append-tight-token(tokens token)
+    else:
+      char =: chars.0:S
+      rest =: chars:rest
+      boundary =: (char =~ /\s/) && quoted.! &&
+        parens.! && brackets.! && braces.!
+      if boundary:
+        then:
+          tight-token-loop:
+            rest
+            ''
+            append-tight-token(tokens token)
+            quoted
+            parens
+            brackets
+            braces
+        else:
+          was-quoted =: quoted
+          quote =: C(34):S
+          quoted =: (char == quote).if(quoted.! quoted)
+          tight-token-loop:
+            rest
+            (token + char)
+            tokens
+            quoted
+            tight-token-depth(parens char '(' ')' was-quoted)
+            tight-token-depth(brackets char '[' ']' was-quoted)
+            tight-token-depth(braces char '{' '}' was-quoted)
+
+defn append-tight-token(tokens token):
+  if token:
+    then: tokens + token
+    else: tokens
+
+defn tight-token-depth(depth char open close quoted):
+  cond:
+    quoted: depth
+    char == open: depth.++
+    char == close: max(0 depth.--)
+    else: depth
+
+defn bad-tight-token-quote?(token):
+  quote =: C(34):S
+  quote.in?(token) &&:
+    tight-token-quoted?(token).! &&
+    compact-enum-token?(token).!
 
 defn base-primary-token?(token):
   normal =:
@@ -1748,13 +1787,7 @@ defn tight-label-raw(token):
 
 defn tight-quoted?(value):
   text =: value:S
-  quote =: C(34):S
-  if text.# >= 2:
-    then:
-      body =: text.replace(/^./).replace(/.$/)
-      (text.0:S == quote) &&:
-        (text:last:S == quote) && quote.in?(body).!
-    else: false
+  text =~: /^"[^"]*"$/
 
 defn tight-token-quoted?(token):
   raw =:
