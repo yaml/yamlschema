@@ -21,6 +21,7 @@ RELEASE := $(CURDIR)/util/release
 RELEASE-DIST := $(CURDIR)/util/release-dist
 DIST := $(CURDIR)/dist
 RELEASE-BUILD := $(CURDIR)/.cache/release
+RELEASE-SMOKE-INPUT := $(CURDIR)/test/files/person.schema.json
 
 version:
 	@echo '$(YSD-VERSION)'
@@ -75,7 +76,7 @@ release-smoke: release-dist $(NODE)
 	  test "$$($$native --version)" = \
 	  'ysd $(YSD-VERSION)'
 	native='$(RELEASE-BUILD)/bin/linux_amd64/ysd'; \
-	  output=$$("$$native" '$(CURDIR)/person.schema.json'); \
+	  output=$$("$$native" '$(RELEASE-SMOKE-INPUT)'); \
 	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
 	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	go_bin=$$('$(GLOAT)' --which=go); \
@@ -83,7 +84,7 @@ release-smoke: release-dist $(NODE)
 	  wasm_exec="$$go_root/lib/wasm/wasm_exec.js"; \
 	  wasm='$(RELEASE-BUILD)/bin/js_wasm/ysd.wasm'; \
 	  output=$$('$(NODE)' test/wasm-smoke.js \
-	    "$$wasm_exec" "$$wasm" '$(CURDIR)/person.schema.json'); \
+	    "$$wasm_exec" "$$wasm" '$(RELEASE-SMOKE-INPUT)'); \
 	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
 	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	cd '$(DIST)' && sha256sum -c ysd-checksums.txt
