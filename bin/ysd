@@ -92,13 +92,13 @@ defn json-schema-roundtrip-works(text):
   boolean: json-schema-roundtrip-result(text false).works
 
 defn json-schema-roundtrip-report(text):
-  json/dump: json-schema-roundtrip-result(text false)
+  ys::json/dump: json-schema-roundtrip-result(text false)
 
 defn ysd-roundtrip-works(text):
   boolean: ysd-roundtrip-result(text false).works
 
 defn ysd-roundtrip-report(text):
-  json/dump: ysd-roundtrip-result(text false)
+  ys::json/dump: ysd-roundtrip-result(text false)
 
 defn ysd-to-json-schema(text):
   schema =: yamlschema-input-schema(text 'ysd.yaml' false)
@@ -125,7 +125,7 @@ defn convert-to(target text opts):
       warn-canonical-input-passthrough: data opts
       expanded =: expand-ysdc(data expansion-source(opts))
       expanded =: canonicalize-document-ysid(expanded)
-      post-process yaml/dump(collapse-direct-types(expanded)): true
+      post-process ys::yaml/dump(collapse-direct-types(expanded)): true
     else:
       usage: "unsupported output format: $target"
 
@@ -262,7 +262,7 @@ defn canonical-input(text opts):
     then:
       schema =: load-json-schema(text)
       build-doc: schema
-    else: text:yaml/load
+    else: ys::yaml/load(text)
 
 defn schema-input(text opts default-source=nil report=true):
   source =: input-format(opts) || default-source
@@ -271,7 +271,7 @@ defn schema-input(text opts default-source=nil report=true):
     yamlschema-input-schema: text source report
 
 defn yamlschema-input-schema(text source report=true):
-  data =: text:yaml/load
+  data =: ys::yaml/load(text)
   when report:
     warn-yamlschema-passthrough: data
   expanded =: data.expand-ysdc(expansion-source-format(source))
@@ -329,7 +329,7 @@ defn infer-input-format(path):
 
 defn canonical-json-output(value opts):
   if opts.compact:
-    json/dump(value)
+    ys::json/dump(value)
     pretty-json(value)
 
 defn infer-output-format(output):
@@ -394,7 +394,7 @@ defn generated-comment?(value):
 defn json-output(value opts):
   value =: canonical-json-schema(value)
   if opts.compact:
-    json/dump: value
+    ys::json/dump: value
     pretty-json: value
 
 defn map-put-if(result test key value):
@@ -464,7 +464,7 @@ defn ysd-roundtrip-result(text report):
               'roundtripped' roundtripped}
 
 defn ysd-to-ysdc-text(text):
-  data =: text:yaml/load
+  data =: ys::yaml/load(text)
   canonical-ysdc-text: data 'ysd'
 
 defn json-schema-to-ysdc-text(text):
@@ -474,7 +474,7 @@ defn json-schema-to-ysdc-text(text):
 defn canonical-ysdc-text(data source):
   expanded =: expand-ysdc(data source)
   expanded =: canonicalize-document-ysid(expanded)
-  post-process yaml/dump(collapse-direct-types(expanded)): true
+  post-process ys::yaml/dump(collapse-direct-types(expanded)): true
 
 defn roundtrip-match(opts):
   when-not opts.quiet:
@@ -487,7 +487,7 @@ defn roundtrip-mismatch(original roundtripped opts):
   =>: 1
 
 defn present-diff(text):
-  pager =: fs/which('less')
+  pager =: ys::fs/which('less')
   if pager:
     page-diff: text pager
     say: text
@@ -511,7 +511,7 @@ defn unified-diff(original roundtripped):
     "diff -u --label original --label roundtrip \
      '$before' '$after' || test $? -eq 1"
   output =: bash-out(command)
-  fs/rm-r: dir
+  ys::fs/rm-r: dir
   =>: output
 
 defn normalize-json-schema(value root?):
@@ -796,7 +796,7 @@ defn pretty-value(value level):
     else: pretty-scalar(value)
 
 defn pretty-scalar(value):
-  json/dump(value).replace(/\\\// '/')
+  ys::json/dump(value).replace(/\\\// '/')
 
 defn pretty-map(value level):
   if empty?(value):
@@ -812,7 +812,7 @@ defn pretty-map-entry(entry level):
 
 defn pretty-map-key(key value level):
   rendered =: pretty-value(value level)
-  =>: "$(indent(level))$(json/dump(key)): $rendered"
+  =>: "$(indent(level))$(ys::json/dump(key)): $rendered"
 
 defn pretty-array(value level):
   if empty?(value):
@@ -1461,7 +1461,7 @@ defn expand-primary-token(token):
     else: result
 
 defn parse-yaml-scalar(token):
-  token:yaml/load
+  ys::yaml/load: token
 
 defn parse-primary(token):
   null =: token.ends?('~')
@@ -2680,7 +2680,7 @@ defn range-to-schema(value):
     else: result
 
 defn scalar-number(s):
-  json/load: s
+  ys::json/load: s
 
 defn wrap-array-schema(item suffix):
   canonical-list-schema: item list-directives(suffix)
@@ -2709,7 +2709,7 @@ defn passthrough-keyword(directive):
   directive:S.replace(/^\./)
 
 defn load-json-schema(text report=true):
-  schema =: text:yaml/load
+  schema =: ys::yaml/load(text)
   validate-json-schema-document: schema
   validate-json-schema-dialect: schema
   schema =: discard-generated-comment(schema)
@@ -2887,7 +2887,7 @@ defn json-pointer-child(path key):
 
 defn convert(schema):
   doc =: build-doc(schema)
-  text =: yaml/dump(doc)
+  text =: ys::yaml/dump(doc)
   text =: format-ysd-tight-scalars(text)
   text =: format-ysd-document(text)
   post-process: text

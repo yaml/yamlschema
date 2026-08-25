@@ -3,6 +3,8 @@ M := .cache/makes
 $(shell [ -d '$M' ] || git clone -q $R '$M')
 
 MAKES_LOCAL_DIR ?= $(CURDIR)/.cache/local
+GLOAT-VERSION := 0.1.78
+YAMLSCRIPT-VERSION := 0.2.31
 YSD-VERSION := 0.1.3
 
 include $M/init.mk
@@ -62,14 +64,21 @@ release-dist: $(GLOAT) $(PERL)
 	  '$(DIST)' '$(RELEASE-BUILD)' '$(YSD-VERSION)'
 
 release-smoke: release-dist $(NODE)
-	test "$$('$(RELEASE-BUILD)/bin/linux_amd64/ysd' --version)" = \
+	native='$(RELEASE-BUILD)/bin/linux_amd64/ysd'; \
+	  test "$$($$native --version)" = \
 	  'ysd $(YSD-VERSION)'
+	native='$(RELEASE-BUILD)/bin/linux_amd64/ysd'; \
+	  output=$$("$$native" '$(CURDIR)/person.schema.json'); \
+	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
+	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	go_bin=$$('$(GLOAT)' --which=go); \
 	  go_root=$$("$$go_bin" env GOROOT); \
-	  test "$$(env -i PATH='$(dir $(NODE)):/usr/bin:/bin' \
-	    "$$go_root/lib/wasm/go_js_wasm_exec" \
-	    '$(RELEASE-BUILD)/bin/js_wasm/ysd.wasm' --version)" = \
-	    'ysd $(YSD-VERSION)'
+	  wasm_exec="$$go_root/lib/wasm/wasm_exec.js"; \
+	  wasm='$(RELEASE-BUILD)/bin/js_wasm/ysd.wasm'; \
+	  output=$$('$(NODE)' test/wasm-smoke.js \
+	    "$$wasm_exec" "$$wasm" '$(CURDIR)/person.schema.json'); \
+	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
+	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	cd '$(DIST)' && sha256sum -c ysd-checksums.txt
 
 release: $(GH) $(PERL)
