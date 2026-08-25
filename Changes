@@ -1,5 +1,30 @@
 # YAMLSchema release history
 
+- version: 0.1.4
+  date:    Tue Aug 25 01:22:30 PM EDT 2026
+  changes:
+  - Fix release smoke test fixture
+  - Add native YSD build target
+  - Fix initial editor scroll sync
+  - Parse nested tight DSL tokens
+  - Harden portable release smoke tests
+  - Link homepage schema to demo
+  - Add editor sync and sharing
+  - Put JSON definitions before root
+  - Polish responsive homepage content
+  - Rename editor route and refresh demo
+  - Fix list enum suffix generation
+  - Preserve explicit root schemas
+  - Normalize singleton oneOf constraints
+  - Canonicalize scalar-or-list schemas
+  - Add CodeMirror schema editors
+  - Add NetBox schema example
+  - Add editor help dialog
+  - Use full width for editor pages
+  - Fit editor panes on portrait phones
+  - Tighten editor page spacing
+  - Add schema routes to editor
+
 - version: 0.1.3
   date:    Mon Aug 24 08:56:19 AM EDT 2026
   changes:
