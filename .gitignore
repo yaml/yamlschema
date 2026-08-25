@@ -1,6 +1,7 @@
 bin/jsonschema
 /.cache/
 /dist/
+/ysd
 json-schemas/
 /*.clj
 /*.json

@@ -25,6 +25,13 @@ RELEASE-BUILD := $(CURDIR)/.cache/release
 version:
 	@echo '$(YSD-VERSION)'
 
+build: ysd
+
+ysd: bin/ysd $(GLOAT)
+	$(GLOAT) '$<' \
+	  --out='$@' --force --quiet \
+	  --module=github.com/yaml/yamlschema
+
 test: test-unit test-version test-release test-installer test-scripts
 
 test-unit: $(YS) $(PERL)
@@ -87,7 +94,7 @@ release: $(GH) $(PERL)
 	$Q PERL='$(PERL)' GH='$(GH)' \
 	  '$(RELEASE)' release '$(VERSION)'
 
-MAKES-CLEAN += .cache/release dist
+MAKES-CLEAN += .cache/release dist ysd
 
 serve publish:
 	$(MAKE) -C www $@
