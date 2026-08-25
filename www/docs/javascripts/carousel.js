@@ -1,4 +1,23 @@
 (() => {
+  const linkedCards = document.querySelectorAll(
+    '[data-editor-href]:not([data-comparison-slide])',
+  );
+  for (const card of linkedCards) {
+    const open = () => {
+      window.location.href = card.dataset.editorHref;
+    };
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('a, button')) return;
+      if (window.getSelection()?.toString()) return;
+      open();
+    });
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      open();
+    });
+  }
+
   const carousel = document.querySelector('[data-comparison-carousel]');
   if (!carousel) return;
 

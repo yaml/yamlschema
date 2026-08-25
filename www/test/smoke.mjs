@@ -770,6 +770,12 @@ const homeHTML = await readFile('site/index.html', 'utf8');
 if (!homeHTML.includes('Define a lot more')) {
   throw new Error('home page tagline is missing');
 }
+if (
+  !homeHTML.includes('class="home-proof" data-editor-href="demo/person/"') ||
+  !homeHTML.includes('aria-label="Open Person in the demo"')
+) {
+  throw new Error('home proof card does not open the Person demo');
+}
 if ((homeHTML.match(/data-comparison-slide/g) || []).length !== 3) {
   throw new Error('home page comparison carousel is incomplete');
 }
@@ -787,6 +793,9 @@ const carouselSource = await readFile(
   'utf8',
 );
 if (
+  !carouselSource.includes(
+    "'[data-editor-href]:not([data-comparison-slide])'",
+  ) ||
   !carouselSource.includes('window.setInterval') ||
   !carouselSource.includes('prefers-reduced-motion') ||
   !carouselSource.includes('7000')

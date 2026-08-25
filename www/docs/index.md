@@ -26,7 +26,8 @@ hide:
       </a>
     </div>
   </div>
-  <div class="home-proof" aria-label="YAMLSchema example">
+  <div class="home-proof" data-editor-href="demo/person/" role="link"
+       tabindex="0" aria-label="Open Person in the demo">
     <span class="proof-label">A complete object schema</span>
     <pre><code>name: +Str
 age?: +Int 0..120

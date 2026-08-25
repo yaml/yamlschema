@@ -167,6 +167,23 @@
   background: var(--ys-paper);
 }
 
+.home-proof[role="link"] {
+  cursor: pointer;
+  transition: 150ms ease;
+  transition-property: border-color, box-shadow, transform;
+}
+
+.home-proof[role="link"]:hover {
+  border-color: var(--ys-red);
+  box-shadow: 0 1.6rem 3.2rem rgb(35 25 28 / 16%);
+  transform: translateY(-2px);
+}
+
+.home-proof[role="link"]:focus-visible {
+  outline: 3px solid var(--ys-red);
+  outline-offset: 3px;
+}
+
 .home-proof .proof-label {
   display: block;
   border-bottom: 1px solid var(--ys-line);
