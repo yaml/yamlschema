@@ -34,6 +34,7 @@ ysd -R, --roundtrip [-q, --quiet] [INPUT]
 | `-R`, `--roundtrip` | Test a JSON Schema or .ysd roundtrip |
 | `-q`, `--quiet` | Suppress successful roundtrip output |
 | `-C`, `--compact` | Emit compact JSON |
+| `--upgrade` | Upgrade from the repository's default branch |
 | `--help` | Show command help |
 | `--version` | Show the installed version |
 
@@ -55,6 +56,13 @@ source /path/to/yamlschema/share/complete.fish
 The installed `.rc` also adds the bundled manuals to `MANPATH`.
 Use `man ysd`, `man yamlschema`, `man yamlschema-design`, or
 `man yamlschema-json-schema`.
+
+## Upgrade
+
+`ysd --upgrade` fetches the configured default branch of the repository under
+`$PREFIX/share/yamlschema`, checks out its current `HEAD`, and runs
+`make install` with the same prefix.
+The command refuses to replace an installed checkout with local changes.
 
 ## Default direction
 

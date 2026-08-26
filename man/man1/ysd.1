@@ -40,6 +40,9 @@ T}
 Suppress successful roundtrip output
 T}
 \fB-C\fR, \fB--compact\fR	Emit compact JSON
+\fB--upgrade\fR	T{
+Upgrade from the repository's default branch
+T}
 \fB--help\fR	Show command help
 \fB--version\fR	Show the installed version
 .TE
@@ -62,6 +65,12 @@ source /path/to/yamlschema/share/complete.fish
 The installed \fB\&.rc\fR also adds the bundled manuals to \fBMANPATH\fR\&.
 Use \fBman ysd\fR, \fBman yamlschema\fR, \fBman yamlschema-design\fR, or
 \fBman yamlschema-json-schema\fR\&.
+
+.SH Upgrade
+\fBysd --upgrade\fR fetches the configured default branch of the repository under
+\fB$PREFIX/share/yamlschema\fR, checks out its current \fBHEAD\fR, and runs
+\fBmake install\fR with the same prefix.
+The command refuses to replace an installed checkout with local changes.
 
 .SH Default direction
 The first non-whitespace character and the filename extension determine the

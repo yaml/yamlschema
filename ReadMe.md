@@ -119,6 +119,21 @@ The native archives contain `ysd` or `ysd.exe` and this ReadMe.
 The `js_wasm` archive contains the raw `ysd.wasm` module for use with the Go
 JavaScript WebAssembly runtime.
 
+To clone, build, and install from source:
+
+```sh
+git clone https://github.com/yaml/yamlschema
+cd yamlschema
+make install PREFIX=$HOME/.local
+```
+
+This installs the built command under `$PREFIX/bin` and clones the current
+committed `HEAD` into `$PREFIX/share/yamlschema`.
+The target refuses to replace a checkout that has local changes.
+It prints the `.rc` line to add to your shell configuration.
+Run `ysd --upgrade` to fetch the installed checkout's configured default
+branch and rebuild from its current `HEAD`.
+
 For local development, source the repo `.rc` file to put `bin/` on your
 `PATH`, enable tab completion, and expose the man pages:
 

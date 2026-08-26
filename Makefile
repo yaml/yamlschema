@@ -22,6 +22,10 @@ RELEASE-DIST := $(CURDIR)/util/release-dist
 DIST := $(CURDIR)/dist
 RELEASE-BUILD := $(CURDIR)/.cache/release
 RELEASE-SMOKE-INPUT := $(CURDIR)/test/files/person.schema.json
+PREFIX ?= /usr/local
+PREFIX-PATH := $(abspath $(PREFIX))
+YAMLSCHEMA-INSTALL := $(PREFIX-PATH)/share/yamlschema
+YSD-INSTALL := $(PREFIX-PATH)/bin/ysd
 
 version:
 	@echo '$(YSD-VERSION)'
@@ -33,8 +37,49 @@ ysd: bin/ysd $(GLOAT)
 	  --out='$@' --force --quiet \
 	  --module=github.com/yaml/yamlschema
 
+install: build
+	@set -eu; \
+	  head=$$(git rev-parse HEAD); \
+	  origin=$$(git remote get-url origin 2>/dev/null || :); \
+	  repo='$(YAMLSCHEMA-INSTALL)'; \
+	  mkdir -p '$(PREFIX-PATH)/share'; \
+	  if test -d "$$repo/.git" && \
+	      test "$$(cd "$$repo" && pwd -P)" = '$(CURDIR)'; then \
+	    :; \
+	  elif test -e "$$repo"; then \
+	    test -d "$$repo/.git" || { \
+	      echo 'YAMLSchema install: destination is not a Git repo' >&2; \
+	      exit 1; \
+	    }; \
+	    test -z "$$(git -C "$$repo" status --porcelain)" || { \
+	      echo 'YAMLSchema install: destination has local changes' >&2; \
+	      exit 1; \
+	    }; \
+	    git -C "$$repo" fetch -q '$(CURDIR)' "$$head"; \
+	    git -C "$$repo" checkout -q --detach FETCH_HEAD; \
+	  else \
+	    git clone -q --no-checkout '$(CURDIR)' "$$repo"; \
+	    git -C "$$repo" checkout -q --detach "$$head"; \
+	  fi; \
+	  if test -n "$$origin" && test "$$repo" != '$(CURDIR)'; then \
+	    git -C "$$repo" remote set-url origin "$$origin"; \
+	  fi; \
+	  test "$$(git -C "$$repo" rev-parse HEAD)" = "$$head"
+	@install -d '$(PREFIX-PATH)/bin'
+	@temporary='$(YSD-INSTALL).tmp.$$$$'; \
+	  trap 'rm -f "$$temporary"' EXIT; \
+	  install -m 0755 ysd "$$temporary"; \
+	  test "$$($$temporary --version)" = 'ysd $(YSD-VERSION)'; \
+	  mv -f "$$temporary" '$(YSD-INSTALL)'; \
+	  trap - EXIT
+	@printf 'Installed YAMLSchema to %s\n' '$(YSD-INSTALL)'
+	@printf '%s\n' \
+	  'To enable tab completion and man pages in future shells, add:'
+	@printf '  source %s/.rc\n' '$(YAMLSCHEMA-INSTALL)'
+
 test: \
-  test-unit test-version test-release test-installer test-man test-scripts
+  test-unit test-version test-release test-installer test-install \
+  test-upgrade test-man test-scripts
 
 test-unit: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
@@ -48,6 +93,41 @@ test-release: $(PERL)
 test-installer:
 	test/installer
 
+test-install: build
+	@temporary=$$(mktemp -d); \
+	  trap 'rm -rf -- "$$temporary"' EXIT; \
+	  prefix="$$temporary/prefix"; \
+	  output=$$($(MAKE) --no-print-directory install PREFIX="$$prefix"); \
+	  expected=$$(printf '%s\n' \
+	    "Installed YAMLSchema to $$prefix/bin/ysd" \
+	    'To enable tab completion and man pages in future shells, add:' \
+	    "  source $$prefix/share/yamlschema/.rc"); \
+	  test "$$output" = "$$expected"; \
+	  test "$$($$prefix/bin/ysd --version)" = 'ysd $(YSD-VERSION)'; \
+	  test -f "$$prefix/share/yamlschema/.rc"; \
+	  test -f "$$prefix/share/yamlschema/man/man1/ysd.1"; \
+	  test -f "$$prefix/share/yamlschema/share/complete.bash"; \
+	  test "$$(git -C "$$prefix/share/yamlschema" rev-parse HEAD)" = \
+	    "$$(git rev-parse HEAD)"; \
+	  test "$$(git -C "$$prefix/share/yamlschema" remote get-url origin)" = \
+	    "$$(git remote get-url origin)"; \
+	  test -z "$$(git -C "$$prefix/share/yamlschema" status --short)"; \
+	  $(MAKE) --no-print-directory install PREFIX="$$prefix" >/dev/null; \
+	  touch "$$prefix/share/yamlschema/local-change"; \
+	  if $(MAKE) --no-print-directory install PREFIX="$$prefix" \
+	      >"$$temporary/dirty.out" 2>&1; then \
+	    echo 'source install accepted local changes' >&2; \
+	    exit 1; \
+	  fi; \
+	  grep -Fqx \
+	    'YAMLSchema install: destination has local changes' \
+	    "$$temporary/dirty.out"
+	@echo 'Source installation checks passed'
+
+test-upgrade: build $(YS)
+	PATH='$(dir $(YS)):$(PATH)' test/upgrade
+	YSD='$(CURDIR)/ysd' TEST_UPGRADE_ERRORS=0 test/upgrade
+
 test-man:
 	$(MAKE) -C man test
 
@@ -56,7 +136,7 @@ test-scripts: $(SHELLCHECK) $(YS)
 	  .rc \
 	  share/complete.bash \
 	  util/release util/release-dist \
-	  test/release test/installer \
+	  test/release test/installer test/upgrade \
 	  www/docs/install
 	zsh -n share/complete.zsh
 	fish -n share/complete.fish

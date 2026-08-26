@@ -44,6 +44,7 @@ HELP =: |
     -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
     -q, --quiet           Suppress roundtrip output.
     -C, --compact         Emit compact JSON output.
+        --upgrade         Upgrade from the repository's default branch.
         --help            Show this help text.
         --version         Show version.
 
@@ -449,6 +450,65 @@ defn handle-info-options(args):
     when arg == '--version':
       say: "ysd $VERSION"
       exit: 0
+    when arg == '--upgrade':
+      upgrade:
+      exit: 0
+
+defn upgrade():
+  binary =: ys::fs/which('ysd')
+  when binary.!:
+    upgrade-error: 'cannot locate ysd on PATH'
+  prefix =: ys::fs/dirname(ys::fs/dirname(binary))
+  repo =: "$prefix/share/yamlschema"
+  when-not ys::fs/d("$repo/.git"):
+    upgrade-error: "installed repository not found: $repo"
+  dirty =: upgrade-command-output(
+    'git' '-C' repo 'status' '--porcelain')
+  when dirty.?:
+    upgrade-error: 'installed repository has local changes'
+  upgrade-command: +'git' '-C' repo 'fetch' '-q' 'origin'
+  branch =: upgrade-command-output(
+    'git' '-C' repo 'symbolic-ref' '--short'
+    'refs/remotes/origin/HEAD')
+  upgrade-command: +'git' '-C' repo 'checkout' '-q' '--detach' branch
+  upgrade-command:
+    +'make' '--no-print-directory' '-C' repo 'install' "PREFIX=$prefix"
+  say: "Upgraded YAMLSchema from $branch"
+
+defn upgrade-command(*args):
+  result =: sh(args*)
+  status =: process-result-value(result :exit)
+  output =: process-result-value(result :out)
+  error =: process-result-value(result :err)
+  when status != 0:
+    when error.?:
+      err: error
+    message =: "command failed: $(args:joins)"
+    upgrade-error: message status
+  when output.?:
+    print: output
+  when error.?:
+    err: error
+
+defn upgrade-command-output(*args):
+  result =: sh(args*)
+  status =: process-result-value(result :exit)
+  error =: process-result-value(result :err)
+  when status != 0:
+    when error.?:
+      err: error
+    message =: "command failed: $(args:joins)"
+    upgrade-error: message status
+  when error.?:
+    err: error
+  trim: process-result-value(result :out)
+
+defn process-result-value(result key):
+  key: result
+
+defn upgrade-error(message status=1):
+  err: "ysd: $message\n"
+  exit: status
 
 defn add-generated-comment(schema opts):
   path =: opts.input

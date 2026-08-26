@@ -32,6 +32,7 @@ _ysd() {
     '(-R --roundtrip)'{-R,--roundtrip}'[Check roundtrip]' \
     '(-q --quiet)'{-q,--quiet}'[Suppress roundtrip output]' \
     '(-C --compact)'{-C,--compact}'[Emit compact JSON]' \
+    '(- *)--upgrade[Upgrade from repository default branch]' \
     '(- *)--help[Show help]' \
     '(- *)--version[Show version]' \
     "*:input schema:_files -g \"$file_glob\""

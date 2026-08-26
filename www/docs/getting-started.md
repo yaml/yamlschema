@@ -72,6 +72,21 @@ command:
 
 Git, curl, GNU Make 3.81 or newer, and `tar` or `unzip` are required.
 
+To clone, build, and install from source instead:
+
+```bash
+git clone https://github.com/yaml/yamlschema
+cd yamlschema
+make install PREFIX=$HOME/.local
+```
+
+This installs the built command under `$PREFIX/bin` and clones the current
+committed `HEAD` into `$PREFIX/share/yamlschema`.
+The target refuses to replace a checkout that has local changes.
+It prints the `.rc` line to add to your shell configuration.
+Run `ysd --upgrade` to fetch the installed checkout's configured default
+branch and rebuild from its current `HEAD`.
+
 ## Convert to JSON Schema
 
 The `ysd` command infers the output from the input filename:

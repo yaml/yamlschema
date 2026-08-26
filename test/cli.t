@@ -28,6 +28,7 @@ test::
       -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
+          --upgrade         Upgrade from the repository's default branch.
           --help            Show this help text.
           --version         Show version.
 
@@ -55,6 +56,7 @@ test::
       -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
+          --upgrade         Upgrade from the repository's default branch.
           --help            Show this help text.
           --version         Show version.
 
@@ -117,6 +119,9 @@ test::
       COMP_CWORD=1
       _ysd
       [[ " ${COMPREPLY[*]} " == *" --yaml "* ]]
+      COMP_WORDS=(ysd --up)
+      _ysd
+      [[ " ${COMPREPLY[*]} " == *" --upgrade "* ]]
       dir=$(mktemp -d)
       trap "rm -r \"$dir\"" EXIT
       touch "$dir/person.ysd.yaml" "$dir/device.schema.yml" \

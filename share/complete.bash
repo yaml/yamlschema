@@ -7,7 +7,7 @@ _ysd() {
   prev=${COMP_WORDS[COMP_CWORD-1]}
   opts='-t --to -f --from -o --output -Y --yaml -J --json
     -N --norm -R --roundtrip -q --quiet -C --compact
-    --help --version'
+    --upgrade --help --version'
   formats='ysd ysdc jsc'
 
   case $prev in

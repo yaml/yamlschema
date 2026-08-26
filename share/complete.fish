@@ -9,6 +9,7 @@ complete -c ysd -s N -l norm -d 'Normalize JSON Schema'
 complete -c ysd -s R -l roundtrip -d 'Check roundtrip'
 complete -c ysd -s q -l quiet -d 'Suppress roundtrip output'
 complete -c ysd -s C -l compact -d 'Emit compact JSON'
+complete -c ysd -l upgrade -d 'Upgrade from repository default branch'
 complete -c ysd -l help -d 'Show help'
 complete -c ysd -l version -d 'Show version'
 

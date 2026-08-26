@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+top=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+ysd=${YSD:-$top/bin/ysd}
+temporary=$(mktemp -d)
+trap 'rm -rf -- "$temporary"' EXIT
+
+source_repo=$temporary/source
+prefix=$temporary/prefix
+installed_repo=$prefix/share/yamlschema
+mkdir -p "$source_repo" "$prefix/bin" "$prefix/share"
+
+git -C "$source_repo" init -q --initial-branch=main
+git -C "$source_repo" config user.name 'Upgrade Test'
+git -C "$source_repo" config user.email upgrade-test@example.com
+
+printf '%s\n' one > "$source_repo/revision"
+cat > "$source_repo/Makefile" <<'MAKEFILE'
+install:
+	@cp revision '$(PREFIX)/upgrade-revision'
+MAKEFILE
+git -C "$source_repo" add Makefile revision
+git -C "$source_repo" commit -q -m 'Create upgrade fixture'
+
+git clone -q "$source_repo" "$installed_repo"
+git -C "$installed_repo" checkout -q --detach HEAD
+
+printf '%s\n' two > "$source_repo/revision"
+git -C "$source_repo" add revision
+git -C "$source_repo" commit -q -m 'Update upgrade fixture'
+
+cp "$ysd" "$prefix/bin/ysd"
+chmod 0755 "$prefix/bin/ysd"
+
+output=$(PATH="$prefix/bin:$PATH" ysd --upgrade)
+[[ $output == 'Upgraded YAMLSchema from origin/main' ]]
+grep -Fxq two "$prefix/upgrade-revision"
+[[ $(git -C "$installed_repo" rev-parse HEAD) == \
+   $(git -C "$source_repo" rev-parse HEAD) ]]
+
+if [[ ${TEST_UPGRADE_ERRORS:-1} == 1 ]]; then
+  touch "$installed_repo/local-change"
+  set +e
+  output=$(PATH="$prefix/bin:$PATH" ysd --upgrade 2>&1)
+  status=$?
+  set -e
+  [[ $status -eq 1 ]]
+  [[ $output == 'ysd: installed repository has local changes' ]]
+fi
+
+echo 'YAMLSchema upgrade checks passed'
