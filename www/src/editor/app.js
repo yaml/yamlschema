@@ -22,6 +22,7 @@ const editorSettingsClose = document.querySelector('#editor-settings-close');
 const scrollSyncControl = document.querySelector('#scroll-sync');
 const editorShare = document.querySelector('#editor-share');
 const editorShareStatus = document.querySelector('#editor-share-status');
+const editorCopyButtons = document.querySelectorAll('.editor-copy');
 const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
 const roundtripDiffDialog = document.querySelector(
   '#roundtrip-diff-dialog',
@@ -113,6 +114,7 @@ let sampleRouteSelected = false;
 let scrollSyncFrame;
 let scrollSyncEnabled = loadScrollSync();
 let shareStatusTimer;
+const editorCopyTimers = new WeakMap();
 const workerCalls = new Map();
 const schemaWorker = new Worker(
   new URL('./schema-worker.js', import.meta.url),
@@ -341,13 +343,13 @@ function setShareStatus(message) {
   }
 }
 
-async function copyEditorURL(url) {
+async function copyText(text) {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(text);
     return;
   }
   const input = document.createElement('textarea');
-  input.value = url;
+  input.value = text;
   input.setAttribute('readonly', '');
   input.style.position = 'fixed';
   input.style.opacity = '0';
@@ -358,6 +360,36 @@ async function copyEditorURL(url) {
   if (!copied) throw new Error('Copy failed');
 }
 
+function setEditorCopyStatus(button, copied) {
+  const label = button.dataset.copyLabel;
+  const message = copied ? `${label} copied` : `Unable to copy ${label}`;
+  button.title = message;
+  button.setAttribute('aria-label', message);
+  button.classList.remove('copied');
+  if (copied) {
+    void button.offsetWidth;
+    button.classList.add('copied');
+  }
+  clearTimeout(editorCopyTimers.get(button));
+  editorCopyTimers.set(button, setTimeout(() => {
+    button.title = 'Copy text';
+    button.setAttribute('aria-label', `Copy ${label}`);
+    button.classList.remove('copied');
+  }, 2000));
+}
+
+async function copyEditorText(button) {
+  const editor = button.dataset.copyEditor === 'json'
+    ? jsonEditor
+    : yamlEditor;
+  try {
+    await copyText(editor.value);
+    setEditorCopyStatus(button, true);
+  } catch {
+    setEditorCopyStatus(button, false);
+  }
+}
+
 async function shareEditorURL() {
   updateEditorURL();
   const url = window.location.href;
@@ -366,7 +398,7 @@ async function shareEditorURL() {
       await navigator.share({title: 'YAMLSchema', url});
       return;
     }
-    await copyEditorURL(url);
+    await copyText(url);
     setShareStatus('Link copied');
   } catch (error) {
     if (error.name !== 'AbortError') setShareStatus('Unable to share link');
@@ -950,6 +982,11 @@ editorSettingsClose.addEventListener('click', () => {
 editorShare.addEventListener('click', () => {
   void shareEditorURL();
 });
+for (const button of editorCopyButtons) {
+  button.addEventListener('click', () => {
+    void copyEditorText(button);
+  });
+}
 scrollSyncControl.checked = scrollSyncEnabled;
 scrollSyncControl.addEventListener('change', () => {
   scrollSyncEnabled = scrollSyncControl.checked;

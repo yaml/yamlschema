@@ -20,8 +20,6 @@ import {
   EditorView,
   GutterMarker,
   gutterLineClass,
-  highlightActiveLine,
-  highlightActiveLineGutter,
   keymap,
   lineNumbers,
 } from '@codemirror/view';
@@ -168,8 +166,6 @@ export class CodeEditor {
         foldGutter(),
         indentOnInput(),
         bracketMatching(),
-        highlightActiveLine(),
-        highlightActiveLineGutter(),
         highlightSelectionMatches(),
         EditorView.contentAttributes.of({
           'aria-label': ariaLabel,

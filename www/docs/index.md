@@ -218,15 +218,15 @@ countryName: +Str</code></pre>
   </div>
 </section>
 
-## One language, three useful forms
+## One language, two useful forms
 
 <div class="format-grid" markdown>
 
 <div markdown>
 
-### .ysd
+### .ysd.yaml
 
-The compact source form people write and review.
+The compact source form that people write and review.
 
 ```yaml
 name: +Str
@@ -237,33 +237,16 @@ age?: +Int 0..
 
 <div markdown>
 
-### .ysdc
+### .ysdc.yaml
 
-The explicit canonical form for tools and generated artifacts.
+The explicit canonical form for tools and generated artifacts, often
+published as JSON (`.ysdc.json`).
 
 ```yaml
 name: +Str
 age?:
   .type: +Int
   .range: [0]
-```
-
-</div>
-
-<div markdown>
-
-### .ysdc JSON
-
-The explicit canonical form encoded as JSON.
-
-```json
-{
-  "name": "+Str",
-  "age?": {
-    ".type": "+Int",
-    ".range": [0]
-  }
-}
 ```
 
 </div>

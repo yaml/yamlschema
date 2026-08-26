@@ -64,7 +64,20 @@
           </option>
         </select>
       </div>
-      <div id="yaml-schema" class="code-editor"></div>
+      <div class="editor-pane">
+        <button type="button" class="editor-copy"
+                data-copy-editor="yaml" data-copy-label="YAMLSchema text"
+                title="Copy text" aria-label="Copy YAMLSchema text"
+                aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="
+              M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2
+              2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0
+              16H8V7h11v14Z"/>
+          </svg>
+        </button>
+        <div id="yaml-schema" class="code-editor"></div>
+      </div>
       <p class="error" id="yaml-error" aria-live="polite"></p>
     </article>
     <article>
@@ -99,7 +112,20 @@
           <option value="netbox-generated">NetBox Generated</option>
         </select>
       </div>
-      <div id="json-schema" class="code-editor"></div>
+      <div class="editor-pane">
+        <button type="button" class="editor-copy"
+                data-copy-editor="json" data-copy-label="JSON Schema text"
+                title="Copy text" aria-label="Copy JSON Schema text"
+                aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="
+              M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2
+              2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0
+              16H8V7h11v14Z"/>
+          </svg>
+        </button>
+        <div id="json-schema" class="code-editor"></div>
+      </div>
       <p class="error" id="json-error" aria-live="polite"></p>
     </article>
   </section>

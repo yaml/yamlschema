@@ -528,6 +528,17 @@ if (
   throw new Error('editor sharing behavior is incomplete');
 }
 if (
+  !appSource.includes("document.querySelectorAll('.editor-copy')") ||
+  !appSource.includes('await copyText(editor.value)') ||
+  !appSource.includes('void copyEditorText(button)') ||
+  !appSource.includes('void button.offsetWidth') ||
+  !styleSource.includes('.schema-editor .editor-copy') ||
+  !styleSource.includes('content: "Copied"') ||
+  !styleSource.includes('animation: editor-copy-feedback 2s')
+) {
+  throw new Error('editor text copying behavior is incomplete');
+}
+if (
   !appSource.includes('setRoundtripSource(side)') ||
   !appSource.includes('indicator.dataset.roundtripSource')
 ) {
@@ -727,6 +738,10 @@ if (
   !indexHTML.includes('class="editor-actions"') ||
   !indexHTML.includes('id="editor-share"') ||
   !indexHTML.includes('aria-label="Share editor link"') ||
+  !indexHTML.includes('data-copy-editor="yaml"') ||
+  !indexHTML.includes('aria-label="Copy YAMLSchema text"') ||
+  !indexHTML.includes('data-copy-editor="json"') ||
+  !indexHTML.includes('aria-label="Copy JSON Schema text"') ||
   indexHTML.includes('data-schema-slug=')
 ) {
   throw new Error('base demo page has incorrect editor controls or routing');
