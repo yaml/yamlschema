@@ -431,7 +431,6 @@ for (const feature of [
   'lineNumbers({',
   'foldGutter()',
   'bracketMatching()',
-  'EditorView.lineWrapping',
   'setReadOnly(readOnly)',
   'setLinkedLines(range, scroll = false)',
   'scrollToLinkedLines(range)',
@@ -443,6 +442,17 @@ for (const feature of [
   if (!codeEditorSource.includes(feature)) {
     throw new Error(`CodeMirror editor is missing: ${feature}`);
   }
+}
+if (
+  codeEditorSource.includes('EditorView.lineWrapping') ||
+  !codeEditorSource.includes('const targetColumns = 80;') ||
+  !codeEditorSource.includes('const maximumFontRem = 0.72;') ||
+  !codeEditorSource.includes('const minimumFontRem = 0.55;') ||
+  !codeEditorSource.includes('new ResizeObserver') ||
+  !codeEditorSource.includes("measureText('0'.repeat(targetColumns))") ||
+  !styleSource.includes('var(--editor-font-size, 0.72rem)/1.5')
+) {
+  throw new Error('editors do not fit 80 columns without wrapping');
 }
 if (
   !appSource.includes('parseEditorState(window.location.hash)') ||
@@ -789,6 +799,15 @@ if (
   !styleSource.includes('.schema-editor .editor-help-link:focus-visible')
 ) {
   throw new Error('YAMLSchema help link is not styled as a link');
+}
+if (
+  styleSource.includes('flex-wrap: wrap') ||
+  !styleSource.includes('min-width: 0;\n    flex: 1 1 0;') ||
+  !styleSource.includes(
+    '.schema-editor .cm-lineNumbers {\n    display: none !important;',
+  )
+) {
+  throw new Error('mobile editor layout is incomplete');
 }
 if (
   indexHTML.includes('<h1>Interactive editor</h1>') ||

@@ -48,6 +48,9 @@ const schemaHighlightStyle = HighlightStyle.define([
 const linkedNumberMarker = new class extends GutterMarker {
   elementClass = 'cm-linked-line-number';
 }();
+const targetColumns = 80;
+const maximumFontRem = 0.72;
+const minimumFontRem = 0.55;
 
 function mapLineRange(range, transaction) {
   if (!range || !transaction.docChanged) return range;
@@ -124,6 +127,9 @@ export class CodeEditor {
     this.onScroll = onScroll;
     this.settingValue = false;
     this.linkedLineScrollFrame = undefined;
+    this.fontFitFrame = undefined;
+    this.fontMeasureContext = document.createElement('canvas')
+      .getContext('2d');
     this.readOnlyCompartment = new Compartment();
 
     const lineNumberExtension = lineNumbers({
@@ -165,7 +171,6 @@ export class CodeEditor {
         highlightActiveLine(),
         highlightActiveLineGutter(),
         highlightSelectionMatches(),
-        EditorView.lineWrapping,
         EditorView.contentAttributes.of({
           'aria-label': ariaLabel,
           spellcheck: 'false',
@@ -189,6 +194,7 @@ export class CodeEditor {
           },
         }),
         EditorView.updateListener.of((update) => {
+          if (update.docChanged) this.scheduleFontFit();
           if (update.docChanged && !this.settingValue) {
             this.onChange();
             const before = update.startState.field(linkedLinesField);
@@ -207,6 +213,12 @@ export class CodeEditor {
     this.view.scrollDOM.addEventListener('scroll', () => {
       this.onScroll();
     }, {passive: true});
+    this.fontResizeObserver = new ResizeObserver(() => {
+      this.scheduleFontFit();
+    });
+    this.fontResizeObserver.observe(this.mount);
+    void document.fonts?.ready.then(() => this.scheduleFontFit());
+    this.scheduleFontFit();
   }
 
   get value() {
@@ -226,6 +238,43 @@ export class CodeEditor {
       annotations: Transaction.addToHistory.of(false),
     });
     this.settingValue = false;
+  }
+
+  scheduleFontFit() {
+    cancelAnimationFrame(this.fontFitFrame);
+    this.fontFitFrame = requestAnimationFrame(() => this.fitFontSize());
+  }
+
+  fitFontSize() {
+    const scroller = this.view.scrollDOM;
+    const gutters = this.mount.querySelector('.cm-gutters');
+    const line = this.mount.querySelector('.cm-line');
+    const rootSize = Number.parseFloat(
+      getComputedStyle(document.documentElement).fontSize,
+    );
+    const minimum = minimumFontRem * rootSize;
+    const maximum = maximumFontRem * rootSize;
+    const context = this.fontMeasureContext;
+    if (!context || !gutters || !line) return;
+    let size = maximum;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      scroller.style.setProperty('--editor-font-size', `${size}px`);
+      const lineStyle = getComputedStyle(line);
+      const padding = Number.parseFloat(lineStyle.paddingLeft) +
+        Number.parseFloat(lineStyle.paddingRight);
+      const available = scroller.clientWidth - gutters.offsetWidth -
+        padding - 1;
+      const font = getComputedStyle(scroller);
+      context.font = `${font.fontStyle} ${font.fontWeight} ` +
+        `${font.fontSize} ${font.fontFamily}`;
+      const required = context.measureText('0'.repeat(targetColumns)).width;
+      if (available <= 0 || required <= 0) return;
+      const fitted = Math.max(minimum, Math.min(maximum,
+        size * available / required));
+      if (Math.abs(fitted - size) < 0.01) break;
+      size = fitted;
+    }
+    scroller.style.setProperty('--editor-font-size', `${size}px`);
   }
 
   setReadOnly(readOnly) {

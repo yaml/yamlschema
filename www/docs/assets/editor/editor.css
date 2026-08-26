@@ -247,7 +247,8 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 .schema-editor .cm-scroller {
-  font: 0.72rem/1.5 "JetBrains Mono", ui-monospace, monospace;
+  font: var(--editor-font-size, 0.72rem)/1.5 "JetBrains Mono",
+    ui-monospace, monospace;
   tab-size: 2;
 }
 
@@ -560,11 +561,16 @@ body:has(.schema-editor) .md-main__inner {
 
 @media (max-width: 700px) {
   .schema-editor .editor-heading {
-    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .schema-editor .cm-lineNumbers {
+    display: none !important;
   }
 
   .schema-editor .sample-select {
-    flex: 1 1 11rem;
+    min-width: 0;
+    flex: 1 1 0;
     max-width: none;
   }
 }
