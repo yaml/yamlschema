@@ -45,13 +45,25 @@ With Fish:
 curl -sL yamlschema.org/install | source -
 ```
 
-Running the sourced command adds `ysd` to the current shell's `PATH` and
+With PowerShell:
+
+```powershell
+irm https://yamlschema.org/install.ps1 | iex
+```
+
+On Bash, Zsh, and Fish, running the sourced command adds `ysd` to the
+current shell's `PATH` and
 immediately enables tab completion and the YAMLSchema man pages.
 Try `ysd --<TAB>` or `man ysd` after it finishes.
 The installer also clones the matching release tag into
 `$HOME/.local/share/yamlschema/` and prints the `.rc` line to add for future
 shells.
 Root installations default to `/usr/local`.
+
+The PowerShell installer selects the AMD64 or ARM64 Windows release, installs
+`ysd.exe` under `$HOME\.local\bin`, and adds that directory to the current
+shell and the user `PATH`.
+Native PowerShell completion and man pages are not yet available.
 
 Choose another prefix or release by passing Make variables after the sourced
 command:
@@ -70,7 +82,8 @@ command:
       source - PREFIX=/opt/yamlschema VERSION=0.1.3
     ```
 
-Git, curl, GNU Make 3.81 or newer, and `tar` or `unzip` are required.
+The Bash, Zsh, and Fish installer requires Git, curl, GNU Make 3.81 or newer,
+and `tar` or `unzip`.
 
 To clone, build, and install from source instead:
 
