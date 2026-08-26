@@ -1,5 +1,13 @@
 # YAMLSchema release history
 
+- version: 0.1.6
+  date:    Wed Aug 26 02:35:50 PM EDT 2026
+  changes:
+  - Isolate release test branch
+  - Allow releases from named branches
+  - Publish website during releases
+  - Fix ARM64 installation support
+
 - version: 0.1.5
   date:    Wed Aug 26 01:10:54 PM EDT 2026
   changes:
