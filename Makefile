@@ -115,6 +115,7 @@ test-install: build
 	  test -f "$$prefix/share/yamlschema/.rc"; \
 	  test -f "$$prefix/share/yamlschema/man/man1/ysd.1"; \
 	  test -f "$$prefix/share/yamlschema/share/complete.bash"; \
+	  test -f "$$prefix/share/yamlschema/share/complete.ps1"; \
 	  test "$$(git -C "$$prefix/share/yamlschema" rev-parse HEAD)" = \
 	    "$$(git rev-parse HEAD)"; \
 	  test "$$(git -C "$$prefix/share/yamlschema" remote get-url origin)" = \

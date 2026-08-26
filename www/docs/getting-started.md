@@ -63,7 +63,9 @@ Root installations default to `/usr/local`.
 The PowerShell installer selects the AMD64 or ARM64 Windows release, installs
 `ysd.exe` under `$HOME\.local\bin`, and adds that directory to the current
 shell and the user `PATH`.
-Native PowerShell completion and man pages are not yet available.
+It enables tab completion in the current shell and adds the completion script
+to `$PROFILE.CurrentUserAllHosts` for future PowerShell sessions.
+Native Windows man pages are not available, so use `ysd --help` instead.
 
 Choose another prefix or release by passing Make variables after the sourced
 command:

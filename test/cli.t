@@ -102,6 +102,19 @@ test::
     zsh registered
     fish registered
 
+- name: powershell-completion-source
+  cmnd: |
+    sh -c '
+      cmp share/complete.ps1 www/docs/complete.ps1
+      grep -Fq "Register-ArgumentCompleter -Native" \
+        share/complete.ps1
+      grep -Fq -- "--upgrade" share/complete.ps1
+      grep -Fq ".schema.yml" share/complete.ps1
+      echo ok
+    '
+  want: |
+    ok
+
 - name: bash-completion-candidates
   cmnd: |
     bash --noprofile --norc -c '

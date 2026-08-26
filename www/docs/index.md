@@ -74,7 +74,7 @@ tags?: +Str[] [=good, bad, ugly]</code></pre>
 The Bash, Zsh, and Fish command installs `ysd` into the current shell.
 It immediately enables tab completion and the YAMLSchema man pages.
 The PowerShell command installs the native Windows executable and updates the
-user `PATH`.
+user `PATH` while enabling tab completion now and in future sessions.
 The Unix installer keeps the matching source release under
 `$PREFIX/share/yamlschema/`.
 [See installation options](getting-started.md#install-the-command).
