@@ -113,8 +113,8 @@ curl -sL yamlschema.org/install | \
 
 The installer requires Git, curl, GNU Make 3.81 or newer, and `tar` or
 `unzip` for the platform archive.
-Prebuilt releases are available for Linux Intel, macOS ARM, Windows Intel,
-and JavaScript WebAssembly.
+Prebuilt releases are available for Linux Intel and ARM, macOS ARM, Windows
+Intel and ARM, and JavaScript WebAssembly.
 The native archives contain `ysd` or `ysd.exe` and this ReadMe.
 The `js_wasm` archive contains the raw `ysd.wasm` module for use with the Go
 JavaScript WebAssembly runtime.

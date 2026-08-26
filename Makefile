@@ -166,6 +166,15 @@ release-dist: $(GLOAT) $(PERL)
 	  '$(DIST)' '$(RELEASE-BUILD)' '$(YSD-VERSION)'
 
 release-smoke: release-dist $(NODE)
+	for archive in \
+	    ysd-$(VERSION)-linux_amd64.tar.gz \
+	    ysd-$(VERSION)-linux_arm.tar.gz \
+	    ysd-$(VERSION)-darwin_arm64.tar.gz \
+	    ysd-$(VERSION)-windows_amd64.zip \
+	    ysd-$(VERSION)-windows_arm.zip \
+	    ysd-$(VERSION)-js_wasm.tar.gz; do \
+	  test -f '$(DIST)'/$$archive; \
+	done
 	native='$(RELEASE-BUILD)/bin/linux_amd64/ysd'; \
 	  test "$$($$native --version)" = \
 	  'ysd $(YSD-VERSION)'

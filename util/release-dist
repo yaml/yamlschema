@@ -46,7 +46,14 @@ source_version=$(
   exit 1
 }
 
-platforms=(linux_amd64 darwin_arm64 windows_amd64 js_wasm)
+platforms=(
+  linux_amd64
+  linux_arm
+  darwin_arm64
+  windows_amd64
+  windows_arm
+  js_wasm
+)
 archives=()
 
 rm -rf -- "$dist_dir" "$build_dir"
@@ -66,7 +73,7 @@ build_platform() {
   fi
 
   target=${platform/_//}
-  [[ $platform != windows_amd64 ]] || name=ysd.exe
+  [[ $platform != windows_* ]] || name=ysd.exe
   output="$build_dir/bin/$platform/$name"
   mkdir -p "${output%/*}"
   echo "* Building $platform"
@@ -83,7 +90,7 @@ package_platform() {
   cp "$top/ReadMe.md" "$package_dir/"
 
   case $platform in
-    windows_amd64)
+    windows_*)
       executable=ysd.exe
       cp "$build_dir/bin/$platform/$executable" "$package_dir/"
       archive="$dist_dir/$package_name.zip"
