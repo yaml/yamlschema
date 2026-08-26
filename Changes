@@ -1,5 +1,26 @@
 # YAMLSchema release history
 
+- version: 0.1.5
+  date:    Wed Aug 26 01:10:54 PM EDT 2026
+  changes:
+  - Show YSDC content as JSON
+  - Add diff modal copy control
+  - Add OpenAPI demo schemas
+  - Prioritize installed YSD path
+  - Use user-local install prefix
+  - Add ARM release builds
+  - Add source install and upgrade
+  - Move completions into share files
+  - Improve homepage and demo copying
+  - Add schema serialization controls
+  - Add test CI and Dependabot
+  - Separate schema and usage errors
+  - Fit demo editors to narrow screens
+  - Support legacy definition scrolling
+  - Improve demo format controls
+  - Cache generated demo documents
+  - Add shell completion and manuals
+
 - version: 0.1.4
   date:    Tue Aug 25 01:22:30 PM EDT 2026
   changes:

@@ -5,7 +5,7 @@ $(shell [ -d '$M' ] || git clone -q $R '$M')
 MAKES_LOCAL_DIR ?= $(CURDIR)/.cache/local
 GLOAT-VERSION := 0.1.78
 YAMLSCRIPT-VERSION := 0.2.31
-YSD-VERSION := 0.1.4
+YSD-VERSION := 0.1.5
 
 include $M/init.mk
 include $M/gh.mk
