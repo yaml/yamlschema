@@ -4,6 +4,7 @@ import {yaml as yamlLanguage} from '@codemirror/lang-yaml';
 import {EditorState} from '@codemirror/state';
 import {readFile} from 'node:fs/promises';
 import {normalizeJson} from '../docs/assets/editor/json.js';
+import {ResultCache, resultCacheKey} from '../src/editor/result-cache.js';
 import {schemaSections} from '../src/editor/schema-sections.js';
 import {
   clampLineRange,
@@ -15,6 +16,28 @@ import {
   serializeEditorState,
 } from '../src/editor/url-state.js';
 await import('../docs/assets/editor/unified-diff.js');
+
+const resultCache = new ResultCache(2);
+const firstCacheKey = resultCacheKey('convert', 'first');
+const secondCacheKey = resultCacheKey('convert', 'second');
+const thirdCacheKey = resultCacheKey('convert', 'third');
+resultCache.set(firstCacheKey, 'one');
+resultCache.set(secondCacheKey, 'two');
+if (resultCache.get(firstCacheKey) !== 'one') {
+  throw new Error('generated result cache did not return its value');
+}
+resultCache.set(thirdCacheKey, 'three');
+if (resultCache.get(secondCacheKey) !== undefined ||
+    resultCache.get(thirdCacheKey) !== 'three') {
+  throw new Error('generated result cache did not evict the least recent');
+}
+resultCache.clear();
+if (resultCache.get(firstCacheKey) !== undefined) {
+  throw new Error('generated result cache did not clear its values');
+}
+if (resultCacheKey('ab', 'c') === resultCacheKey('a', 'bc')) {
+  throw new Error('generated result cache keys are ambiguous');
+}
 
 const sectionJSON = EditorState.create({
   doc: `{
@@ -339,6 +362,19 @@ for (const worker of ['schema-worker.js', 'roundtrip-worker.js']) {
 }
 if (!appSource.includes('roundtripWorker.terminate()')) {
   throw new Error('stale roundtrip work is not cancelled');
+}
+if (
+  !appSource.includes('const workerResultCache = new ResultCache()') ||
+  !appSource.includes('const roundtripResultCache = new ResultCache()') ||
+  !appSource.includes('if (cached) return cached.promise;') ||
+  !appSource.includes('const [toYSD, toYSDC] = await Promise.all([') ||
+  !appSource.includes('if (!cachedVisible) showGeneratingYamlSchema();') ||
+  !appSource.includes('if (!cached) showGeneratingJSONSchema();') ||
+  !appSource.includes('showRoundtripResult(cached);') ||
+  !appSource.includes('(roundtripBusy || roundtripTimer !== undefined)') ||
+  !appSource.includes('cachedYSDCForYSD(ysd)')
+) {
+  throw new Error('generated documents are not reused for unchanged inputs');
 }
 if (!appSource.includes('roundtripDiffDialog.showModal()')) {
   throw new Error('roundtrip diff modal is not opened by the browser app');

@@ -3,6 +3,7 @@ import {yaml} from '@codemirror/lang-yaml';
 
 import {normalizeJson} from '../../docs/assets/editor/json.js';
 import {CodeEditor} from './editor.js';
+import {ResultCache, resultCacheKey} from './result-cache.js';
 import {parseEditorState, serializeEditorState} from './url-state.js';
 
 const schemaEditor = document.querySelector('.schema-editor');
@@ -79,6 +80,8 @@ const sampleSources = {
     },
   },
 };
+const workerResultCache = new ResultCache();
+const roundtripResultCache = new ResultCache();
 
 let timer;
 let editorURLTimer;
@@ -87,6 +90,7 @@ let roundtripTimer;
 let roundtripWorker;
 let roundtripBusy = false;
 let roundtripRequest = 0;
+let roundtripRequestKey;
 let roundtripSource;
 let conversionRequest = 0;
 let workerRequest = 0;
@@ -465,18 +469,33 @@ function failWorker(error) {
     resolve({ok: false, error: message});
   }
   workerCalls.clear();
+  workerResultCache.clear();
   cancelRoundtripStatus();
   setRoundtripStatus('unknown', 'Conversion Worker Error');
   jsonEditor.classList.add('invalid');
   jsonError.textContent = message;
 }
 
+function cachedWorkerResult(operation, input) {
+  return workerResultCache.get(resultCacheKey(operation, input))?.result;
+}
+
 function callWorker(operation, input) {
-  return new Promise((resolve) => {
+  const key = resultCacheKey(operation, input);
+  const cached = workerResultCache.get(key);
+  if (cached) return cached.promise;
+  const entry = {};
+  const pending = new Promise((resolve) => {
     const id = ++workerRequest;
     workerCalls.set(id, resolve);
     schemaWorker.postMessage({type: 'call', id, operation, input});
   });
+  entry.promise = pending.then((result) => {
+    entry.result = result;
+    return result;
+  });
+  workerResultCache.set(key, entry);
+  return entry.promise;
 }
 
 function getRoundtripWorker() {
@@ -491,23 +510,43 @@ function getRoundtripWorker() {
       setRoundtripDiff('');
       setRoundtripStatus('unknown', 'Roundtrip Check Error');
     } else {
-      setRoundtripDiff(data.diff || '');
-      setRoundtripStatus(data.works ? 'works' : 'fails');
+      const result = {works: data.works, diff: data.diff || ''};
+      roundtripResultCache.set(roundtripRequestKey, result);
+      showRoundtripResult(result);
     }
   });
   roundtripWorker.addEventListener('error', () => {
     roundtripBusy = false;
+    roundtripResultCache.clear();
     setRoundtripDiff('');
     setRoundtripStatus('unknown', 'Roundtrip Check Error');
   });
   return roundtripWorker;
 }
 
+function showRoundtripResult(result) {
+  setRoundtripDiff(result.diff);
+  setRoundtripStatus(result.works ? 'works' : 'fails');
+}
+
 function updateRoundtripStatus(source, input, delay = 500) {
-  clearTimeout(roundtripTimer);
   setRoundtripSource(source);
+  const key = resultCacheKey(source, input);
+  const cached = roundtripResultCache.get(key);
+  if (cached) {
+    if (key !== roundtripRequestKey) cancelRoundtripStatus();
+    roundtripRequestKey = key;
+    showRoundtripResult(cached);
+    return;
+  }
+  const pending = key === roundtripRequestKey &&
+    (roundtripBusy || roundtripTimer !== undefined);
+  if (pending) return;
+  cancelRoundtripStatus();
   const id = ++roundtripRequest;
+  roundtripRequestKey = key;
   roundtripTimer = setTimeout(() => {
+    roundtripTimer = undefined;
     roundtripBusy = true;
     getRoundtripWorker().postMessage({id, source, input});
   }, delay);
@@ -515,6 +554,7 @@ function updateRoundtripStatus(source, input, delay = 500) {
 
 function cancelRoundtripStatus() {
   clearTimeout(roundtripTimer);
+  roundtripTimer = undefined;
   roundtripRequest++;
   setRoundtripDiff('');
   if (roundtripWorker && roundtripBusy) {
@@ -555,9 +595,17 @@ async function convertJsonToYaml(
     return;
   }
   const id = ++conversionRequest;
-  showGeneratingYamlSchema();
+  const ysdOperation = 'json-schema-to-ysd';
+  const ysdcOperation = 'json-schema-to-ysdc';
+  const cachedYSD = cachedWorkerResult(ysdOperation, json);
+  const cachedYSDC = cachedWorkerResult(ysdcOperation, json);
+  const cachedVisible = yamlFormat === 'ysdc' ? cachedYSDC : cachedYSD;
+  if (!cachedVisible) showGeneratingYamlSchema();
   if (checkRoundtrip) updateRoundtripStatus('json', json);
-  const toYSD = await callWorker('json-schema-to-ysd', json);
+  const [toYSD, toYSDC] = await Promise.all([
+    cachedYSD || callWorker(ysdOperation, json),
+    cachedYSDC || callWorker(ysdcOperation, json),
+  ]);
   if (id !== conversionRequest) return;
   if (!toYSD.ok) {
     showResult(jsonEditor, yamlEditor, jsonError, yamlError, toYSD);
@@ -570,8 +618,7 @@ async function convertJsonToYaml(
   if (updateYSD) ysdValue = convertedYSD;
   let result = {...toYSD, value: convertedYSD};
   if (yamlFormat === 'ysdc') {
-    result = await callWorker('json-schema-to-ysdc', json);
-    if (id !== conversionRequest) return;
+    result = toYSDC;
   }
   showResult(jsonEditor, yamlEditor, jsonError, yamlError, result);
 }
@@ -580,8 +627,10 @@ async function convertYamlToJson() {
   const id = ++conversionRequest;
   const ysd = yamlEditor.value;
   ysdValue = ysd;
-  showGeneratingJSONSchema();
-  const result = await callWorker('ysd-to-json-schema', ysd);
+  const operation = 'ysd-to-json-schema';
+  const cached = cachedWorkerResult(operation, ysd);
+  if (!cached) showGeneratingJSONSchema();
+  const result = cached || await callWorker(operation, ysd);
   if (id !== conversionRequest) return;
   showResult(yamlEditor, jsonEditor, yamlError, jsonError, result);
   if (result.ok) {
@@ -639,7 +688,6 @@ function roundtripOnFocus(editor) {
   if (!schemaWorkerReady || updating) return;
   if (editor === yamlEditor && yamlFormat !== 'ysd') return;
   const source = editor === jsonEditor ? 'json' : 'ysd';
-  cancelRoundtripStatus();
   clearTimeout(checkingTimer);
   setRoundtripSource(source);
   setRoundtripStatus('checking');
@@ -651,6 +699,7 @@ function roundtripOnFocus(editor) {
     const json = normalizeJson(jsonEditor.value);
     updateRoundtripStatus('json', json, 0);
   } catch {
+    cancelRoundtripStatus();
     setRoundtripStatus('unknown');
   }
 }
@@ -715,11 +764,21 @@ function clearSiteCookies() {
   window.location.assign('https://yamlschema.org/demo/');
 }
 
+function cachedYSDCForYSD(ysd) {
+  const json = cachedWorkerResult('ysd-to-json-schema', ysd);
+  if (!json?.ok) return undefined;
+  return cachedWorkerResult(
+    'json-schema-to-ysdc',
+    normalizeJson(json.value),
+  );
+}
+
 async function showSample(ysd) {
   ysdValue = ysd;
   setEditorValue(yamlEditor, ysdValue);
+  const cachedYSDC = yamlFormat === 'ysdc' && cachedYSDCForYSD(ysd);
   const conversion = convertYamlToJson();
-  showGeneratingYSDC();
+  if (yamlFormat === 'ysdc' && !cachedYSDC) showGeneratingYSDC();
   const result = await conversion;
   if (yamlFormat === 'ysdc' && result?.ok) {
     await convertJsonToYaml(false, false);
@@ -788,7 +847,6 @@ async function selectYamlFormat(format, remember = true) {
   if (!schemaWorkerReady) return;
   if (format === 'ysd' && ysdValue) setEditorValue(yamlEditor, ysdValue);
   else {
-    showGeneratingYSDC();
     await convertJsonToYaml(false, false);
   }
 }
