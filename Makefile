@@ -3,8 +3,6 @@ M := .cache/makes
 $(shell [ -d '$M' ] || git clone -q $R '$M')
 
 MAKES_LOCAL_DIR ?= $(CURDIR)/.cache/local
-GLOAT-VERSION := 0.1.78
-YAMLSCRIPT-VERSION := 0.2.31
 YSD-VERSION := 0.1.5
 
 include $M/init.mk
@@ -178,10 +176,10 @@ release-dist: $(GLOAT) $(PERL)
 release-smoke: release-dist $(NODE)
 	for archive in \
 	    ysd-$(VERSION)-linux_amd64.tar.gz \
-	    ysd-$(VERSION)-linux_arm.tar.gz \
+	    ysd-$(VERSION)-linux_arm64.tar.gz \
 	    ysd-$(VERSION)-darwin_arm64.tar.gz \
 	    ysd-$(VERSION)-windows_amd64.zip \
-	    ysd-$(VERSION)-windows_arm.zip \
+	    ysd-$(VERSION)-windows_arm64.zip \
 	    ysd-$(VERSION)-js_wasm.tar.gz; do \
 	  test -f '$(DIST)'/$$archive; \
 	done
@@ -211,4 +209,13 @@ release: $(GH) $(PERL)
 MAKES-CLEAN += .cache/man-test .cache/release dist ysd
 
 serve publish:
+	$(MAKE) -C www $@
+
+clean::
+	$(MAKE) -C www $@
+
+realclean::
+	$(MAKE) -C www $@
+
+distclean::
 	$(MAKE) -C www $@

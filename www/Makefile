@@ -4,13 +4,10 @@ $(shell [ -d '$M' ] || git clone -q $R '$M')
 
 include $M/init.mk
 
-GLOAT-VERSION := 0.1.78
-NODE-VERSION := 26.7.0
 PYTHON-VENV := $(ROOT)/venv
 
-LOCAL-GLOAT-DIR := $(or \
-  $(if $(wildcard ../../gloat/bin/gloat),../../gloat), \
-  $(if $(wildcard ../../../bin/gloat),../../..))
+LOCAL-GLOAT-DIR := $(if \
+  $(wildcard ../repos/gloat/bin/gloat),../repos/gloat)
 
 ifneq (,$(GLOAT_ROOT))
 GLOAT-DIR ?= $(GLOAT_ROOT)
@@ -44,9 +41,6 @@ EDITOR-SOURCES := $(wildcard $(EDITOR-SOURCE)/*.js)
 WASM := $(EDITOR-ASSETS)/ysd.wasm
 WASM-EXEC := $(EDITOR-ASSETS)/wasm_exec.js
 NODE-MODULES := node_modules
-YAMLSCRIPT-DIR := ../../yamlscript
-LOCAL-YS := $(wildcard $(YAMLSCRIPT-DIR)/ys/bin/ys)
-GLOAT-ENV := $(if $(LOCAL-YS),GLOAT_YS=$(abspath $(LOCAL-YS)))
 DEPS := $(PYTHON-VENV) $(EDITOR-BUNDLE) $(WASM) $(WASM-EXEC)
 
 MAKES-CLEAN := site $(EDITOR-BUNDLE) $(WASM) $(WASM-EXEC)
@@ -84,7 +78,7 @@ $(NODE-MODULES): package.json package-lock.json $(NODE)
 	npm ci
 
 $(WASM): ../bin/ysd $(GLOAT)
-	$(GLOAT-ENV) $(GLOAT) -qf -t js -o $@ $<
+	$(GLOAT) -qf -t js -o $@ $<
 
 $(WASM-EXEC): $(GLOAT)
 	go_bin=$$($(GLOAT) --which=go); \
