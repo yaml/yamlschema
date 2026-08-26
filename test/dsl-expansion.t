@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: composed-and-hybrid-equivalence
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     succinct: +Str[] /a.*b/ 10-20
     hybrid:
@@ -33,7 +33,7 @@ test::
     }
 
 - name: inferred-types-and-const
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     pattern: /a.*b/
     numbers: +Int [1,2,3]
@@ -80,7 +80,7 @@ test::
     }
 
 - name: pattern-forms-and-size
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     url: =~"https?://.*" 1+
     spaced: =~"a b" 2-4
@@ -130,7 +130,7 @@ test::
     }
 
 - name: list-size-forms
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     key?: +Str[1+,!]
     value?: +Str[0-3,$]
@@ -169,7 +169,7 @@ test::
     }
 
 - name: explicit-any-canonicalizes-to-solo-list
-  cmnd: bin/ysd -f ysd -t ysdc.json -
+  cmnd: bin/ysd -f ysd -t ysdc -J -
   stdi: |
     value:
       .any:
@@ -213,7 +213,7 @@ test::
     }
 
 - name: composable-list-property-spellings
-  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc -J -C - | fold -w 72'
   stdi: |
     canonical: +Str[1-10,$!]
     split: +Str[1-10,$,!]
@@ -231,7 +231,7 @@ test::
       for value in "+Str[1-10,3]" "+Str[$,$]" "+Str[!,!]" \
                    "+Str[1-10|$!]"; do
         printf "x: %s\n" "$value" |
-          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -241,7 +241,7 @@ test::
     ysd: unsupported | in list suffix; use comma
 
 - name: nullable-default-title-description
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     flag?: +Bool~ =false title:"Flag" "Whether it is enabled"
     label?: +Str ="pretty good"
@@ -271,7 +271,7 @@ test::
     }
 
 - name: explicit-order-is-declarative
-  cmnd: bin/ysd -t ysdc.json -C -
+  cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
     foo:
       .size: 10-20
@@ -281,7 +281,7 @@ test::
     {"foo":{".type":"+Str[]",".like":"^a.*b$",".size":[10,20]}}
 
 - name: direct-and-refined-type-directives
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     +named: +Str
     plain: +Str
@@ -308,7 +308,7 @@ test::
     }
 
 - name: json-schema-to-ysdc-json
-  cmnd: bin/ysd -t ysdc.json -f jsc -
+  cmnd: bin/ysd -t ysdc -J -f jsc -
   stdi: |
     {
       "properties": {
@@ -330,7 +330,7 @@ test::
     }
 
 - name: const-null-and-solo-to-json-schema
-  cmnd: bin/ysd -t schema.json -
+  cmnd: bin/ysd -t jsc -
   stdi: |
     version: +Str ==User
     flag?: +Bool~
@@ -372,7 +372,7 @@ test::
 
 - name: reject-duplicate-hybrid-directive
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo:
       .type: +Str /a/
@@ -393,9 +393,9 @@ test::
   cmnd: |
     sh -c '
       printf "foo:\n  .type: +Any\n  .list: true\n" |
-        bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+        bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       printf "foo: +Any list:true\n" |
-        bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+        bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
     '
   want: |
     ysd: unsupported yamlschema directive: .list; use [] on the type
@@ -406,7 +406,7 @@ test::
     sh -c '
       for key in "foo[]" "foo?[]" "foo[1-3]" "foo[]?"; do
         printf "%s: +Str\n" "$key" |
-          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -417,7 +417,7 @@ test::
 
 - name: reject-old-description
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: +Str 'Old description'
   want: |
@@ -425,7 +425,7 @@ test::
 
 - name: reject-whitespace-in-regex-literal
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: /a b/
   want: |
@@ -433,7 +433,7 @@ test::
 
 - name: reject-slash-in-regex-literal
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: /a/b/
   want: |
@@ -441,7 +441,7 @@ test::
 
 - name: reject-pipe-enum
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: debug|info
   want: |
@@ -449,7 +449,7 @@ test::
 
 - name: reject-compact-enum-without-base
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: enum:[debug,info]
   want: |
@@ -457,7 +457,7 @@ test::
 
 - name: reject-compact-enum-punctuation
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: +Str [good,bad/value]
   want: |
@@ -465,7 +465,7 @@ test::
 
 - name: reject-quote-in-labeled-pattern
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: match:"a"b"
   want: |
@@ -473,7 +473,7 @@ test::
 
 - name: reject-quote-in-operator-match
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: =~"a"b"
   want: |
@@ -481,7 +481,7 @@ test::
 
 - name: reject-old-size-sentinel
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo:
       .type: +Str
@@ -490,7 +490,7 @@ test::
     ysd: unsupported .size "*" bound; use 1+ or [1]
 
 - name: compact-enum-whitespace-members
-  cmnd: bin/ysd -t ysdc.json -C -
+  cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
     tight: +Str [foo,bar,foo bar,bar foo]
     padded: +Str [ foo, bar, foo bar, bar foo ]
@@ -499,14 +499,14 @@ test::
 
 - name: reject-quoted-compact-enum-value
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo: +Str [foo,"bar foo"]
   want: |
     ysd: quoted values are not allowed in compact enum; use .enum
 
 - name: const-and-default-forms
-  cmnd: bin/ysd -t ysdc.json -C -
+  cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
     short: +Str ==User
     quoted: +Str =="foo bar"
@@ -518,7 +518,7 @@ test::
     {"short":{".type":"+Str",".const":"User"},"quoted":{".type":"+Str",".const":"foo bar"},"labeled":{".type":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".type":"+Str",".enum":["User"],".init":"User"},"enum-default":{".type":"+Str",".enum":["User"],".init":"User"}}
 
 - name: labeled-clauses-in-arbitrary-order
-  cmnd: bin/ysd -t ysdc.json -C -
+  cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
     string: desc:"Words" size:1-3 =~"a b" title:"Title" init:x type:+Str
     search: find:"a/b c" type:+Str
@@ -535,7 +535,7 @@ test::
     sh -c '
       for value in base:+Str titl:Old just:Old only:Old like:Old mini:1 maxi:10; do
         printf "foo: +Str %s\n" "$value" |
-          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -552,7 +552,7 @@ test::
     sh -c '
       for key in .titl .just .only .mini .maxi; do
         printf "foo:\n  %s: Old\n" "$key" |
-          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -566,10 +566,10 @@ test::
   cmnd: |
     sh -c '
       printf "foo:\n  .type: +Str[1+]\n" |
-        bin/ysd -t ysdc.json -C -
+        bin/ysd -t ysdc -J -C -
       for format in ysd ysdc; do
         printf "foo:\n  .base: +Str\n" |
-          bin/ysd -f "$format" -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -f "$format" -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |

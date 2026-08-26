@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: types
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -25,7 +25,7 @@ test::
     b: +Bool
 
 - name: yaml-number-inference
-  cmnd: bin/ysd -t ysdc.json -C -
+  cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
     float: 1.5
     float-enum:

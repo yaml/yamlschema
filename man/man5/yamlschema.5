@@ -2,7 +2,7 @@
 .nh
 .TH yamlschema 5 "" YAMLSchema YAMLSchema
 This page specifies the human-authored YAMLSchema DSL and its expansion to the
-YSD Canonical (YSDC) model, serialized as \fB\&.ysdc.yaml\fR or \fB\&.ysdc.json\fR\&.
+canonical \fB\&.ysdc\fR model, serialized as \fB\&.ysdc.yaml\fR or \fB\&.ysdc.json\fR\&.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
@@ -15,7 +15,7 @@ The optional top-level \fB\&.ysid\fR is a non-empty document identity string:
 
 .PP
 Generated output places \fB\&.ysid\fR first, although input may place it anywhere.
-YSD and YSDC use \fB\&.ysd.yaml\fR, while JSON Schema uses \fB\&.schema.json\fR\&.
+\&.ysd and .ysdc use \fB\&.ysd.yaml\fR, while JSON Schema uses \fB\&.schema.json\fR\&.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
 
@@ -180,7 +180,7 @@ shape nested beneath it are closed unless locally reopened.
 A nested \fB\&.open\fR must be Boolean and overrides the inherited value.
 An explicit \fB+Str\fR wildcard controls the current shape directly.
 Combining \fB\&.open: false\fR with such a wildcard is an error.
-Canonical YSDC keeps \fB\&.open: true\fR only at the document top.
+Canonical .ysdc keeps \fB\&.open: true\fR only at the document top.
 It uses \fB\&.open: false\fR to close a shape under an open default and a final
 \fB+Str: +Any\fR wildcard to open a shape under a closed default.
 
@@ -338,7 +338,7 @@ mode: +Str [debug, info, error]
 .PP
 A bare regex or numeric range can still infer a built-in type.
 A fractional range infers \fB+Num\fR because its interval may include integers.
-Generated YSD includes the inferred reference explicitly.
+Generated .ysd includes the inferred reference explicitly.
 
 .PP
 These expand to explicit directives.
@@ -364,13 +364,13 @@ anchors are implied.
 The \fB/pattern/\fR form is shorthand for \fBfind:"pattern"\fR and is available only
 when the pattern contains neither whitespace nor \fB/\fR\&.
 The quoted bodies cannot contain \fB"\fR\&.
-In YSD, use explicit \fB\&.match\fR or \fB\&.find\fR when no tight form can represent the
+In .ysd, use explicit \fB\&.match\fR or \fB\&.find\fR when no tight form can represent the
 pattern.
 Both imply \fB+Str\fR\&.
-Generated YSD uses the canonical \fB=~"pattern"\fR spelling.
+Generated .ysd uses the canonical \fB=~"pattern"\fR spelling.
 
 .PP
-Canonical YSDC stores both forms as \fB\&.like\fR, containing the exact JSON Schema
+Canonical .ysdc stores both forms as \fB\&.like\fR, containing the exact JSON Schema
 pattern.
 A match is bookended with \fB^\fR and \fB$\fR; a find is stored unchanged:
 
@@ -385,7 +385,7 @@ search:
 
 .PP
 \fB\&.like\fR is accepted only in \fB\&.ysdc.yaml\fR and \fB\&.ysdc.json\fR\&.
-Conversely, \fB\&.match\fR and \fB\&.find\fR are YSD directives and are rejected in YSDC
+Conversely, \fB\&.match\fR and \fB\&.find\fR are .ysd directives and are rejected in .ysdc
 input.
 
 .PP
@@ -407,7 +407,7 @@ YAML sequence for quoted or other punctuated values.
 The base controls scalar parsing, so \fB+Str [true,1]\fR contains two strings.
 Prefix one member with \fB=\fR to also set \fB\&.init\fR to that value.
 At most one member may be marked.
-Generated YSD uses one space after every compact-enum comma.
+Generated .ysd uses one space after every compact-enum comma.
 
 .PP
 \fB+Str ==User\fR becomes \fB\&.const: User\fR, the exact-value constraint corresponding
@@ -665,16 +665,17 @@ or additional constraints.
 Compile human-authored YAML to canonical JSON with:
 
 .EX
-ysd -t ysdc.json contact.ysd.yaml
-ysd -t ysdc.json -C contact.ysd.yaml
-ysd -t ysdc.json values.schema.json
+ysd -t ysdc -J contact.ysd.yaml
+ysd -t ysdc -J -C contact.ysd.yaml
+ysd -t ysdc -J values.schema.json
 .EE
 
 .PP
-Use \fBysdc\fR or \fBysdc.yaml\fR instead of \fBysdc.json\fR for canonical YAML.
-Use \fB-f/--from ysd\fR, \fBysdc.json\fR, \fBysdc\fR, or \fBjsc\fR when a filename or stdin does
-not make the source format clear.
-File suffixes \fB\&.ysd.yaml\fR, \fB\&.ysdc.json\fR, \fB\&.ysdc.yaml\fR, and \fB\&.schema.json\fR are
+Omit \fB-J\fR or use \fB-Y\fR for canonical YAML.
+Use \fB-f/--from ysd\fR, \fBysdc\fR, or \fBjsc\fR when a filename or stdin does not make
+the source format clear.
+File suffixes \fB\&.ysd.yaml\fR, \fB\&.ysd.json\fR, \fB\&.ysdc.yaml\fR, \fB\&.ysdc.json\fR,
+\fB\&.schema.json\fR, \fB\&.schema.json.yaml\fR, \fB\&.schema.yaml\fR, and \fB\&.schema.yml\fR are
 inferred automatically.
 
 .PP

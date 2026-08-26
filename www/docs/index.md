@@ -224,7 +224,7 @@ countryName: +Str</code></pre>
 
 <div markdown>
 
-### YSD
+### .ysd
 
 The compact source form people write and review.
 
@@ -237,7 +237,7 @@ age?: +Int 0..
 
 <div markdown>
 
-### YSDC
+### .ysdc
 
 The explicit canonical form for tools and generated artifacts.
 
@@ -252,7 +252,7 @@ age?:
 
 <div markdown>
 
-### YSDC JSON
+### .ysdc JSON
 
 The explicit canonical form encoded as JSON.
 

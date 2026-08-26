@@ -4,23 +4,12 @@ use ys::taptest: :all
 
 test::
 
-- name: expanded-short-formats
+- name: ysdc-output-serializations
   cmnd: |
     sh -c '
       input="foo: +Str"
-      printf "%s\n" "$input" | bin/ysd -t ysdc.json -C -
+      printf "%s\n" "$input" | bin/ysd -t ysdc -J -C -
       printf "%s\n" "$input" | bin/ysd -t ysdc -
-    '
-  want: |
-    {"foo":"+Str"}
-    foo: +Str
-
-- name: expanded-long-formats
-  cmnd: |
-    sh -c '
-      input="foo: +Str"
-      printf "%s\n" "$input" | bin/ysd -t ysdc.json -C -
-      printf "%s\n" "$input" | bin/ysd -t ysdc.yaml -
     '
   want: |
     {"foo":"+Str"}
@@ -48,63 +37,56 @@ test::
       .type: +Str
       .desc: Kept explicit
 
-- name: succinct-short-and-long-formats
+- name: ysd-output-serializations
   cmnd: |
     sh -c '
       input="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
       printf "%s\n" "$input" | bin/ysd -t ysd -
-      printf "%s\n" "$input" | bin/ysd -t ysd.yaml -
+      printf "%s\n" "$input" | bin/ysd -t ysd -J -C -
     '
   want: |
     # Converted from JSON Schema
     .open: true
     foo?: +Str
-    # Converted from JSON Schema
-    .open: true
-    foo?: +Str
+    {".open":true,"foo?":"+Str"}
 
-- name: json-schema-short-and-long-formats
+- name: jsc-output-serializations
   cmnd: |
     sh -c '
       input="foo: +Str"
       printf "%s\n" "$input" | bin/ysd -t jsc -C - |
         ys -e "say: IN:read:json/load.type"
-      printf "%s\n" "$input" | bin/ysd -t schema.json -C - |
-        ys -e "say: IN:read:json/load.type"
+      printf "%s\n" "$input" | bin/ysd -t jsc -Y - |
+        ys -e "say: IN:read:yaml/load.type"
     '
   want: |
     object
     object
 
-- name: all-short-and-long-input-formats
+- name: all-input-formats-and-serializations
   cmnd: |
     sh -c '
       dsl="foo: +Str"
       canonical_yaml="foo:\n  .type: +Str"
       canonical_json="{\"foo\":{\".type\":\"+Str\"}}"
       json_schema="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
-      for format in ysd ysd.yaml; do
-        printf "%s\n" "$dsl" | bin/ysd -f "$format" -t jsc -C - |
+      for input in "$dsl" "{\"foo\":\"+Str\"}"; do
+        printf "%s\n" "$input" | bin/ysd -f ysd -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
       done
-      for format in ysdc ysdc.yaml; do
-        printf "%b\n" "$canonical_yaml" |
-          bin/ysd -f "$format" -t jsc -C - |
+      printf "%b\n" "$canonical_yaml" |
+        bin/ysd -f ysdc -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
-      done
-      for format in ysdc.json; do
-        printf "%s\n" "$canonical_json" |
-          bin/ysd -f "$format" -t jsc -C - |
+      printf "%s\n" "$canonical_json" |
+        bin/ysd -f ysdc -t jsc -C - |
           ys -e "say: IN:read:json/load.type"
-      done
-      for format in jsc schema.json; do
-        printf "%s\n" "$json_schema" |
-          bin/ysd -f "$format" -t ysdc.json -C - |
+      for input in "$json_schema" "properties: {foo: {type: string}}"; do
+        printf "%s\n" "$input" |
+          bin/ysd -f jsc -t ysdc -J -C - |
           jq -r ".\"foo?\""
       done
     '
   want: |
-    object
     object
     object
     object
@@ -164,6 +146,77 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
 
+- name: all-input-file-extensions
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      trap "rm -r \"$dir\"" EXIT
+      printf "foo: +Str\n" > "$dir/in.ysd.yaml"
+      printf "%s\n" "{\"foo\":\"+Str\"}" > "$dir/in.ysd.json"
+      printf "foo: +Str\n" > "$dir/in.ysdc.yaml"
+      printf "%s\n" "{\"foo\":\"+Str\"}" > "$dir/in.ysdc.json"
+      printf "%s\n" \
+        "{\"properties\":{\"foo\":{\"type\":\"string\"}}}" \
+        > "$dir/in.schema.json"
+      for file in \
+        in.schema.json.yaml in.schema.yaml in.schema.yml
+      do
+        printf "properties: {foo: {type: string}}\n" > "$dir/$file"
+      done
+      for file in in.ysd.yaml in.ysd.json \
+        in.ysdc.yaml in.ysdc.json
+      do
+        bin/ysd -C "$dir/$file" |
+          ys -e "say: IN:read:json/load.properties.foo.type"
+      done
+      for file in in.schema.json in.schema.json.yaml \
+        in.schema.yaml in.schema.yml
+      do
+        bin/ysd "$dir/$file" | perl -ne "print if /^foo[?]:/"
+      done
+    '
+  want: |
+    string
+    string
+    string
+    string
+    foo?: +Str
+    foo?: +Str
+    foo?: +Str
+    foo?: +Str
+
+- name: all-output-file-extensions
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      trap "rm -r \"$dir\"" EXIT
+      json="{\"properties\":{\"foo\":{\"type\":\"string\"}}}"
+      dsl="foo: +Str"
+      printf "%s\n" "$json" | bin/ysd -o "$dir/out.ysd.yaml"
+      printf "%s\n" "$json" | bin/ysd -C -o "$dir/out.ysd.json"
+      printf "%s\n" "$dsl" | bin/ysd -o "$dir/out.ysdc.yaml"
+      printf "%s\n" "$dsl" | bin/ysd -C -o "$dir/out.ysdc.json"
+      printf "%s\n" "$dsl" | bin/ysd -C -o "$dir/out.schema.json"
+      for file in \
+        out.schema.json.yaml out.schema.yaml out.schema.yml
+      do
+        printf "%s\n" "$dsl" | bin/ysd -o "$dir/$file"
+      done
+      grep -Fqx "foo?: +Str" "$dir/out.ysd.yaml"
+      test "$(jq -r ".\"foo?\"" "$dir/out.ysd.json")" = +Str
+      grep -Fqx "foo: +Str" "$dir/out.ysdc.yaml"
+      test "$(jq -r .foo "$dir/out.ysdc.json")" = +Str
+      test "$(jq -r .properties.foo.type "$dir/out.schema.json")" = string
+      for file in \
+        out.schema.json.yaml out.schema.yaml out.schema.yml
+      do
+        grep -Fqx "    type: string" "$dir/$file"
+      done
+      echo ok
+    '
+  want: |
+    ok
+
 - name: expanded-output-extension-inference
   cmnd: |
     sh -c '
@@ -211,7 +264,7 @@ test::
   cmnd: |
     sh -c '
       printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" |
-        bin/ysd -f ysdc.json -t jsc -C - | fold -w 72
+        bin/ysd -f ysdc -t jsc -C - | fold -w 72
       printf "foo:\n  .type: +Str\n" |
         bin/ysd -f ysdc -t jsc -C - | fold -w 72
     '
@@ -227,11 +280,11 @@ test::
   cmnd: |
     sh -c '
       input="foo:\n  .like: /a.*b/"
-      printf "%b\n" "$input" | bin/ysd -f ysdc -t ysdc.json -C -
+      printf "%b\n" "$input" | bin/ysd -f ysdc -t ysdc -J -C -
       printf "%b\n" "$input" | bin/ysd -f ysdc -t jsc -C - |
         ys -e "say: IN:read:json/load.properties.foo.pattern"
       printf "%s\n" "{\"foo\":{\".like\":\"^x$\"}}" |
-        bin/ysd -f ysdc.json -t jsc -C - |
+        bin/ysd -f ysdc -t jsc -C - |
         ys -e "say: IN:read:json/load.properties.foo.pattern"
     '
   want: |
@@ -243,16 +296,16 @@ test::
   cmnd: |
     sh -c '
       printf "foo:\n  .like: a\n" |
-        bin/ysd -f ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+        bin/ysd -f ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       for key in .match .find; do
         printf "foo:\n  %s: a\n" "$key" |
           bin/ysd -f ysdc -t jsc -C - 2>&1 | sed -n 1p
       done
     '
   want: |
-    ysd: unsupported YSD directive: .like; use .match or .find
-    ysd: unsupported YSDC directive: .match; use .like
-    ysd: unsupported YSDC directive: .find; use .like
+    ysd: unsupported .ysd directive: .like; use .match or .find
+    ysd: unsupported .ysdc directive: .match; use .like
+    ysd: unsupported .ysdc directive: .find; use .like
 
 - name: expanded-input-extension-inference
   cmnd: |
@@ -261,7 +314,7 @@ test::
       printf "foo:\n  .type: +Str\n" > "$dir/in.ysdc.yaml"
       printf "%s\n" "{\"foo\":{\".type\":\"+Str\"}}" \
         > "$dir/in.ysdc.json"
-      bin/ysd -t ysdc.json -C "$dir/in.ysdc.yaml"
+      bin/ysd -t ysdc -J -C "$dir/in.ysdc.yaml"
       bin/ysd -t ysdc "$dir/in.ysdc.json"
       rm -r "$dir"
     '

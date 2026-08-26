@@ -1,7 +1,7 @@
-# yamlschema -- YAMLSchema language reference
+# yamlschema - YAMLSchema language reference
 
 This page specifies the human-authored YAMLSchema DSL and its expansion to the
-YSD Canonical (YSDC) model, serialized as `.ysdc.yaml` or `.ysdc.json`.
+canonical `.ysdc` model, serialized as `.ysdc.yaml` or `.ysdc.json`.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
@@ -12,7 +12,7 @@ The optional top-level `.ysid` is a non-empty document identity string:
 ```
 
 Generated output places `.ysid` first, although input may place it anywhere.
-YSD and YSDC use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
+.ysd and .ysdc use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
 
@@ -162,7 +162,7 @@ shape nested beneath it are closed unless locally reopened.
 A nested `.open` must be Boolean and overrides the inherited value.
 An explicit `+Str` wildcard controls the current shape directly.
 Combining `.open: false` with such a wildcard is an error.
-Canonical YSDC keeps `.open: true` only at the document top.
+Canonical .ysdc keeps `.open: true` only at the document top.
 It uses `.open: false` to close a shape under an open default and a final
 `+Str: +Any` wildcard to open a shape under a closed default.
 
@@ -304,7 +304,7 @@ mode: +Str [debug, info, error]
 
 A bare regex or numeric range can still infer a built-in type.
 A fractional range infers `+Num` because its interval may include integers.
-Generated YSD includes the inferred reference explicitly.
+Generated .ysd includes the inferred reference explicitly.
 
 These expand to explicit directives.
 Refined types are always materialized:
@@ -328,12 +328,12 @@ anchors are implied.
 The `/pattern/` form is shorthand for `find:"pattern"` and is available only
 when the pattern contains neither whitespace nor `/`.
 The quoted bodies cannot contain `"`.
-In YSD, use explicit `.match` or `.find` when no tight form can represent the
+In .ysd, use explicit `.match` or `.find` when no tight form can represent the
 pattern.
 Both imply `+Str`.
-Generated YSD uses the canonical `=~"pattern"` spelling.
+Generated .ysd uses the canonical `=~"pattern"` spelling.
 
-Canonical YSDC stores both forms as `.like`, containing the exact JSON Schema
+Canonical .ysdc stores both forms as `.like`, containing the exact JSON Schema
 pattern.
 A match is bookended with `^` and `$`; a find is stored unchanged:
 
@@ -347,7 +347,7 @@ search:
 ```
 
 `.like` is accepted only in `.ysdc.yaml` and `.ysdc.json`.
-Conversely, `.match` and `.find` are YSD directives and are rejected in YSDC
+Conversely, `.match` and `.find` are .ysd directives and are rejected in .ysdc
 input.
 
 Compact enums require an explicit type reference and comma-separated members:
@@ -367,7 +367,7 @@ YAML sequence for quoted or other punctuated values.
 The base controls scalar parsing, so `+Str [true,1]` contains two strings.
 Prefix one member with `=` to also set `.init` to that value.
 At most one member may be marked.
-Generated YSD uses one space after every compact-enum comma.
+Generated .ysd uses one space after every compact-enum comma.
 
 `+Str ==User` becomes `.const: User`, the exact-value constraint corresponding
 to JSON Schema `const`.
@@ -601,15 +601,16 @@ or additional constraints.
 Compile human-authored YAML to canonical JSON with:
 
 ```sh
-ysd -t ysdc.json contact.ysd.yaml
-ysd -t ysdc.json -C contact.ysd.yaml
-ysd -t ysdc.json values.schema.json
+ysd -t ysdc -J contact.ysd.yaml
+ysd -t ysdc -J -C contact.ysd.yaml
+ysd -t ysdc -J values.schema.json
 ```
 
-Use `ysdc` or `ysdc.yaml` instead of `ysdc.json` for canonical YAML.
-Use `-f/--from ysd`, `ysdc.json`, `ysdc`, or `jsc` when a filename or stdin does
-not make the source format clear.
-File suffixes `.ysd.yaml`, `.ysdc.json`, `.ysdc.yaml`, and `.schema.json` are
+Omit `-J` or use `-Y` for canonical YAML.
+Use `-f/--from ysd`, `ysdc`, or `jsc` when a filename or stdin does not make
+the source format clear.
+File suffixes `.ysd.yaml`, `.ysd.json`, `.ysdc.yaml`, `.ysdc.json`,
+`.schema.json`, `.schema.json.yaml`, `.schema.yaml`, and `.schema.yml` are
 inferred automatically.
 
 Canonical directives are emitted in this order:

@@ -396,12 +396,12 @@ function setEditorValue(editor, value) {
 
 function showGeneratingYSDC() {
   if (yamlFormat === 'ysdc') {
-    setEditorValue(yamlEditor, 'Generating YSDC...');
+    setEditorValue(yamlEditor, 'Generating .ysdc...');
   }
 }
 
 function showGeneratingYamlSchema() {
-  const name = yamlFormat === 'ysdc' ? 'YSDC' : 'YSD';
+  const name = yamlFormat === 'ysdc' ? '.ysdc' : '.ysd';
   setEditorValue(yamlEditor, `Generating ${name}...`);
 }
 

@@ -4,7 +4,7 @@
   date:    Tue Aug 25 01:22:30 PM EDT 2026
   changes:
   - Fix release smoke test fixture
-  - Add native YSD build target
+  - Add native .ysd build target
   - Fix initial editor scroll sync
   - Parse nested tight DSL tokens
   - Harden portable release smoke tests
@@ -38,7 +38,7 @@
   - Normalize portable YAML sequences
   - Support JSON Schema format types
   - Preserve schema library anchors
-  - Use YSD identity metadata
+  - Use .ysd identity metadata
   - Rename converter and canonical format
   - Infer default conversion direction
   - Support root oneOf constraints
@@ -59,7 +59,7 @@
   - Prepare release 0.1.1
   - Add cross-platform release workflow
   - Add generated schema comments
-  - Wrap long YSD description pairs
+  - Wrap long .ysd description pairs
   - Add ordered key constraint rules
   - Normalize singleton reference allOf schemas
   - Normalize explicitly open JSON schemas
@@ -69,7 +69,7 @@
   - Preserve descriptions on shaped objects
   - Page roundtrip diffs with less
   - Add normalized JSON Schema roundtrip checking
-  - Add open map semantics and format generated YSD
+  - Add open map semantics and format generated .ysd
   - Preserve unsupported JSON Schema keywords
   - Unify type directives across yamlschema
   - Refine canonical types and YSC formatting
@@ -109,7 +109,7 @@
   changes:
   - Add cross-platform release workflow
   - Add generated schema comments
-  - Wrap long YSD description pairs
+  - Wrap long .ysd description pairs
   - Add ordered key constraint rules
   - Normalize singleton reference allOf schemas
   - Normalize explicitly open JSON schemas
@@ -119,7 +119,7 @@
   - Preserve descriptions on shaped objects
   - Page roundtrip diffs with less
   - Add normalized JSON Schema roundtrip checking
-  - Add open map semantics and format generated YSD
+  - Add open map semantics and format generated .ysd
   - Preserve unsupported JSON Schema keywords
   - Unify type directives across yamlschema
   - Refine canonical types and YSC formatting

@@ -345,7 +345,7 @@ if (
   Object.keys(orderedConverted.properties).join(',') !==
     orderedNames.join(',')
 ) {
-  throw new Error(`YSD conversion reordered properties: ${JSON.stringify(
+  throw new Error(`.ysd conversion reordered properties: ${JSON.stringify(
     orderedConversionResult,
   )}`);
 }
@@ -478,13 +478,13 @@ if (
   throw new Error('shared content initialization is incomplete');
 }
 if (
-  !appSource.includes("setEditorValue(yamlEditor, 'Generating YSDC...')") ||
-  !appSource.includes("yamlFormat === 'ysdc' ? 'YSDC' : 'YSD'") ||
+  !appSource.includes("setEditorValue(yamlEditor, 'Generating .ysdc...')") ||
+  !appSource.includes("yamlFormat === 'ysdc' ? '.ysdc' : '.ysd'") ||
   !appSource.includes('showGeneratingYamlSchema();') ||
   !appSource.includes('const conversion = convertYamlToJson();') ||
   !appSource.includes('showGeneratingYSDC();')
 ) {
-  throw new Error('old YAML remains visible while YSD or YSDC is generated');
+  throw new Error('old YAML remains visible while .ysd or .ysdc is generated');
 }
 if (
   !appSource.includes(
@@ -616,7 +616,7 @@ const pastedResult = globalThis.gloat.exports['ysd-to-json-schema'](
   pastedYSD,
 );
 if (!pastedResult.ok) {
-  throw new Error(`pasted YSD conversion failed: ${JSON.stringify(
+  throw new Error(`pasted .ysd conversion failed: ${JSON.stringify(
     pastedResult,
   )}`);
 }
@@ -624,7 +624,7 @@ const pastedRoundtrip = globalThis.gloat.exports[
   'ysd-roundtrip-works'
 ](pastedYSD);
 if (!pastedRoundtrip.ok || pastedRoundtrip.value !== true) {
-  throw new Error(`unexpected pasted YSD roundtrip: ${JSON.stringify(
+  throw new Error(`unexpected pasted .ysd roundtrip: ${JSON.stringify(
     pastedRoundtrip,
   )}`);
 }
@@ -922,6 +922,25 @@ const cheatHTML = await readFile('site/cheat-sheet/index.html', 'utf8');
 if (!cheatHTML.includes('cheat-grid') || !cheatHTML.includes('Built-in types')) {
   throw new Error('cheat sheet was not built');
 }
+for (const page of [
+  'getting-started',
+  'examples',
+  'cheat-sheet',
+  'cli',
+]) {
+  const html = await readFile(`site/${page}/index.html`, 'utf8');
+  const primaryStart = html.indexOf('md-sidebar--primary');
+  const secondaryStart = html.indexOf('md-sidebar--secondary');
+  const primarySidebar = html.slice(primaryStart, secondaryStart);
+  if (
+    primaryStart < 0 ||
+    secondaryStart < 0 ||
+    primarySidebar.includes(' hidden') ||
+    primarySidebar.includes('md-nav--primary')
+  ) {
+    throw new Error(`${page} does not have an empty primary sidebar`);
+  }
+}
 const cname = await readFile('site/CNAME', 'utf8');
 if (cname.trim() !== 'yamlschema.org') {
   throw new Error(`unexpected CNAME: ${cname}`);
@@ -994,7 +1013,7 @@ for (const name of exampleFiles) {
       )}`);
     }
     if (!converted.value.includes(':need(streetAddress)')) {
-      throw new Error('address dependencies are missing from YSD');
+      throw new Error('address dependencies are missing from .ysd');
     }
   }
   if (name === 'blog-post') {
@@ -1025,7 +1044,7 @@ for (const name of exampleFiles) {
       'deviceType?: +Str ==laptop',
     ]) {
       if (!converted.value.includes(expected)) {
-        throw new Error(`device-type YSD is missing: ${expected}`);
+        throw new Error(`device-type .ysd is missing: ${expected}`);
       }
     }
   }
@@ -1041,13 +1060,13 @@ email?: +JSONSchema/email
 tags?: +Str[] [=good, bad, ugly]
 `;
 if (initialYSD !== expectedInitialYSD) {
-  throw new Error(`unexpected Person YSD: ${initialYSD}`);
+  throw new Error(`unexpected Person .ysd: ${initialYSD}`);
 }
 const initialResult = globalThis.gloat.exports['ysd-to-json-schema'](
   initialYSD,
 );
 if (!initialResult.ok) {
-  throw new Error(`initial YSD conversion failed: ${JSON.stringify(
+  throw new Error(`initial .ysd conversion failed: ${JSON.stringify(
     initialResult,
   )}`);
 }
@@ -1080,7 +1099,7 @@ if (
     'tags?: +Str[] [=good, bad, ugly]',
   )
 ) {
-  throw new Error(`unexpected regenerated Person YSD: ${JSON.stringify(
+  throw new Error(`unexpected regenerated Person .ysd: ${JSON.stringify(
     initialBackToYSD,
   )}`);
 }
@@ -1130,7 +1149,7 @@ if (
   !harborYSDC.ok ||
   !harborYSDC.value.includes('.range: [1, 100]')
 ) {
-  throw new Error(`Harbor Next YSDC ranges are not compact: ${JSON.stringify(
+  throw new Error(`Harbor Next .ysdc ranges are not compact: ${JSON.stringify(
     harborYSDC,
   )}`);
 }
@@ -1170,7 +1189,7 @@ if (!toYSD.ok ||
       '.ysid: https://example.com/person.ysd.yaml\n',
     ) ||
     !toYSD.value.includes('name:')) {
-  throw new Error(`JSON to YSD failed: ${JSON.stringify(toYSD)}`);
+  throw new Error(`JSON to .ysd failed: ${JSON.stringify(toYSD)}`);
 }
 
 const toJSON = globalThis.gloat.exports['ysd-to-json-schema'](toYSD.value);
@@ -1178,7 +1197,7 @@ if (!toJSON.ok ||
     JSON.parse(toJSON.value).$id !==
       'https://example.com/person.schema.json' ||
     JSON.parse(toJSON.value).type !== 'object') {
-  throw new Error(`YSD to JSON failed: ${JSON.stringify(toJSON)}`);
+  throw new Error(`.ysd to JSON failed: ${JSON.stringify(toJSON)}`);
 }
 
 const toYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](json);
@@ -1186,14 +1205,14 @@ const expectedYSDC =
   '.ysid: https://example.com/person.ysd.yaml\n' +
   '.open: true\nname: +Str';
 if (!toYSDC.ok || toYSDC.value !== expectedYSDC) {
-  throw new Error(`JSON to YSDC failed: ${JSON.stringify(toYSDC)}`);
+  throw new Error(`JSON to .ysdc failed: ${JSON.stringify(toYSDC)}`);
 }
 
 const closedYSDC = globalThis.gloat.exports[
   'json-schema-to-ysdc'
 ](initialResult.value);
 if (!closedYSDC.ok || closedYSDC.value.includes('.open: true')) {
-  throw new Error(`closed JSON produced open YSDC: ${JSON.stringify(
+  throw new Error(`closed JSON produced open .ysdc: ${JSON.stringify(
     closedYSDC,
   )}`);
 }
@@ -1278,7 +1297,7 @@ const failedYSDRoundtrip = globalThis.gloat.exports[
   'ysd-roundtrip-works'
 ](lossyYSD);
 if (!failedYSDRoundtrip.ok || failedYSDRoundtrip.value !== false) {
-  throw new Error(`expected YSD roundtrip failure: ${JSON.stringify(
+  throw new Error(`expected .ysd roundtrip failure: ${JSON.stringify(
     failedYSDRoundtrip,
   )}`);
 }
@@ -1296,7 +1315,7 @@ if (
     failedYSDReport.roundtripped,
   ).includes('-  .type: +Float\n+  .type: +Num')
 ) {
-  throw new Error(`invalid YSD roundtrip report: ${JSON.stringify(
+  throw new Error(`invalid .ysd roundtrip report: ${JSON.stringify(
     failedYSDReportResult,
   )}`);
 }
@@ -1304,15 +1323,15 @@ if (
 for (const invalidYSD of ['bad: [', '.unknown: true', 'name: +Stx']) {
   const result = globalThis.gloat.exports['ysd-to-json-schema'](invalidYSD);
   if (result.ok || !result.error) {
-    throw new Error(`invalid YSD did not return an error: ${invalidYSD}`);
+    throw new Error(`invalid .ysd did not return an error: ${invalidYSD}`);
   }
   const report = globalThis.gloat.exports['ysd-roundtrip-report'](
     invalidYSD,
   );
   if (report.ok || !report.error) {
-    throw new Error(`invalid YSD roundtrip did not fail: ${invalidYSD}`);
+    throw new Error(`invalid .ysd roundtrip did not fail: ${invalidYSD}`);
   }
 }
 
-console.log('browser exports converted YSD, YSDC, and JSON');
+console.log('browser exports converted .ysd, .ysdc, and JSON');
 process.exit(0);

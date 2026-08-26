@@ -21,7 +21,7 @@ their input order through conversion and normalization.
 
 .SH Roundtrip Model
 There are three useful semantic representations.
-Expanded YAMLSchema is YSD Canonical (YSDC), with YAML and JSON
+Expanded YAMLSchema is canonical \fB\&.ysdc\fR, with YAML and JSON
 serializations:
 
 .EX
@@ -222,21 +222,21 @@ Roundtrip notes:
 .IP \(bu 2
 JSON Schema regexes are strings.
 .IP \(bu 2
-YSD \fB\&.match\fR is a whole-string match; canonicalization bookends its value
+\&.ysd \fB\&.match\fR is a whole-string match; canonicalization bookends its value
 with \fB^\fR and \fB$\fR\&.
 .IP \(bu 2
-YSD \fB\&.find\fR is an unanchored search and canonicalization preserves its
+\&.ysd \fB\&.find\fR is an unanchored search and canonicalization preserves its
 value.
 .IP \(bu 2
-Canonical YSDC uses \fB\&.like\fR for both and exports its value unchanged as the
+Canonical .ysdc uses \fB\&.like\fR for both and exports its value unchanged as the
 JSON Schema \fBpattern\fR\&.
 .IP \(bu 2
 \fB/pattern/\fR is shorthand for \fBfind:"pattern"\fR only when the body contains
 neither whitespace nor \fB/\fR\&.
 .IP \(bu 2
 \fB=~"..."\fR, its accepted \fBmatch:"..."\fR alias, and \fBfind:"..."\fR cannot contain
-\fB"\fR; use an explicit YSD \fB\&.match\fR or \fB\&.find\fR property when needed.
-Generated YSD uses \fB=~"..."\fR for \fB\&.match\fR\&.
+\fB"\fR; use an explicit .ysd \fB\&.match\fR or \fB\&.find\fR property when needed.
+Generated .ysd uses \fB=~"..."\fR for \fB\&.match\fR\&.
 .IP \(bu 2
 In any tight double-quoted body, \fB:\\\fR represents colon-space and \fB\\#\fR
 represents space-hash.
@@ -554,7 +554,7 @@ A known format is converted this way only when its JSON Schema type is string,
 which avoids adding a string constraint to an annotation-only schema.
 Unknown formats and formats without a string type remain lossless passthrough
 directives with a warning.
-YSD and both YSDC serializations use \fB\&.ysd.yaml\fR to identify the source YSD
+\&.ysd and both .ysdc serializations use \fB\&.ysd.yaml\fR to identify the source .ysd
 document.
 JSON Schema uses \fB\&.schema.json\fR\&.
 Conversion replaces one of those recognized suffixes or appends the target
@@ -710,13 +710,13 @@ constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
 .TE
 
 .PP
-Generated YSD starts with \fB\&.open: true\fR only when the root object permits
+Generated .ysd starts with \fB\&.open: true\fR only when the root object permits
 undeclared properties.
 Otherwise mappings are closed by default.
 A shaped mapping with omitted \fBadditionalProperties\fR is open in JSON Schema.
-Under a closed YSD default, the importer represents that local openness with
+Under a closed .ysd default, the importer represents that local openness with
 a final \fB+Str: +Any\fR wildcard.
-Under an open YSD default, \fBadditionalProperties: false\fR becomes
+Under an open .ysd default, \fBadditionalProperties: false\fR becomes
 \fB\&.open: false\fR\&.
 
 .PP
@@ -729,7 +729,7 @@ Top-level \fB\&.open\fR controls the root mapping as well as the mapping shapes
 defined beneath it.
 
 .PP
-Canonical YSDC keeps \fB\&.open: true\fR only at the top.
+Canonical .ysdc keeps \fB\&.open: true\fR only at the top.
 It preserves \fB\&.open: false\fR where an open inherited default must be closed,
 and uses a final \fB+Str: +Any\fR wildcard where a closed inherited default must
 be opened.
@@ -926,14 +926,14 @@ generation.
 A compact enum and an explicit \fB\&.enum\fR with the same values are equivalent.
 .IP \(bu 2
 A one-element \fB\&.range\fR or \fB\&.size\fR sequence denotes a missing upper bound;
-generated YSD uses \fBn..\fR or \fBn+\fR rather than the obsolete \fB*\fR marker.
+generated .ysd uses \fBn..\fR or \fBn+\fR rather than the obsolete \fB*\fR marker.
 
 .PP
 Lossless source-preserving roundtrip would require storing source metadata in
 addition to the schema semantics.
 
 .PP
-Use \fB-R\fR to roundtrip either JSON Schema or YSD through the other format:
+Use \fB-R\fR to roundtrip either JSON Schema or .ysd through the other format:
 
 .EX
 ysd -R values.schema.json
@@ -944,16 +944,16 @@ ysd -Rq values.ysd.yaml
 
 .PP
 For JSON Schema input, \fBysd\fR compares normalized JSON Schema before and after
-conversion through YSD.
-For YSD input, it compares canonical YSD before and after conversion through
+conversion through .ysd.
+For .ysd input, it compares canonical .ysd before and after conversion through
 JSON Schema.
-Canonical YSD expands lexical defaults, normalizes equivalent open-map forms,
+Canonical .ysd expands lexical defaults, normalizes equivalent open-map forms,
 preserves mapping key order, and retains YAML-specific type distinctions.
 
 .PP
 An explicit \fB-f\fR selects the input format.
 Without \fB-f\fR, a first non-whitespace character of \fB{\fR selects JSON Schema;
-anything else selects YSD.
+anything else selects .ysd.
 
 .PP
 The first command prints \fBOK\fR or a unified diff.
@@ -980,16 +980,16 @@ Normalize both JSON Schema documents.
 Compare the normalized documents.
 
 .PP
-YSD roundtripping reverses that path:
+\&.ysd roundtripping reverses that path:
 .IP "  1." 5
-Parse and canonicalize the original YSD.
+Parse and canonicalize the original .ysd.
 .IP "  2." 5
-Generate JSON Schema from the YSD.
+Generate JSON Schema from the .ysd.
 .IP "  3." 5
 Parse the generated JSON Schema.
 .IP "  4." 5
-Render it back to YSD.
+Render it back to .ysd.
 .IP "  5." 5
-Canonicalize the generated YSD.
+Canonicalize the generated .ysd.
 .IP "  6." 5
 Compare the canonical documents.

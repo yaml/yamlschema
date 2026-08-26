@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: succinct-description-to-schema.json
-  cmnd: bin/ysd -t schema.json -
+  cmnd: bin/ysd -t jsc -
   stdi: |
     repository?: +Str "Repository path without registry host"
     right: +Str "This isn't wrong"
@@ -63,7 +63,7 @@ test::
     }
 
 - name: schema.json-to-succinct-description
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {

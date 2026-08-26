@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: typed-map-expansion
-  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc -J -C - | fold -w 72'
   stdi: |
     any: +Map{+Any}
     strings: +Map{+Str}~
@@ -20,7 +20,7 @@ test::
     :{"fixed?":"+Str","+Str":"+Str"}}
 
 - name: typed-map-to-json-schema
-  cmnd: sh -c 'bin/ysd -t schema.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t jsc -C - | fold -w 72'
   stdi: |
     +flag: +Bool
 
@@ -38,7 +38,7 @@ test::
     "],"additionalProperties":false}
 
 - name: json-schema-to-typed-maps
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "$defs": {"flag": {"type": "boolean"}},
@@ -86,7 +86,7 @@ test::
 
 - name: bare-map-is-rejected
   cmnd: |
-    sh -c 'bin/ysd -t schema.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t jsc -C - 2>&1 | sed -n 1p'
   stdi: |
     data: +Map
   want: |
@@ -94,7 +94,7 @@ test::
 
 - name: reject-invalid-map-value-type
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +Map{Str}
   want: |
@@ -105,7 +105,7 @@ test::
     sh -c '
       for value in "+Map{}" "+Map{+Any,+Any}"; do
         printf "bad: %s\n" "$value" |
-          bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p
+          bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
       done
     '
   want: |
@@ -114,14 +114,14 @@ test::
 
 - name: reject-old-map-parameter-delimiters
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     bad: +Map[+Any]
   want: |
     ysd: unsupported map parameter syntax: +Map[+Any]; use +Map{+Type}
 
 - name: shaped-map-list-base
-  cmnd: sh -c 'bin/ysd -t ysdc.json -C - | fold -w 72'
+  cmnd: sh -c 'bin/ysd -t ysdc -J -C - | fold -w 72'
   stdi: |
     extraEnv?:
       .type: +Map[1-10,$!]
@@ -133,7 +133,7 @@ test::
     "name":"+Str","value?":"+Str","valueFrom?":{"+Str":"+Any"}}}
 
 - name: old-shaped-map-marker-normalizes-away
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     closed:
       .type: +Map
@@ -155,7 +155,7 @@ test::
 
 - name: marker-only-map-is-rejected
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     bad:
       .type: +Map
@@ -164,7 +164,7 @@ test::
     ysd: incomplete +Map type requires key/value pairs
 
 - name: pure-object-generation
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -184,7 +184,7 @@ test::
       .open: false
 
 - name: nullable-object-generation
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -212,7 +212,7 @@ test::
         +Str: +Any
 
 - name: nullable-any-map-to-json-schema
-  cmnd: bin/ysd -t schema.json -C -
+  cmnd: bin/ysd -t jsc -C -
   stdi: |
     startup?: +Map{+Any}~
   want: |
@@ -220,7 +220,7 @@ test::
 
 - name: reserved-str-definition-collision
   cmnd: |
-    sh -c 'bin/ysd -t ysd.yaml - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysd - 2>&1 | sed -n 1p'
   stdi: |
     {"$defs": {"Str": {"type": "string"}}}
   want: |
@@ -228,7 +228,7 @@ test::
 
 - name: reserved-str-property-collision
   cmnd: |
-    sh -c 'bin/ysd -t ysd.yaml - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysd - 2>&1 | sed -n 1p'
   stdi: |
     {"properties": {"+Str": {"type": "string"}}}
   want: |

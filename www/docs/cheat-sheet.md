@@ -1,6 +1,7 @@
 ---
 title: YAMLSchema Cheat Sheet
 description: Compact YAMLSchema syntax reference
+empty_sidebar: true
 hide:
 - toc
 ---
@@ -247,8 +248,8 @@ contact.ysdc.json
 contact.schema.json
 ```
 
-YSD is authored.
-YSDC is canonical.
+.ysd is authored.
+.ysdc is canonical.
 JSON Schema is interchange.
 
 </section>

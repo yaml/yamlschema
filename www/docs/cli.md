@@ -1,12 +1,20 @@
-# ysd -- Convert YAMLSchema and JSON Schema
+---
+empty_sidebar: true
+---
 
-`ysd` converts between YSD, YSD Canonical, and JSON Schema.
+# ysd - Convert YAMLSchema and JSON Schema
+
+`ysd` converts between `.ysd`, canonical `.ysdc`, and JSON Schema.
 It reads standard input when no input path is given and writes to standard
 output unless `-o` names a file.
+
+See the
+[installation instructions](https://yamlschema.org/getting-started/#install-the-command).
 
 ## Usage
 
 ```text
+ysd --help
 ysd [INPUT]
 ysd (-t FORMAT | -o FILE) [INPUT]
 ysd -N, --norm [INPUT]
@@ -17,11 +25,13 @@ ysd -R, --roundtrip [-q, --quiet] [INPUT]
 
 | Option | Meaning |
 | --- | --- |
-| `-t`, `--to FORMAT` | Select `ysd`, `ysdc`, `ysdc.yaml`, `ysdc.json`, or `jsc` |
-| `-f`, `--from FORMAT` | Override the detected input format |
+| `-t`, `--to FORMAT` | Select `ysd`, `ysdc`, or `jsc` |
+| `-f`, `--from FORMAT` | Select `ysd`, `ysdc`, or `jsc` input |
+| `-Y`, `--yaml` | Emit YAML output |
+| `-J`, `--json` | Emit JSON output |
 | `-o`, `--output FILE` | Write to a file, or use `-` for standard output |
 | `-N`, `--norm` | Normalize to draft 2020-12 JSON Schema |
-| `-R`, `--roundtrip` | Test a JSON Schema or YSD roundtrip |
+| `-R`, `--roundtrip` | Test a JSON Schema or .ysd roundtrip |
 | `-q`, `--quiet` | Suppress successful roundtrip output |
 | `-C`, `--compact` | Emit compact JSON |
 | `--complete=SHELL` | Generate completion for Bash, Zsh, or Fish |
@@ -48,7 +58,11 @@ Use `man ysd`, `man yamlschema`, `man yamlschema-design`, or
 
 The first non-whitespace character and the filename extension determine the
 input form.
-JSON input converts to YSD, while YSD and YSDC input convert to JSON Schema.
+JSON input converts to .ysd, while .ysd and .ysdc input convert to JSON Schema.
+
+The recognized filename extensions are `.ysd.yaml`, `.ysd.json`,
+`.ysdc.yaml`, `.ysdc.json`, `.schema.json`, `.schema.json.yaml`,
+`.schema.yaml`, and `.schema.yml`.
 
 ```bash
 ysd contact.schema.json
@@ -65,11 +79,16 @@ cat contact.yaml | ysd -f ysd -t jsc
 
 ## Explicit targets
 
+The `.ysd` and `.ysdc` targets emit YAML by default, while `jsc` emits JSON.
+Use `-Y` / `--yaml` or `-J` / `--json` to override that default.
+The output options and a recognized output filename extension must agree.
+
 ```bash
 ysd -t ysd contact.schema.json
-ysd -t ysdc.yaml contact.ysd.yaml
-ysd -t ysdc.json contact.ysd.yaml
+ysd -t ysdc contact.ysd.yaml
+ysd -t ysdc -J contact.ysd.yaml
 ysd -t jsc contact.ysd.yaml
+ysd -t jsc -Y contact.ysd.yaml
 ```
 
 ## Normalize JSON Schema
@@ -79,7 +98,10 @@ positions, and preserves property order.
 
 ```bash
 ysd -N contact.schema.json
+ysd -N -Y contact.schema.json
 ```
+
+`-C` / `--compact` applies only to JSON output.
 
 ## Roundtrip reports
 

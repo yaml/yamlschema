@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: compact-enum
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -21,7 +21,7 @@ test::
     level: +Str [LOW, MED, HIGH]
 
 - name: string-compact-enum
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -34,7 +34,7 @@ test::
     type?: +Str [8p8c, 8p6c, 8p4c]
 
 - name: dotted-compact-enum
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {
@@ -50,7 +50,7 @@ test::
     type?: +Str [ieee802.11a, 1.6tbase-cr8]
 
 - name: list-compact-enum
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "type": "object",
@@ -70,7 +70,7 @@ test::
     tags?: +Str[] [good, bad, ugly]
 
 - name: list-compact-enum-default
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "type": "object",
@@ -91,7 +91,7 @@ test::
     tags?: +Str[] [=good, bad, ugly]
 
 - name: compact-enum-default-expansion
-  cmnd: bin/ysd -t ysdc.json -
+  cmnd: bin/ysd -t ysdc -J -
   stdi: |
     logLevel?: +Str [debug,=info,warning,error,fatal]
       "Log level for all components"
@@ -123,7 +123,7 @@ test::
 
 - name: reject-multiple-compact-enum-defaults
   cmnd: |
-    sh -c 'bin/ysd -t ysdc.json -C - 2>&1 | sed -n 1p'
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     level: +Str [=debug,=info,error]
   want: |

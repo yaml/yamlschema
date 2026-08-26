@@ -18,13 +18,14 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
-                            ysdc.json, or jsc. Defaults based on input.
-      -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
-                            ysdc.json, or jsc.
+      -t, --to FORMAT       Output format: ysd, ysdc, or jsc.
+                            Defaults based on input.
+      -f, --from FORMAT     Input format: ysd, ysdc, or jsc.
+      -Y, --yaml            Emit YAML output.
+      -J, --json            Emit JSON output.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-      -R, --roundtrip       Check JSON Schema or YSD roundtrip.
+      -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --complete=SHELL  Generate completion for bash, zsh, or fish.
@@ -45,13 +46,14 @@ test::
       INPUT                 Input schema path. Defaults to stdin.
 
     Options:
-      -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
-                            ysdc.json, or jsc. Defaults based on input.
-      -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
-                            ysdc.json, or jsc.
+      -t, --to FORMAT       Output format: ysd, ysdc, or jsc.
+                            Defaults based on input.
+      -f, --from FORMAT     Input format: ysd, ysdc, or jsc.
+      -Y, --yaml            Emit YAML output.
+      -J, --json            Emit JSON output.
       -o, --output FILE     Write output to FILE. Use "-" for stdout.
       -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-      -R, --roundtrip       Check JSON Schema or YSD roundtrip.
+      -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
           --complete=SHELL  Generate completion for bash, zsh, or fish.
@@ -111,20 +113,29 @@ test::
       COMP_WORDS=(ysd --from ys)
       COMP_CWORD=2
       _ysd
-      [[ " ${COMPREPLY[*]} " == *" ysdc.json "* ]]
+      [[ " ${COMPREPLY[*]} " == *" ysdc "* ]]
+      [[ " ${COMPREPLY[*]} " != *" ysdc.json "* ]]
+      COMP_WORDS=(ysd --ya)
+      COMP_CWORD=1
+      _ysd
+      [[ " ${COMPREPLY[*]} " == *" --yaml "* ]]
       COMP_WORDS=(ysd --complete=f)
       COMP_CWORD=1
       _ysd
       [[ " ${COMPREPLY[*]} " == *" --complete=fish "* ]]
       dir=$(mktemp -d)
       trap "rm -r \"$dir\"" EXIT
-      touch "$dir/person.ysd.yaml" "$dir/plain.txt"
+      touch "$dir/person.ysd.yaml" "$dir/device.schema.yml" \
+        "$dir/plain.txt"
       cd "$dir"
       COMP_WORDS=(ysd per)
       COMP_CWORD=1
       _ysd
       [[ " ${COMPREPLY[*]} " == *" person.ysd.yaml "* ]]
       [[ " ${COMPREPLY[*]} " != *" plain.txt "* ]]
+      COMP_WORDS=(ysd dev)
+      _ysd
+      [[ " ${COMPREPLY[*]} " == *" device.schema.yml "* ]]
       echo ok
     '
   want: |
@@ -195,6 +206,49 @@ test::
     ysd: unknown option -F
     ysd: unknown option --fmt
 
+- name: reject-serialized-format-names
+  cmnd: |
+    sh -c '
+      for format in ysd.yaml ysdc.yaml ysdc.json schema.json; do
+        bin/ysd -t "$format" </dev/null 2>&1 |
+          perl -ne "print if $. == 1"
+      done
+      for format in ysd.yaml ysdc.yaml ysdc.json schema.json; do
+        bin/ysd -f "$format" -t jsc </dev/null 2>&1 |
+          perl -ne "print if $. == 1"
+      done
+    '
+  want: |
+    ysd: unsupported output format: ysd.yaml
+    ysd: unsupported output format: ysdc.yaml
+    ysd: unsupported output format: ysdc.json
+    ysd: unsupported output format: schema.json
+    ysd: unsupported input format: ysd.yaml
+    ysd: unsupported input format: ysdc.yaml
+    ysd: unsupported input format: ysdc.json
+    ysd: unsupported input format: schema.json
+
+- name: reject-output-option-conflicts
+  cmnd: |
+    sh -c '
+      bin/ysd -YJ 2>&1 | perl -ne "print if $. == 1"
+      bin/ysd -t ysd -o out.ysdc.yaml 2>&1 |
+        perl -ne "print if $. == 1"
+      bin/ysd -t ysdc -J -o out.ysdc.yaml 2>&1 |
+        perl -ne "print if $. == 1"
+      bin/ysd -N -o out.ysd.json 2>&1 |
+        perl -ne "print if $. == 1"
+      bin/ysd -t ysd -CY 2>&1 | perl -ne "print if $. == 1"
+      bin/ysd -R -Y 2>&1 | perl -ne "print if $. == 1"
+    '
+  want: |
+    ysd: -Y/--yaml cannot be combined with -J/--json
+    ysd: output format conflicts with file extension: out.ysdc.yaml
+    ysd: output encoding conflicts with file extension: out.ysdc.yaml
+    ysd: output format conflicts with file extension: out.ysd.json
+    ysd: -C/--compact requires JSON output
+    ysd: -R/--roundtrip cannot use -Y/--yaml or -J/--json
+
 - name: schema-errors-omit-usage
   cmnd: |
     sh -c '
@@ -217,6 +271,14 @@ test::
     }
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"thing":{"type":"string"}}}
+
+- name: norm-yaml
+  cmnd: bin/ysd -NY -f jsc
+  stdi: |
+    {"type":"object"}
+  want: |
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
 
 - name: norm
   cmnd: bin/ysd -N
@@ -468,7 +530,7 @@ test::
       printf "%s\n" "$output" | perl -ne "print if $. == 1"
     '
   want: |
-    ysd: -R/--roundtrip requires JSON Schema or YSD input
+    ysd: -R/--roundtrip requires JSON Schema or .ysd input
 
 - name: reject-roundtrip-option-conflicts
   cmnd: |

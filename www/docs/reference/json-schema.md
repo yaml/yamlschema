@@ -1,4 +1,4 @@
-# yamlschema-json-schema -- JSON Schema interoperability
+# yamlschema-json-schema - JSON Schema interoperability
 
 `YAMLSchema` is designed to interoperate with JSON Schema in both directions:
 
@@ -21,7 +21,7 @@ their input order through conversion and normalization.
 ## Roundtrip Model
 
 There are three useful semantic representations.
-Expanded YAMLSchema is YSD Canonical (YSDC), with YAML and JSON
+Expanded YAMLSchema is canonical `.ysdc`, with YAML and JSON
 serializations:
 
 ```text
@@ -210,17 +210,17 @@ zip: +Str =~"\d{5}"
 Roundtrip notes:
 
 - JSON Schema regexes are strings.
-- YSD `.match` is a whole-string match; canonicalization bookends its value
+- .ysd `.match` is a whole-string match; canonicalization bookends its value
   with `^` and `$`.
-- YSD `.find` is an unanchored search and canonicalization preserves its
+- .ysd `.find` is an unanchored search and canonicalization preserves its
   value.
-- Canonical YSDC uses `.like` for both and exports its value unchanged as the
+- Canonical .ysdc uses `.like` for both and exports its value unchanged as the
   JSON Schema `pattern`.
 - `/pattern/` is shorthand for `find:"pattern"` only when the body contains
   neither whitespace nor `/`.
 - `=~"..."`, its accepted `match:"..."` alias, and `find:"..."` cannot contain
-  `"`; use an explicit YSD `.match` or `.find` property when needed.
-  Generated YSD uses `=~"..."` for `.match`.
+  `"`; use an explicit .ysd `.match` or `.find` property when needed.
+  Generated .ysd uses `=~"..."` for `.match`.
 - In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
   represents space-hash.
   Other backslash sequences remain literal.
@@ -517,7 +517,7 @@ A known format is converted this way only when its JSON Schema type is string,
 which avoids adding a string constraint to an annotation-only schema.
 Unknown formats and formats without a string type remain lossless passthrough
 directives with a warning.
-YSD and both YSDC serializations use `.ysd.yaml` to identify the source YSD
+.ysd and both .ysdc serializations use `.ysd.yaml` to identify the source .ysd
 document.
 JSON Schema uses `.schema.json`.
 Conversion replaces one of those recognized suffixes or appends the target
@@ -660,13 +660,13 @@ Explicit JSON Schema values import as follows:
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | No wildcard |
 
-Generated YSD starts with `.open: true` only when the root object permits
+Generated .ysd starts with `.open: true` only when the root object permits
 undeclared properties.
 Otherwise mappings are closed by default.
 A shaped mapping with omitted `additionalProperties` is open in JSON Schema.
-Under a closed YSD default, the importer represents that local openness with
+Under a closed .ysd default, the importer represents that local openness with
 a final `+Str: +Any` wildcard.
-Under an open YSD default, `additionalProperties: false` becomes
+Under an open .ysd default, `additionalProperties: false` becomes
 `.open: false`.
 
 On export, an open shape omits `additionalProperties`, while a closed shape
@@ -677,7 +677,7 @@ corresponding schema.
 Top-level `.open` controls the root mapping as well as the mapping shapes
 defined beneath it.
 
-Canonical YSDC keeps `.open: true` only at the top.
+Canonical .ysdc keeps `.open: true` only at the top.
 It preserves `.open: false` where an open inherited default must be closed,
 and uses a final `+Str: +Any` wildcard where a closed inherited default must
 be opened.
@@ -847,12 +847,12 @@ Semantic roundtrip does not preserve every textual detail:
   generation.
 - A compact enum and an explicit `.enum` with the same values are equivalent.
 - A one-element `.range` or `.size` sequence denotes a missing upper bound;
-  generated YSD uses `n..` or `n+` rather than the obsolete `*` marker.
+  generated .ysd uses `n..` or `n+` rather than the obsolete `*` marker.
 
 Lossless source-preserving roundtrip would require storing source metadata in
 addition to the schema semantics.
 
-Use `-R` to roundtrip either JSON Schema or YSD through the other format:
+Use `-R` to roundtrip either JSON Schema or .ysd through the other format:
 
 ```sh
 ysd -R values.schema.json
@@ -862,15 +862,15 @@ ysd -Rq values.ysd.yaml
 ```
 
 For JSON Schema input, `ysd` compares normalized JSON Schema before and after
-conversion through YSD.
-For YSD input, it compares canonical YSD before and after conversion through
+conversion through .ysd.
+For .ysd input, it compares canonical .ysd before and after conversion through
 JSON Schema.
-Canonical YSD expands lexical defaults, normalizes equivalent open-map forms,
+Canonical .ysd expands lexical defaults, normalizes equivalent open-map forms,
 preserves mapping key order, and retains YAML-specific type distinctions.
 
 An explicit `-f` selects the input format.
 Without `-f`, a first non-whitespace character of `{` selects JSON Schema;
-anything else selects YSD.
+anything else selects .ysd.
 
 The first command prints `OK` or a unified diff.
 The quiet form prints nothing.
@@ -892,11 +892,11 @@ JSON Schema roundtripping follows this path:
 5. Normalize both JSON Schema documents.
 6. Compare the normalized documents.
 
-YSD roundtripping reverses that path:
+.ysd roundtripping reverses that path:
 
-1. Parse and canonicalize the original YSD.
-2. Generate JSON Schema from the YSD.
+1. Parse and canonicalize the original .ysd.
+2. Generate JSON Schema from the .ysd.
 3. Parse the generated JSON Schema.
-4. Render it back to YSD.
-5. Canonicalize the generated YSD.
+4. Render it back to .ysd.
+5. Canonicalize the generated .ysd.
 6. Compare the canonical documents.

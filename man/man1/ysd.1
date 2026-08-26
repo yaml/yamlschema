@@ -1,12 +1,18 @@
 '\" t
 .nh
 .TH ysd 1 "" YAMLSchema YAMLSchema
-\fBysd\fR converts between YSD, YSD Canonical, and JSON Schema.
+\fBysd\fR converts between \fB\&.ysd\fR, canonical \fB\&.ysdc\fR, and JSON Schema.
 It reads standard input when no input path is given and writes to standard
 output unless \fB-o\fR names a file.
 
+.PP
+See the
+installation instructions
+\[la]https://yamlschema.org/getting\-started/#install\-the\-command\[ra]\&.
+
 .SH Usage
 .EX
+ysd --help
 ysd [INPUT]
 ysd (-t FORMAT | -o FILE) [INPUT]
 ysd -N, --norm [INPUT]
@@ -19,16 +25,16 @@ allbox;
 l l
 l l .
 \fBOption\fP	\fBMeaning\fP
-\fB-t\fR, \fB--to FORMAT\fR	Select \fBysd\fR, \fBysdc\fR, \fBysdc.yaml\fR, \fBysdc.json\fR, or \fBjsc\fR
-\fB-f\fR, \fB--from FORMAT\fR	T{
-Override the detected input format
-T}
+\fB-t\fR, \fB--to FORMAT\fR	Select \fBysd\fR, \fBysdc\fR, or \fBjsc\fR
+\fB-f\fR, \fB--from FORMAT\fR	Select \fBysd\fR, \fBysdc\fR, or \fBjsc\fR input
+\fB-Y\fR, \fB--yaml\fR	Emit YAML output
+\fB-J\fR, \fB--json\fR	Emit JSON output
 \fB-o\fR, \fB--output FILE\fR	Write to a file, or use \fB-\fR for standard output
 \fB-N\fR, \fB--norm\fR	T{
 Normalize to draft 2020-12 JSON Schema
 T}
 \fB-R\fR, \fB--roundtrip\fR	T{
-Test a JSON Schema or YSD roundtrip
+Test a JSON Schema or .ysd roundtrip
 T}
 \fB-q\fR, \fB--quiet\fR	T{
 Suppress successful roundtrip output
@@ -60,7 +66,12 @@ Use \fBman ysd\fR, \fBman yamlschema\fR, \fBman yamlschema-design\fR, or
 .SH Default direction
 The first non-whitespace character and the filename extension determine the
 input form.
-JSON input converts to YSD, while YSD and YSDC input convert to JSON Schema.
+JSON input converts to .ysd, while .ysd and .ysdc input convert to JSON Schema.
+
+.PP
+The recognized filename extensions are \fB\&.ysd.yaml\fR, \fB\&.ysd.json\fR,
+\fB\&.ysdc.yaml\fR, \fB\&.ysdc.json\fR, \fB\&.schema.json\fR, \fB\&.schema.json.yaml\fR,
+\fB\&.schema.yaml\fR, and \fB\&.schema.yml\fR\&.
 
 .EX
 ysd contact.schema.json
@@ -77,11 +88,16 @@ cat contact.yaml | ysd -f ysd -t jsc
 .EE
 
 .SH Explicit targets
+The \fB\&.ysd\fR and \fB\&.ysdc\fR targets emit YAML by default, while \fBjsc\fR emits JSON.
+Use \fB-Y\fR / \fB--yaml\fR or \fB-J\fR / \fB--json\fR to override that default.
+The output options and a recognized output filename extension must agree.
+
 .EX
 ysd -t ysd contact.schema.json
-ysd -t ysdc.yaml contact.ysd.yaml
-ysd -t ysdc.json contact.ysd.yaml
+ysd -t ysdc contact.ysd.yaml
+ysd -t ysdc -J contact.ysd.yaml
 ysd -t jsc contact.ysd.yaml
+ysd -t jsc -Y contact.ysd.yaml
 .EE
 
 .SH Normalize JSON Schema
@@ -90,7 +106,11 @@ positions, and preserves property order.
 
 .EX
 ysd -N contact.schema.json
+ysd -N -Y contact.schema.json
 .EE
+
+.PP
+\fB-C\fR / \fB--compact\fR applies only to JSON output.
 
 .SH Roundtrip reports
 Roundtrip checks begin from the input representation:

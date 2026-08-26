@@ -247,8 +247,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysd -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
-      bin/ysd -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
+      bin/ysd -t ysd "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysd -t jsc "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == select-keys( \
         ARGS.1:read:json/load ARGS.0:read:json/load:keys)" \
         -- "$d/in.schema.json" "$d/out.schema.json"
@@ -304,8 +304,8 @@ test::
       set -eu
       d=$(mktemp -d)
       cat > "$d/in.schema.json"
-      bin/ysd -t ysd.yaml "$d/in.schema.json" > "$d/out.ysd.yaml"
-      bin/ysd -t schema.json "$d/out.ysd.yaml" > "$d/out.schema.json"
+      bin/ysd -t ysd "$d/in.schema.json" > "$d/out.ysd.yaml"
+      bin/ysd -t jsc "$d/out.ysd.yaml" > "$d/out.schema.json"
       ys -pe "ARGS.0:read:json/load == select-keys( \
         ARGS.1:read:json/load ARGS.0:read:json/load:keys)" \
         -- "$d/in.schema.json" "$d/out.schema.json"

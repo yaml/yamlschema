@@ -21,8 +21,7 @@ JSON-SCHEMA-FORMATS =:
     ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
     json-pointer relative-json-pointer regex)
 CLI-FORMATS =:
-  set: +[
-    'ysd.yaml', 'ysdc.yaml', 'ysdc.json', 'schema.json']
+  set: qw(ysd ysdc jsc)
 HELP =: |
   Usage: ysd [INPUT]
          ysd (-t FORMAT | -o FILE) [INPUT]
@@ -35,13 +34,14 @@ HELP =: |
     INPUT                 Input schema path. Defaults to stdin.
 
   Options:
-    -t, --to FORMAT       Output format: ysd, ysdc, ysdc.yaml,
-                          ysdc.json, or jsc. Defaults based on input.
-    -f, --from FORMAT     Input format: ysd, ysdc, ysdc.yaml,
-                          ysdc.json, or jsc.
+    -t, --to FORMAT       Output format: ysd, ysdc, or jsc.
+                          Defaults based on input.
+    -f, --from FORMAT     Input format: ysd, ysdc, or jsc.
+    -Y, --yaml            Emit YAML output.
+    -J, --json            Emit JSON output.
     -o, --output FILE     Write output to FILE. Use "-" for stdout.
     -N, --norm            Normalize input to draft 2020-12 JSON Schema.
-    -R, --roundtrip       Check JSON Schema or YSD roundtrip.
+    -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
     -q, --quiet           Suppress roundtrip output.
     -C, --compact         Emit compact JSON output.
         --complete=SHELL  Generate completion for bash, zsh, or fish.
@@ -56,9 +56,10 @@ COMPLETION-SCRIPTS =::
       COMPREPLY=()
       cur=${COMP_WORDS[COMP_CWORD]}
       prev=${COMP_WORDS[COMP_CWORD-1]}
-      opts='-t --to -f --from -o --output -N --norm -R --roundtrip
-        -q --quiet -C --compact --complete --help --version'
-      formats='ysd ysdc ysdc.yaml ysdc.json jsc'
+      opts='-t --to -f --from -o --output -Y --yaml -J --json
+        -N --norm -R --roundtrip -q --quiet -C --compact
+        --complete --help --version'
+      formats='ysd ysdc jsc'
       shells='bash zsh fish'
 
       case $prev in
@@ -91,9 +92,13 @@ COMPLETION-SCRIPTS =::
 
       COMPREPLY=(
         $(compgen -f -X '!*.ysd.yaml' -- "$cur")
+        $(compgen -f -X '!*.ysd.json' -- "$cur")
         $(compgen -f -X '!*.ysdc.yaml' -- "$cur")
         $(compgen -f -X '!*.ysdc.json' -- "$cur")
         $(compgen -f -X '!*.schema.json' -- "$cur")
+        $(compgen -f -X '!*.schema.json.yaml' -- "$cur")
+        $(compgen -f -X '!*.schema.yaml' -- "$cur")
+        $(compgen -f -X '!*.schema.yml' -- "$cur")
         $(compgen -d -- "$cur")
       )
     }
@@ -114,20 +119,23 @@ COMPLETION-SCRIPTS =::
 
     _ysd() {
       local -a formats shells
+      local file_glob
 
       formats=(
-        'ysd:YAMLSchema DSL YAML'
-        'ysdc:YSD Canonical YAML'
-        'ysdc.yaml:YSD Canonical YAML'
-        'ysdc.json:YSD Canonical JSON'
+        'ysd:.ysd format'
+        'ysdc:.ysdc format'
         'jsc:JSON Schema'
       )
       shells=('bash' 'zsh' 'fish')
+      file_glob='*.{ysd.yaml,ysd.json,ysdc.yaml,ysdc.json,'
+      file_glob+='schema.json,schema.json.yaml,schema.yaml,schema.yml}'
 
       _arguments -s -S \
         '(-t --to)'{-t,--to}'[Output format]:format:->formats' \
         '(-f --from)'{-f,--from}'[Input format]:format:->formats' \
         '(-o --output)'{-o,--output}'[Output file]:file:_files' \
+        '(-Y --yaml -J --json)'{-Y,--yaml}'[Emit YAML output]' \
+        '(-Y --yaml -J --json)'{-J,--json}'[Emit JSON output]' \
         '(-N --norm)'{-N,--norm}'[Normalize JSON Schema]' \
         '(-R --roundtrip)'{-R,--roundtrip}'[Check roundtrip]' \
         '(-q --quiet)'{-q,--quiet}'[Suppress roundtrip output]' \
@@ -135,8 +143,7 @@ COMPLETION-SCRIPTS =::
         '--complete[Generate completion]:shell:->shells' \
         '(- *)--help[Show help]' \
         '(- *)--version[Show version]' \
-        '*:input schema:_files -g \
-          "*.{ysd.yaml,ysdc.yaml,ysdc.json,schema.json}"'
+        "*:input schema:_files -g \"$file_glob\""
 
       case $state in
         formats)
@@ -151,10 +158,12 @@ COMPLETION-SCRIPTS =::
     compdef _ysd ysd
   fish: |
     complete -c ysd -s t -l to -d 'Output format' -x \
-      -a 'ysd ysdc ysdc.yaml ysdc.json jsc'
+      -a 'ysd ysdc jsc'
     complete -c ysd -s f -l from -d 'Input format' -x \
-      -a 'ysd ysdc ysdc.yaml ysdc.json jsc'
+      -a 'ysd ysdc jsc'
     complete -c ysd -s o -l output -d 'Output file' -r
+    complete -c ysd -s Y -l yaml -d 'Emit YAML output'
+    complete -c ysd -s J -l json -d 'Emit JSON output'
     complete -c ysd -s N -l norm -d 'Normalize JSON Schema'
     complete -c ysd -s R -l roundtrip -d 'Check roundtrip'
     complete -c ysd -s q -l quiet -d 'Suppress roundtrip output'
@@ -166,9 +175,13 @@ COMPLETION-SCRIPTS =::
 
     function __fish_complete_ysd_inputs
       __fish_complete_suffix .ysd.yaml
+      __fish_complete_suffix .ysd.json
       __fish_complete_suffix .ysdc.yaml
       __fish_complete_suffix .ysdc.json
       __fish_complete_suffix .schema.json
+      __fish_complete_suffix .schema.json.yaml
+      __fish_complete_suffix .schema.yaml
+      __fish_complete_suffix .schema.yml
     end
 
     complete -c ysd -a '(__fish_complete_ysd_inputs)' \
@@ -209,11 +222,13 @@ defn run-schema-command(opts):
   text =: (path == '-').if(IN path):read
   when opts.roundtrip:
     exit: roundtrip-schema(text opts)
+  target =: opts.norm.if('schema.json' output-format(opts))
+  encoding =: output-encoding(opts target)
   when opts.norm:
-    normalize-json-schema-output: text opts
+    output =: normalize-json-schema-output(text opts encoding)
+    emit-output: output opts.output
     exit: 0
-  target =: output-format(opts)
-  output =: convert-to(target text opts)
+  output =: convert-to(target encoding text opts)
   emit-output: output opts.output
 
 defn json-schema-normalize(text):
@@ -243,29 +258,41 @@ defn ysd-to-json-schema(text):
   opts =: +{'compact' false}
   json-output: schema opts
 
-defn convert-to(target text opts):
+defn convert-to(target encoding text opts):
   case target:
     'ysd.yaml':
       schema =: load-json-schema(text)
-      convert: schema
+      serialize-ysd: convert(schema) encoding opts
     'schema.json':
       schema =: schema-input(text opts)
       schema =: add-generated-comment(schema opts)
-      json-output: schema opts
-    'ysdc.json':
-      data =: canonical-input(text opts)
-      warn-canonical-input-passthrough: data opts
-      expanded =: expand-ysdc(data expansion-source(opts))
-      expanded =: canonicalize-document-ysid(expanded)
-      canonical-json-output: collapse-direct-types(expanded) opts
+      schema-output: schema encoding opts
     'ysdc.yaml':
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
       expanded =: expand-ysdc(data expansion-source(opts))
       expanded =: canonicalize-document-ysid(expanded)
-      post-process ys::yaml/dump(collapse-direct-types(expanded)): true
+      serialize-ysdc: collapse-direct-types(expanded) encoding opts
     else:
       usage: "unsupported output format: $target"
+
+defn serialize-ysd(text encoding opts):
+  if encoding == 'yaml':
+    then: text
+    else: canonical-json-output(ys::yaml/load(text) opts)
+
+defn schema-output(schema encoding opts):
+  schema =: canonical-json-schema(schema)
+  if encoding == 'json':
+    canonical-json-output: schema opts
+    else:
+      text =: ys::yaml/dump(schema)
+      text: .replace(/\n$/ '')
+
+defn serialize-ysdc(data encoding opts):
+  if encoding == 'json':
+    canonical-json-output: data opts
+    post-process ys::yaml/dump(data): true
 
 defn parse-args(args):
   state =: reduce(parse-arg-step initial-args-state() args)
@@ -301,6 +328,10 @@ defn handle-arg(state arg):
       state +: +{'expect' name}
     arg.in?(['-o', '--output']):
       state + {'expect' 'output'}
+    arg.in?(['-Y', '--yaml']):
+      state + {'opts' (state.opts + {'yaml' true})}
+    arg.in?(['-J', '--json']):
+      state + {'opts' (state.opts + {'json' true})}
     arg.in?(['-N', '--norm']):
       state + {'opts' (state.opts + {'norm' true})}
     arg.in?(['-R', '--roundtrip']):
@@ -309,7 +340,7 @@ defn handle-arg(state arg):
       state + {'opts' (state.opts + {'quiet' true})}
     arg.in?(['-C', '--compact']):
       state + {'opts' (state.opts + {'compact' true})}
-    arg =~ /^-[CNRq][CNRq]+$/:
+    arg =~ /^-[CJNRqY][CJNRqY]+$/:
       state + {'opts' (state.opts + short-option-bundle(arg))}
     else:
       handle-input: state arg
@@ -323,6 +354,8 @@ defn add-short-option(opts ch):
     'R': opts + {'roundtrip' true}
     'q': opts + {'quiet' true}
     'C': opts + {'compact' true}
+    'Y': opts + {'yaml' true}
+    'J': opts + {'json' true}
     else: opts
 
 defn handle-input(state arg):
@@ -333,21 +366,36 @@ defn handle-input(state arg):
     state +: +{'inputs' (state.inputs + arg)}
 
 defn output-format(opts):
-  fmt =:
-    normalize-format(opts.to) ||
-    infer-output-format(opts.output)
-  fmt ||: default-output-format(opts)
+  explicit =: normalize-format(opts.to)
+  inferred =: infer-output-format(opts.output)
+  when explicit && inferred && (explicit != inferred):
+    usage: "output format conflicts with file extension: $(opts.output)"
+  explicit ||: inferred || default-output-format(opts)
+
+defn output-encoding(opts target):
+  explicit =: explicit-output-encoding(opts)
+  inferred =: infer-output-encoding(opts.output)
+  when explicit && inferred && (explicit != inferred):
+    usage: "output encoding conflicts with file extension: $(opts.output)"
+  explicit ||: inferred || default-output-encoding(target)
+
+defn explicit-output-encoding(opts):
+  cond:
+    opts.yaml: 'yaml'
+    opts.json: 'json'
+
+defn default-output-encoding(target):
+  if target == 'schema.json': +'json' 'yaml'
 
 defn default-output-format(opts):
   source =: input-format(opts)
-  source: .in?(['ysd.yaml', 'ysdc.yaml', 'ysdc.json'])
+  source: .in?(['ysd.yaml', 'ysdc.yaml'])
     .if('schema.json' 'ysd.yaml')
 
 defn normalize-format(fmt):
   case fmt:
     'ysd': 'ysd.yaml'
     'ysdc': 'ysdc.yaml'
-    'ysdc.json': 'ysdc.json'
     'jsc': 'schema.json'
     'yscy': unsupported-format(fmt)
     'yscj': unsupported-format(fmt)
@@ -369,12 +417,25 @@ defn validate-format-options(opts):
   reject-old-file-extension: opts.input
   reject-old-file-extension: opts.output
   validate-roundtrip-options: opts
+  validate-encoding-options: opts
 
 defn validate-format-option(format direction):
   when format:
-    normalized =: normalize-format(format)
-    when-not CLI-FORMATS.has?(normalized):
+    normalize-format: format
+    when-not CLI-FORMATS.has?(format):
       usage: "unsupported $direction format: $format"
+
+defn validate-encoding-options(opts):
+  when opts.yaml && opts.json:
+    usage: '-Y/--yaml cannot be combined with -J/--json'
+  when opts.norm:
+    inferred =: infer-output-format(opts.output)
+    when inferred && (inferred != 'schema.json'):
+      usage: "output format conflicts with file extension: $(opts.output)"
+  target =: opts.norm.if('schema.json' output-format(opts))
+  encoding =: output-encoding(opts target)
+  when opts.compact && (encoding != 'json'):
+    usage: '-C/--compact requires JSON output'
 
 defn validate-roundtrip-options(opts):
   when opts.roundtrip:
@@ -386,9 +447,11 @@ defn validate-roundtrip-options(opts):
       usage: '-R/--roundtrip cannot be combined with -t/--to'
     when opts.output:
       usage: '-R/--roundtrip cannot be combined with -o/--output'
+    when opts.yaml || opts.json:
+      usage: '-R/--roundtrip cannot use -Y/--yaml or -J/--json'
     source =: normalize-format(opts.from)
     when source.? && source.in?(['schema.json', 'ysd.yaml']).!:
-      usage: '-R/--roundtrip requires JSON Schema or YSD input'
+      usage: '-R/--roundtrip requires JSON Schema or .ysd input'
 
 defn reject-old-file-extension(path):
   when path.? && path.ends?('.ysc.yaml'):
@@ -438,7 +501,7 @@ defn expansion-source(opts):
   expansion-source-format: source
 
 defn expansion-source-format(source):
-  if source.in?(['ysdc.yaml', 'ysdc.json']):
+  if source == 'ysdc.yaml':
     then: 'ysdc'
     else: 'ysd'
 
@@ -463,27 +526,34 @@ defn collapse-direct-type-entry(result entry):
   ordered-put: result entry.0 value
 
 defn infer-input-format(path):
+  infer-file-format: path
+
+defn infer-output-format(path):
+  infer-file-format: path
+
+defn infer-file-format(path):
   cond:
     path:nil?: nil
     path == '-': nil
+    path =~ /\.schema\.json\.yaml$/: 'schema.json'
+    path =~ /\.schema\.ya?ml$/: 'schema.json'
     path =~ /\.schema\.json$/: 'schema.json'
-    path =~ /\.ysdc\.json$/: 'ysdc.json'
-    path =~ /\.ysdc\.yaml$/: 'ysdc.yaml'
-    path =~ /\.ysd\.yaml$/: 'ysd.yaml'
+    path =~ /\.ysdc\.(?:yaml|json)$/: 'ysdc.yaml'
+    path =~ /\.ysd\.(?:yaml|json)$/: 'ysd.yaml'
+
+defn infer-output-encoding(path):
+  cond:
+    path:nil?: nil
+    path == '-': nil
+    path =~ /\.schema\.json\.yaml$/: 'yaml'
+    path =~ /\.schema\.ya?ml$/: 'yaml'
+    path =~ /\.ysdc?\.yaml$/: 'yaml'
+    path =~ /\.(?:ysdc?|schema)\.json$/: 'json'
 
 defn canonical-json-output(value opts):
   if opts.compact:
     ys::json/dump(value)
     pretty-json(value)
-
-defn infer-output-format(output):
-  cond:
-    output:nil?: nil
-    output == '-': nil
-    output =~ /\.schema\.json$/: 'schema.json'
-    output =~ /\.ysdc\.yaml$/: 'ysdc.yaml'
-    output =~ /\.ysdc\.json$/: 'ysdc.json'
-    output =~ /\.ysd\.yaml$/: 'ysd.yaml'
 
 defn emit-output(text output):
   when output.?:
@@ -573,9 +643,10 @@ defn merge-ordered-maps(*maps):
   args =: maps.mapcat(\(_.mapcat(a)))
   array-map: args*
 
-defn normalize-json-schema-output(text opts):
+defn normalize-json-schema-output(text opts encoding):
   schema =: schema-input(text opts 'schema.json')
-  say: normalized-json-schema-text(schema opts)
+  schema =: normalize-json-schema(schema true)
+  schema-output: schema encoding opts
 
 defn normalized-json-schema-text(schema opts):
   schema =: normalize-json-schema(schema true)
@@ -605,7 +676,7 @@ defn roundtrip-result(text source report):
   case source:
     'schema.json': json-schema-roundtrip-result(text report)
     'ysd.yaml': ysd-roundtrip-result(text report)
-    else: usage('-R/--roundtrip requires JSON Schema or YSD input')
+    else: usage('-R/--roundtrip requires JSON Schema or .ysd input')
 
 defn json-schema-roundtrip-result(text report):
   schema =: load-json-schema(text report)
@@ -727,7 +798,9 @@ defn canonical-document-id(value target label):
     usage: "$label must be a non-empty string"
   path =: value.replace(/[?#].*$/ '')
   suffix =: value.replace(/^[^?#]*/ '')
-  base =: path.replace(/\.(?:schema\.json|ysd\.yaml|ysdc\.yaml)$/ '')
+  base =: path.replace(/\.(?:ysdc?|schema)\.json$/ '')
+  base =: base.replace(/\.(?:ysdc?|schema(?:\.json)?)\.yaml$/ '')
+  base =: base.replace(/\.schema\.yml$/ '')
   =>: "$base.$(document-id-extension(target))$suffix"
 
 defn document-id-extension(target):
@@ -1011,9 +1084,9 @@ defn validate-regex-directives(value source):
       each entry value:
         key =: entry.0:S
         when (source == 'ysd') && (key == '.like'):
-          usage: 'unsupported YSD directive: .like; use .match or .find'
+          usage: 'unsupported .ysd directive: .like; use .match or .find'
         when (source == 'ysdc') && key.in?(['.match', '.find']):
-          usage: "unsupported YSDC directive: $key; use .like"
+          usage: "unsupported .ysdc directive: $key; use .like"
         when passthrough-directive?(key).!:
           validate-regex-directives: entry.1 source
     sequential?(value):
@@ -1268,7 +1341,7 @@ defn validate-schema-name-child(entry seen):
     key =~ /^\./: nil
     else: validate-schema-name-tree(value seen)
 
-# `.open` is a lexical YSD default for mapping types. Canonical YSDC keeps
+# `.open` is a lexical .ysd default for mapping types. Canonical .ysdc keeps
 # `.open: true` only at the document top. A local wildcard opens one mapping,
 # while `.open: false` closes a mapping and its nested default.
 defn resolve-open-doc(doc):
@@ -4167,7 +4240,7 @@ defn literal-value(v): v
 # Post-processing the dumped YAML.
 # --------------------------------------------------------------------
 
-# Wrap generated YSD tight scalars and `.desc` pairs without changing their
+# Wrap generated .ysd tight scalars and `.desc` pairs without changing their
 # folded YAML values. When a complete tight-scalar line exceeds 80 columns,
 # the enum and description clauses each start on their own continuation line.
 defn format-ysd-tight-scalars(text):

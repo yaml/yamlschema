@@ -84,7 +84,7 @@ test::
 - name: open-export-semantics
   cmnd: |
     sh -c '
-      bin/ysd -t schema.json -C - |
+      bin/ysd -t jsc -C - |
         jq -r ".additionalProperties,
           (.\"\u0024defs\".person | has(\"additionalProperties\")),
           .properties.closed.additionalProperties,

@@ -17,7 +17,7 @@ compact form.
 .SH File Extensions
 YAMLSchema uses separate extensions for human-authored source, compiled
 YAMLSchema, and JSON Schema interchange.
-The compiled form is YSD Canonical (YSDC).
+The compiled form is canonical \fB\&.ysdc\fR\&.
 
 .EX
 contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
@@ -25,17 +25,16 @@ contact.ysd.yaml -> contact.schema.json
 .EE
 
 .IP \(bu 2
-\fB\&.ysd.yaml\fR is the human-maintained YAMLSchema DSL form.
+\fB\&.ysd.yaml\fR and \fB\&.ysd.json\fR contain the human-maintained \fB\&.ysd\fR form.
 .IP \(bu 2
-\fB\&.ysdc.yaml\fR is the YSD Canonical form serialized as YAML.
+\fB\&.ysdc.yaml\fR and \fB\&.ysdc.json\fR contain the canonical \fB\&.ysdc\fR form.
 .IP \(bu 2
-\fB\&.ysdc.json\fR is the YSD Canonical form serialized as JSON.
-.IP \(bu 2
-\fB\&.schema.json\fR is the JSON Schema export or import form.
+\fB\&.schema.json\fR, \fB\&.schema.json.yaml\fR, \fB\&.schema.yaml\fR, and \fB\&.schema.yml\fR
+contain JSON Schema.
 
 .PP
 The \fB\&.ysd.yaml\fR form is ordinary YAML and should be pleasant to edit by hand.
-The \fBysdc\fR forms contain the same non-human, fully expanded data and are
+The \fB\&.ysdc\fR forms contain the same non-human, fully expanded data and are
 intended for validators, caches, publication, and generated artifacts.
 The \fB\&.schema.json\fR form is the JSON Schema representation used for interop
 with the JSON Schema ecosystem.
@@ -103,8 +102,8 @@ tags: +Str[1+]           # list of one or more strings
 .EE
 
 .PP
-Regexes and numeric ranges can infer a built-in type in handwritten YSD, but
-generated YSD includes that type explicitly.
+Regexes and numeric ranges can infer a built-in type in handwritten .ysd, but
+generated .ysd includes that type explicitly.
 
 .PP
 The corresponding canonical form uses type references and directives such as
@@ -184,10 +183,10 @@ T}
 Canonical raw regex pattern; implies string
 T}
 \fB\&.match\fR	T{
-YSD whole-string regex; canonicalization adds \fB^\fR and \fB$\fR
+\&.ysd whole-string regex; canonicalization adds \fB^\fR and \fB$\fR
 T}
 \fB\&.find\fR	T{
-YSD regex search; canonicalization preserves the pattern
+\&.ysd regex search; canonicalization preserves the pattern
 T}
 \fB\&.enum\fR	Enumeration of allowed values
 \fB\&.const\fR	T{
@@ -280,8 +279,8 @@ foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
 The canonical explicit form uses the period-prefixed directive names.
 The old names \fBtitl\fR, \fBjust\fR, and \fBonly\fR are errors with diagnostics naming
 \fBtitle\fR and \fBconst\fR\&.
-The tight \fBlike:\fR label is also rejected in favor of YSD \fBmatch:\fR or \fBfind:\fR;
-canonical YSDC \fB\&.like\fR stores the resulting raw pattern.
+The tight \fBlike:\fR label is also rejected in favor of .ysd \fBmatch:\fR or \fBfind:\fR;
+canonical .ysdc \fB\&.like\fR stores the resulting raw pattern.
 
 .SS Descriptions
 A schema scalar may end with a double-quoted description:
@@ -328,7 +327,7 @@ repository?: +Str
 .EE
 
 .PP
-Generated YSD keeps a tight scalar on one physical line when that line is at
+Generated .ysd keeps a tight scalar on one physical line when that line is at
 most 80 columns.
 When the complete line is longer, its base expression, compact enum, and
 description are placed on separate lines.
@@ -358,7 +357,7 @@ zip: +Str =~"\\d{5}(-\\d{4})?"
 .EE
 
 .PP
-Equivalent canonical YSDC form:
+Equivalent canonical .ysdc form:
 
 .EX
 email:
@@ -631,7 +630,7 @@ extraEnv?:
 This is a scalar or unique list of one through ten closed mapping values.
 The sibling pairs complete the list item shape.
 In list brackets, size, \fB$\fR, and \fB!\fR are independent properties.
-Commas, whitespace, and adjacency are accepted separators, while generated YSD
+Commas, whitespace, and adjacency are accepted separators, while generated .ysd
 uses canonical \fB[size,$!]\fR order.
 
 .SH Explicit Form
@@ -675,8 +674,8 @@ Custom definitions can inherit from other definitions:
 .PP
 Implicit typing applies where possible:
 .IP \(bu 2
-\fB\&.like\fR implies \fB+Str\fR in canonical YSDC; YSD \fB\&.match\fR and \fB\&.find\fR normalize
-to \fB\&.like\fR\&.
+\fB\&.like\fR implies \fB+Str\fR in canonical .ysdc; .ysd \fB\&.match\fR and \fB\&.find\fR
+normalize to \fB\&.like\fR\&.
 .IP \(bu 2
 \fB\&.enum\fR implies the common value type, or \fB+Any\fR for heterogeneous values.
 .IP \(bu 2
@@ -964,7 +963,7 @@ other \fB$ref\fR	\fB+Ref(reference)\fR or \fB\&.xref\fR
 Mappings are closed by default.
 Top-level \fB\&.open: true\fR opens the document mapping and establishes the
 inherited default for nested mappings.
-Generated YSD uses \fB\&.open: false\fR only to close a mapping under that open
+Generated .ysd uses \fB\&.open: false\fR only to close a mapping under that open
 default, and uses a final \fB+Str: +Any\fR wildcard to open a mapping under a
 closed default.
 Generated JSON Schema omits \fBadditionalProperties\fR for open mappings and
@@ -1009,12 +1008,12 @@ tags: +Str[1+,!]
 Read JSON Schema or YAMLSchema from an input path, or from stdin by
 default.
 .IP "  2." 5
-Default to YSD for JSON Schema input and JSON Schema for YSD or YSDC input
-when no action option is supplied.
+Default to .ysd for JSON Schema input and JSON Schema for .ysd or .ysdc
+input when no action option is supplied.
 .IP "  3." 5
 Use \fB-t ysd\fR to parse JSON Schema and emit succinct YAMLSchema.
 .IP "  4." 5
-Use \fB-t ysdc\fR or \fB-t ysdc.json\fR to emit fully expanded YAMLSchema as YAML or
+Use \fB-t ysdc\fR or \fB-t ysdc -J\fR to emit fully expanded YAMLSchema as YAML or
 JSON.
 .IP "  5." 5
 Use \fB-t jsc\fR to parse YAMLSchema and emit Draft 2020-12 JSON Schema.
@@ -1034,7 +1033,7 @@ Use \fB-C\fR / \fB--compact\fR for compact JSON output.
 Preserve unsupported JSON Schema keywords as same-named dotted
 directives and report each occurrence with a warning.
 .IP " 11." 5
-Prefix generated YSD with \fB# Converted from JSON Schema\fR\&.
+Prefix generated .ysd with \fB# Converted from JSON Schema\fR\&.
 .IP " 12." 5
 Put a blank line before every top-level type definition and between the
 final definition and the document body.

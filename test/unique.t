@@ -5,7 +5,7 @@ use ys::taptest: :all
 test::
 
 - name: unique
-  cmnd: bin/ysd -t ysd.yaml -
+  cmnd: bin/ysd -t ysd -
   stdi: |
     {
       "properties": {

@@ -7,7 +7,7 @@ test::
 - name: expanded-json-root-order-over-eight-keys
   cmnd: |
     sh -c '
-      bin/ysd -t ysdc.json - |
+      bin/ysd -t ysdc -J - |
         ys -e "say: IN:read:yaml/load:keys:joins"
     '
   stdi: |

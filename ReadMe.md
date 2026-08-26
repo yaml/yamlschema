@@ -55,13 +55,13 @@ This schema describes a mapping where:
 
 YAMLSchema uses these file extensions:
 
-- `.ysd.yaml` is the human-maintained YAMLSchema DSL form.
-- `.ysdc.yaml` is the YSD Canonical form serialized as YAML.
-- `.ysdc.json` is the YSD Canonical form serialized as JSON.
-- `.schema.json` is the JSON Schema export or import form.
+- `.ysd.yaml` and `.ysd.json` contain the human-maintained `.ysd` form.
+- `.ysdc.yaml` and `.ysdc.json` contain the canonical `.ysdc` form.
+- `.schema.json`, `.schema.json.yaml`, `.schema.yaml`, and `.schema.yml`
+  contain JSON Schema.
 
-The optional top-level `.ysid` identifies the human-maintained YSD document.
-Its suffix is `.ysd.yaml` in YSD and both YSDC serializations.
+The optional top-level `.ysid` identifies the human-maintained .ysd document.
+Its suffix is `.ysd.yaml` in .ysd and both .ysdc serializations.
 The corresponding JSON Schema `$id` uses `.schema.json`.
 The converter replaces a recognized representation suffix and appends the
 target suffix when none is present.
@@ -73,12 +73,10 @@ contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
-The format targets and explicit `--from` values are:
-
-- `ysd` / `ysd.yaml` for succinct DSL YAML.
-- `ysdc` / `ysdc.yaml` for canonical YAML.
-- `ysdc.json` for canonical JSON.
-- `jsc` / `schema.json` for JSON Schema.
+The `--to` targets and explicit `--from` values are `ysd`, `ysdc`, and `jsc`.
+The `.ysd` and `.ysdc` targets emit YAML by default, while `jsc` emits JSON.
+Use `-Y` / `--yaml` or `-J` / `--json` to select a serialization explicitly.
+The output options and a recognized output filename extension must agree.
 
 ## Installation
 
@@ -136,7 +134,7 @@ After that, the converter can be run as `ysd`:
 ysd contact.schema.json
 ysd contact.ysd.yaml
 ysd -t ysd contact.schema.json
-ysd -t ysdc.json contact.ysd.yaml
+ysd -t ysdc -J contact.ysd.yaml
 ysd -t ysdc contact.ysd.yaml
 ysd -t jsc contact.ysd.yaml
 ysd -t jsc -C contact.ysd.yaml
@@ -149,7 +147,7 @@ ysd -R contact.ysd.yaml
 ## Converter Usage
 
 The current converter script is `ysd`.
-With no action option, it converts JSON Schema to YSD and YAMLSchema to JSON
+With no action option, it converts JSON Schema to .ysd and YAMLSchema to JSON
 Schema on standard output.
 Input defaults to stdin.
 Use `-` explicitly to read JSON Schema or YAMLSchema from stdin.
@@ -172,10 +170,10 @@ ysd -t jsc contact.ysd.yaml
 
 For `-R`, an explicit `-f` takes precedence.
 Without `-f`, input whose first non-whitespace character is `{` is treated as
-JSON Schema; all other input is treated as YSD.
-For YSD input, `-R` compares the expanded YSDC from `ysd -> ysdc` with the
-expanded YSDC from `ysd -> jsc -> ysdc`.
-The reported diff is therefore a YSDC diff.
+JSON Schema; all other input is treated as .ysd.
+For .ysd input, `-R` compares the expanded .ysdc from `ysd -> ysdc` with the
+expanded .ysdc from `ysd -> jsc -> ysdc`.
+The reported diff is therefore a .ysdc diff.
 For JSON Schema input, `-R` continues to compare normalized JSON Schema.
 
 CLI information:

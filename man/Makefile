@@ -28,31 +28,35 @@ test: $(MD2MAN) $(PERL)
 
 $(MAN-ROOT)/man1/ysd.1: ../www/docs/cli.md Makefile $(MD2MAN) $(PERL)
 	@mkdir -p '$(@D)'
-	$(MD2MAN) < '$<' | \
+	$(PERL) -0pe 's/\A---\n.*?\n---\n+//s' < '$<' | \
+	  $(MD2MAN) | \
 	  $(PERL) -pe \
 	    's/[ \t]+$$//; \
-	     s/^\.TH (\S+) -- .*/.TH $$1 1 "" YAMLSchema YAMLSchema/' > '$@'
+	     s/^\.TH (\S+) - .*/.TH $$1 1 "" YAMLSchema YAMLSchema/' > '$@'
 
 $(MAN-ROOT)/man5/yamlschema.5: \
     ../www/docs/reference/dsl.md Makefile $(MD2MAN) $(PERL)
 	@mkdir -p '$(@D)'
-	$(MD2MAN) < '$<' | \
+	$(PERL) -0pe 's/\A---\n.*?\n---\n+//s' < '$<' | \
+	  $(MD2MAN) | \
 	  $(PERL) -pe \
 	    's/[ \t]+$$//; \
-	     s/^\.TH (\S+) -- .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'
+	     s/^\.TH (\S+) - .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'
 
 $(MAN-ROOT)/man5/yamlschema-design.5: \
     ../www/docs/reference/design.md Makefile $(MD2MAN) $(PERL)
 	@mkdir -p '$(@D)'
-	$(MD2MAN) < '$<' | \
+	$(PERL) -0pe 's/\A---\n.*?\n---\n+//s' < '$<' | \
+	  $(MD2MAN) | \
 	  $(PERL) -pe \
 	    's/[ \t]+$$//; \
-	     s/^\.TH (\S+) -- .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'
+	     s/^\.TH (\S+) - .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'
 
 $(MAN-ROOT)/man5/yamlschema-json-schema.5: \
     ../www/docs/reference/json-schema.md Makefile $(MD2MAN) $(PERL)
 	@mkdir -p '$(@D)'
-	$(MD2MAN) < '$<' | \
+	$(PERL) -0pe 's/\A---\n.*?\n---\n+//s' < '$<' | \
+	  $(MD2MAN) | \
 	  $(PERL) -pe \
 	    's/[ \t]+$$//; \
-	     s/^\.TH (\S+) -- .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'
+	     s/^\.TH (\S+) - .*/.TH $$1 5 "" YAMLSchema YAMLSchema/' > '$@'

@@ -1,6 +1,10 @@
+---
+empty_sidebar: true
+---
+
 # Examples
 
-These examples show the compact YSD form.
+These examples show the compact .ysd form.
 Each link opens the complete packaged example in the interactive editor.
 
 ## Required and optional fields

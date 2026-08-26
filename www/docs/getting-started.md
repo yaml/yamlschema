@@ -1,3 +1,7 @@
+---
+empty_sidebar: true
+---
+
 # Getting Started
 
 YAMLSchema is a YAML-native schema language.
@@ -85,7 +89,7 @@ ysd person.ysd.yaml -o person.schema.json
 
 The generated schema uses JSON Schema draft 2020-12.
 
-## Convert JSON Schema to YSD
+## Convert JSON Schema to .ysd
 
 The default conversion also works in the other direction:
 
@@ -93,7 +97,7 @@ The default conversion also works in the other direction:
 ysd person.schema.json
 ```
 
-To save the compact YSD form:
+To save the compact .ysd form:
 
 ```bash
 ysd person.schema.json -o person.ysd.yaml

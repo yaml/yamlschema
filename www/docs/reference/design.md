@@ -1,4 +1,4 @@
-# yamlschema-design -- YAMLSchema design
+# yamlschema-design - YAMLSchema design
 
 `YAMLSchema` is a YAML-native data validation schema language.
 A schema is itself YAML, and its shape mirrors the YAML data it validates.
@@ -16,20 +16,20 @@ compact form.
 
 YAMLSchema uses separate extensions for human-authored source, compiled
 YAMLSchema, and JSON Schema interchange.
-The compiled form is YSD Canonical (YSDC).
+The compiled form is canonical `.ysdc`.
 
 ```text
 contact.ysd.yaml -> contact.ysdc.yaml or contact.ysdc.json
 contact.ysd.yaml -> contact.schema.json
 ```
 
-- `.ysd.yaml` is the human-maintained YAMLSchema DSL form.
-- `.ysdc.yaml` is the YSD Canonical form serialized as YAML.
-- `.ysdc.json` is the YSD Canonical form serialized as JSON.
-- `.schema.json` is the JSON Schema export or import form.
+- `.ysd.yaml` and `.ysd.json` contain the human-maintained `.ysd` form.
+- `.ysdc.yaml` and `.ysdc.json` contain the canonical `.ysdc` form.
+- `.schema.json`, `.schema.json.yaml`, `.schema.yaml`, and `.schema.yml`
+  contain JSON Schema.
 
 The `.ysd.yaml` form is ordinary YAML and should be pleasant to edit by hand.
-The `ysdc` forms contain the same non-human, fully expanded data and are
+The `.ysdc` forms contain the same non-human, fully expanded data and are
 intended for validators, caches, publication, and generated artifacts.
 The `.schema.json` form is the JSON Schema representation used for interop
 with the JSON Schema ecosystem.
@@ -98,8 +98,8 @@ port: +Int 1..65535      # numeric range
 tags: +Str[1+]           # list of one or more strings
 ```
 
-Regexes and numeric ranges can infer a built-in type in handwritten YSD, but
-generated YSD includes that type explicitly.
+Regexes and numeric ranges can infer a built-in type in handwritten .ysd, but
+generated .ysd includes that type explicitly.
 
 The corresponding canonical form uses type references and directives such as
 `.type`, `.like`, `.enum`, and `.size`.
@@ -164,8 +164,8 @@ The design keeps directive names short and regular.
 | `.type` | Complete built-in or named type expression |
 | `.xref` | Exact external JSON Schema `$ref` string |
 | `.like` | Canonical raw regex pattern; implies string |
-| `.match` | YSD whole-string regex; canonicalization adds `^` and `$` |
-| `.find` | YSD regex search; canonicalization preserves the pattern |
+| `.match` | .ysd whole-string regex; canonicalization adds `^` and `$` |
+| `.find` | .ysd regex search; canonicalization preserves the pattern |
 | `.enum` | Enumeration of allowed values |
 | `.const` | The one exact allowed value; JSON Schema `const` |
 | `.range` | Inclusive numeric range, with either bound optional |
@@ -225,8 +225,8 @@ foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
 The canonical explicit form uses the period-prefixed directive names.
 The old names `titl`, `just`, and `only` are errors with diagnostics naming
 `title` and `const`.
-The tight `like:` label is also rejected in favor of YSD `match:` or `find:`;
-canonical YSDC `.like` stores the resulting raw pattern.
+The tight `like:` label is also rejected in favor of .ysd `match:` or `find:`;
+canonical .ysdc `.like` stores the resulting raw pattern.
 
 ### Descriptions
 
@@ -270,7 +270,7 @@ repository?: +Str
   "Repository path without registry host"
 ```
 
-Generated YSD keeps a tight scalar on one physical line when that line is at
+Generated .ysd keeps a tight scalar on one physical line when that line is at
 most 80 columns.
 When the complete line is longer, its base expression, compact enum, and
 description are placed on separate lines.
@@ -300,7 +300,7 @@ email: +Str =~"\S+@\S+"
 zip: +Str =~"\d{5}(-\d{4})?"
 ```
 
-Equivalent canonical YSDC form:
+Equivalent canonical .ysdc form:
 
 ```yaml
 email:
@@ -561,7 +561,7 @@ extraEnv?:
 This is a scalar or unique list of one through ten closed mapping values.
 The sibling pairs complete the list item shape.
 In list brackets, size, `$`, and `!` are independent properties.
-Commas, whitespace, and adjacency are accepted separators, while generated YSD
+Commas, whitespace, and adjacency are accepted separators, while generated .ysd
 uses canonical `[size,$!]` order.
 
 
@@ -607,8 +607,8 @@ Custom definitions can inherit from other definitions:
 
 Implicit typing applies where possible:
 
-- `.like` implies `+Str` in canonical YSDC; YSD `.match` and `.find` normalize
-  to `.like`.
+- `.like` implies `+Str` in canonical .ysdc; .ysd `.match` and `.find`
+  normalize to `.like`.
 - `.enum` implies the common value type, or `+Any` for heterogeneous values.
 - A mapping shape implies the mapping type without emitting a base marker.
 - Integer-only numeric range syntax implies `+Int` when no explicit type
@@ -885,7 +885,7 @@ YAMLSchema.
 Mappings are closed by default.
 Top-level `.open: true` opens the document mapping and establishes the
 inherited default for nested mappings.
-Generated YSD uses `.open: false` only to close a mapping under that open
+Generated .ysd uses `.open: false` only to close a mapping under that open
 default, and uses a final `+Str: +Any` wildcard to open a mapping under a
 closed default.
 Generated JSON Schema omits `additionalProperties` for open mappings and
@@ -929,10 +929,10 @@ tags: +Str[1+,!]
 
 1. Read JSON Schema or YAMLSchema from an input path, or from stdin by
    default.
-2. Default to YSD for JSON Schema input and JSON Schema for YSD or YSDC input
-   when no action option is supplied.
+2. Default to .ysd for JSON Schema input and JSON Schema for .ysd or .ysdc
+   input when no action option is supplied.
 3. Use `-t ysd` to parse JSON Schema and emit succinct YAMLSchema.
-4. Use `-t ysdc` or `-t ysdc.json` to emit fully expanded YAMLSchema as YAML or
+4. Use `-t ysdc` or `-t ysdc -J` to emit fully expanded YAMLSchema as YAML or
    JSON.
 5. Use `-t jsc` to parse YAMLSchema and emit Draft 2020-12 JSON Schema.
 6. Build a YAMLScript data structure for the output document.
@@ -945,7 +945,7 @@ tags: +Str[1+,!]
    Use `-C` / `--compact` for compact JSON output.
 10. Preserve unsupported JSON Schema keywords as same-named dotted
     directives and report each occurrence with a warning.
-11. Prefix generated YSD with `# Converted from JSON Schema`.
+11. Prefix generated .ysd with `# Converted from JSON Schema`.
 12. Put a blank line before every top-level type definition and between the
     final definition and the document body.
 

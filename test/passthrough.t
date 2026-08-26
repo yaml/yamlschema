@@ -47,7 +47,7 @@ test::
         - value
 
 - name: json-schema-to-ysdc-preserves-passthrough-without-yaml-reload
-  cmnd: sh -c 'bin/ysd -f jsc -t ysdc.json -C - 2>&1'
+  cmnd: sh -c 'bin/ysd -f jsc -t ysdc -J -C - 2>&1'
   stdi: |
     {
       "type": "object",
