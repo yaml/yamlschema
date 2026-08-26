@@ -34,20 +34,22 @@ ysd -R, --roundtrip [-q, --quiet] [INPUT]
 | `-R`, `--roundtrip` | Test a JSON Schema or .ysd roundtrip |
 | `-q`, `--quiet` | Suppress successful roundtrip output |
 | `-C`, `--compact` | Emit compact JSON |
-| `--complete=SHELL` | Generate completion for Bash, Zsh, or Fish |
 | `--help` | Show command help |
 | `--version` | Show the installed version |
 
 ## Shell completion
 
 The sourced installer enables completion automatically in Bash, Zsh, and
-Fish.
-Completion scripts can also be generated directly:
+Fish by sourcing the matching script from the installed repository.
+The scripts can also be sourced directly from a checkout or installation:
 
 ```bash
-ysd --complete=bash
-ysd --complete=zsh
-ysd --complete=fish
+source /path/to/yamlschema/share/complete.bash
+source /path/to/yamlschema/share/complete.zsh
+```
+
+```fish
+source /path/to/yamlschema/share/complete.fish
 ```
 
 The installed `.rc` also adds the bundled manuals to `MANPATH`.

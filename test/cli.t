@@ -28,7 +28,6 @@ test::
       -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
-          --complete=SHELL  Generate completion for bash, zsh, or fish.
           --help            Show this help text.
           --version         Show version.
 
@@ -56,7 +55,6 @@ test::
       -R, --roundtrip       Check JSON Schema or .ysd roundtrip.
       -q, --quiet           Suppress roundtrip output.
       -C, --compact         Emit compact JSON output.
-          --complete=SHELL  Generate completion for bash, zsh, or fish.
           --help            Show this help text.
           --version         Show version.
 
@@ -73,7 +71,7 @@ test::
   cmnd: |
     sh -c '
       for shell in bash zsh fish; do
-        bin/ysd --complete="$shell" | "$shell" -n
+        "$shell" -n "share/complete.$shell"
         printf "%s ok\n" "$shell"
       done
     '
@@ -86,14 +84,14 @@ test::
   cmnd: |
     sh -c '
       bash --noprofile --norc -c \
-        "source <(bin/ysd --complete=bash); declare -F _ysd >/dev/null" &&
+        "source share/complete.bash; declare -F _ysd >/dev/null" &&
         echo "bash registered"
       zsh -f -c \
-        "export YAMLSCHEMA_ROOT=\$PWD; source <(bin/ysd --complete=zsh);
+        "export YAMLSCHEMA_ROOT=\$PWD; source share/complete.zsh;
          whence -w _ysd | grep -q function" &&
         echo "zsh registered"
       fish --no-config -c \
-        "bin/ysd --complete=fish | source;
+        "source share/complete.fish;
          functions -q __fish_complete_ysd_inputs" &&
         echo "fish registered"
     '
@@ -105,7 +103,7 @@ test::
 - name: bash-completion-candidates
   cmnd: |
     bash --noprofile --norc -c '
-      source <(bin/ysd --complete=bash)
+      source share/complete.bash
       COMP_WORDS=(ysd --fr)
       COMP_CWORD=1
       _ysd
@@ -119,10 +117,6 @@ test::
       COMP_CWORD=1
       _ysd
       [[ " ${COMPREPLY[*]} " == *" --yaml "* ]]
-      COMP_WORDS=(ysd --complete=f)
-      COMP_CWORD=1
-      _ysd
-      [[ " ${COMPREPLY[*]} " == *" --complete=fish "* ]]
       dir=$(mktemp -d)
       trap "rm -r \"$dir\"" EXIT
       touch "$dir/person.ysd.yaml" "$dir/device.schema.yml" \
@@ -141,17 +135,17 @@ test::
   want: |
     ok
 
-- name: completion-errors
+- name: completion-option-is-removed
   cmnd: |
     sh -c '
-      bin/ysd --complete=tcsh 2>&1 |
+      bin/ysd --complete=bash 2>&1 |
         perl -ne "print if $. == 1"
       bin/ysd --complete 2>&1 |
         perl -ne "print if $. == 1"
     '
   want: |
-    ysd: unknown shell for --complete: tcsh
-    ysd: --complete requires bash, zsh, or fish
+    ysd: unknown option --complete=bash
+    ysd: unknown option --complete
 
 - name: old-command-is-removed
   cmnd: sh -c 'test ! -e bin/ysc && echo ok'

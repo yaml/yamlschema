@@ -54,10 +54,12 @@ test-man:
 test-scripts: $(SHELLCHECK) $(YS)
 	$(SHELLCHECK) \
 	  .rc \
+	  share/complete.bash \
 	  util/release util/release-dist \
 	  test/release test/installer \
 	  www/docs/install
-	bin/ysd --complete=bash | $(SHELLCHECK) -s bash -
+	zsh -n share/complete.zsh
+	fish -n share/complete.fish
 
 json-schema-suite:
 	util/ysd-suite-roundtrip --fetch-only

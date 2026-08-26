@@ -40,22 +40,22 @@ T}
 Suppress successful roundtrip output
 T}
 \fB-C\fR, \fB--compact\fR	Emit compact JSON
-\fB--complete=SHELL\fR	T{
-Generate completion for Bash, Zsh, or Fish
-T}
 \fB--help\fR	Show command help
 \fB--version\fR	Show the installed version
 .TE
 
 .SH Shell completion
 The sourced installer enables completion automatically in Bash, Zsh, and
-Fish.
-Completion scripts can also be generated directly:
+Fish by sourcing the matching script from the installed repository.
+The scripts can also be sourced directly from a checkout or installation:
 
 .EX
-ysd --complete=bash
-ysd --complete=zsh
-ysd --complete=fish
+source /path/to/yamlschema/share/complete.bash
+source /path/to/yamlschema/share/complete.zsh
+.EE
+
+.EX
+source /path/to/yamlschema/share/complete.fish
 .EE
 
 .PP

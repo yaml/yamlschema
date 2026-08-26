@@ -126,6 +126,9 @@ For local development, source the repo `.rc` file to put `bin/` on your
 . ./.rc
 ```
 
+The shell-specific completion files are `share/complete.bash`,
+`share/complete.zsh`, and `share/complete.fish`.
+
 After installation or local setup, try `ysd --<TAB>` or `man ysd`.
 
 After that, the converter can be run as `ysd`:

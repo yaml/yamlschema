@@ -20,7 +20,8 @@ git -C "$source_repo" config user.email installer-test@example.com
 printf '%s\n' 'YAMLSchema installer fixture' > "$source_repo/ReadMe.md"
 cp "$top/.rc" "$source_repo/.rc"
 cp -R "$top/man" "$source_repo/man"
-git -C "$source_repo" add .rc ReadMe.md man
+cp -R "$top/share" "$source_repo/share"
+git -C "$source_repo" add .rc ReadMe.md man share
 git -C "$source_repo" commit -q -m 'Create installer fixture'
 git -C "$source_repo" tag v0.1.3
 
@@ -30,23 +31,6 @@ cat > "$fake_ysd" <<'SCRIPT'
 case ${1:-} in
   --version)
     printf '%s\n' 'ysd 0.1.3'
-    ;;
-  --complete=bash)
-    printf '%s\n' '_ysd() { :; }' 'complete -F _ysd ysd'
-    ;;
-  --complete=zsh)
-    printf '%s\n' \
-      'autoload -Uz compinit' \
-      'mkdir -p "$YAMLSCHEMA_ROOT/.cache"' \
-      'compinit -d "$YAMLSCHEMA_ROOT/.cache/zcompdump"' \
-      '_ysd() { :; }' \
-      'compdef _ysd ysd'
-    ;;
-  --complete=fish)
-    printf '%s\n' \
-      'function __fish_complete_ysd_inputs' \
-      'end' \
-      'complete -c ysd -l help'
     ;;
   *)
     exit 1

@@ -21,19 +21,9 @@ esac
 MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
 export YAMLSCHEMA_ROOT PATH MANPATH
 
-_yamlschema_completion_path=$PATH
-if [[ -x $YAMLSCHEMA_ROOT/.cache/local/bin/ys-0 ]]; then
-  _yamlschema_completion_path=
-  _yamlschema_completion_path+=\
-$YAMLSCHEMA_ROOT/.cache/local/bin:$PATH
-fi
-if _yamlschema_completion=$(PATH=$_yamlschema_completion_path \
-    ysd --complete=bash 2>/dev/null); then
-  eval "$_yamlschema_completion"
-fi
+source "$YAMLSCHEMA_ROOT/share/complete.bash"
 
-unset _yamlschema_bin_dir _yamlschema_completion
-unset _yamlschema_completion_path _yamlschema_parent _yamlschema_prefix
+unset _yamlschema_bin_dir _yamlschema_parent _yamlschema_prefix
 return 0
 '
 
@@ -53,16 +43,7 @@ contains -- "$yamlschema_bin_dir" $PATH
 or set -gx PATH "$yamlschema_bin_dir" $PATH
 set -gx MANPATH "$YAMLSCHEMA_ROOT/man" (manpath 2>/dev/null)
 
-set -l yamlschema_completion_path (string join : $PATH)
-if test -x "$YAMLSCHEMA_ROOT/.cache/local/bin/ys-0"
-  set yamlschema_completion_path \
-    "$YAMLSCHEMA_ROOT/.cache/local/bin:$yamlschema_completion_path"
-end
-set -l yamlschema_completion \
-  (env PATH="$yamlschema_completion_path" ysd --complete=fish 2>/dev/null)
-if test $status -eq 0
-  printf "%s\n" $yamlschema_completion | source
-end
+source "$YAMLSCHEMA_ROOT/share/complete.fish"
 
 return 0
 '
@@ -86,19 +67,9 @@ esac
 MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
 export YAMLSCHEMA_ROOT PATH MANPATH
 
-_yamlschema_completion_path=$PATH
-if [[ -x $YAMLSCHEMA_ROOT/.cache/local/bin/ys-0 ]]; then
-  _yamlschema_completion_path=
-  _yamlschema_completion_path+=\
-$YAMLSCHEMA_ROOT/.cache/local/bin:$PATH
-fi
-if _yamlschema_completion=$(PATH=$_yamlschema_completion_path \
-    ysd --complete=zsh 2>/dev/null); then
-  eval "$_yamlschema_completion"
-fi
+source "$YAMLSCHEMA_ROOT/share/complete.zsh"
 
-unset _yamlschema_bin_dir _yamlschema_completion
-unset _yamlschema_completion_path _yamlschema_parent _yamlschema_prefix
+unset _yamlschema_bin_dir _yamlschema_parent _yamlschema_prefix
 return 0
 '
 
