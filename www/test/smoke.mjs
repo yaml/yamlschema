@@ -1016,7 +1016,12 @@ const cname = await readFile('site/CNAME', 'utf8');
 if (cname.trim() !== 'yamlschema.org') {
   throw new Error(`unexpected CNAME: ${cname}`);
 }
-for (const endpoint of ['install', 'install.mk', 'install.ps1']) {
+for (const endpoint of [
+  'complete.ps1',
+  'install',
+  'install.mk',
+  'install.ps1',
+]) {
   const source = await readFile(`docs/${endpoint}`, 'utf8');
   const built = await readFile(`site/${endpoint}`, 'utf8');
   if (built !== source) {
@@ -1032,9 +1037,38 @@ if (
   !powerShellInstaller.includes(
     "[Environment]::SetEnvironmentVariable(\n        'Path'",
   ) ||
+  !powerShellInstaller.includes(
+    "$CompletionUrl = 'https://yamlschema.org/complete.ps1'",
+  ) ||
+  !powerShellInstaller.includes('$PROFILE.CurrentUserAllHosts') ||
+  !powerShellInstaller.includes('. $CompletionFile') ||
+  !powerShellInstaller.includes('$ProfileLines -notcontains $ProfileLine') ||
   !powerShellInstaller.includes('& $Executable --version')
 ) {
   throw new Error('PowerShell installer behavior is incomplete');
+}
+const powerShellCompletion = await readFile('docs/complete.ps1', 'utf8');
+const completionOptions = [
+  '-t', '--to', '-f', '--from', '-o', '--output',
+  '-Y', '--yaml', '-J', '--json', '-N', '--norm',
+  '-R', '--roundtrip', '-q', '--quiet', '-C', '--compact',
+  '--upgrade', '--help', '--version',
+];
+const completionSuffixes = [
+  '.ysd.yaml', '.ysd.json', '.ysdc.yaml', '.ysdc.json',
+  '.schema.json', '.schema.json.yaml', '.schema.yaml', '.schema.yml',
+];
+if (
+  !powerShellCompletion.includes(
+    'Register-ArgumentCompleter -Native -CommandName ysd',
+  ) ||
+  !powerShellCompletion.includes('Complete-YsdPath $WordToComplete $true') ||
+  !completionOptions.every((option) =>
+    powerShellCompletion.includes(`'${option}'`)) ||
+  !completionSuffixes.every((suffix) =>
+    powerShellCompletion.includes(`'${suffix}'`))
+) {
+  throw new Error('PowerShell completion behavior is incomplete');
 }
 const homeSource = await readFile('docs/index.md', 'utf8');
 if (
@@ -1059,7 +1093,11 @@ if (
     'irm https://yamlschema.org/install.ps1 | iex',
   ) ||
   !gettingStartedSource.includes(
-    'Native PowerShell completion and man pages are not yet available.',
+    'adds the completion script\n' +
+      'to `$PROFILE.CurrentUserAllHosts` for future PowerShell sessions.',
+  ) ||
+  !gettingStartedSource.includes(
+    'Native Windows man pages are not available',
   )
 ) {
   throw new Error('installation shell features are not documented');

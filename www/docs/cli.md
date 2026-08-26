@@ -40,8 +40,8 @@ ysd -R, --roundtrip [-q, --quiet] [INPUT]
 
 ## Shell completion
 
-The sourced installer enables completion automatically in Bash, Zsh, and
-Fish by sourcing the matching script from the installed repository.
+The installers enable completion automatically in Bash, Zsh, Fish, and
+PowerShell by loading the matching script from the installation.
 The scripts can also be sourced directly from a checkout or installation:
 
 ```bash
@@ -51,6 +51,10 @@ source /path/to/yamlschema/share/complete.zsh
 
 ```fish
 source /path/to/yamlschema/share/complete.fish
+```
+
+```powershell
+. $HOME\.local\share\yamlschema\complete.ps1
 ```
 
 The installed `.rc` also adds the bundled manuals to `MANPATH`.
