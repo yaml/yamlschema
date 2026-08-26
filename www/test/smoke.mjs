@@ -1016,17 +1016,31 @@ const cname = await readFile('site/CNAME', 'utf8');
 if (cname.trim() !== 'yamlschema.org') {
   throw new Error(`unexpected CNAME: ${cname}`);
 }
-for (const endpoint of ['install', 'install.mk']) {
+for (const endpoint of ['install', 'install.mk', 'install.ps1']) {
   const source = await readFile(`docs/${endpoint}`, 'utf8');
   const built = await readFile(`site/${endpoint}`, 'utf8');
   if (built !== source) {
     throw new Error(`${endpoint} was not copied unchanged`);
   }
 }
+const powerShellInstaller = await readFile('docs/install.ps1', 'utf8');
+if (
+  !powerShellInstaller.includes("[string]$Version = '0.1.6'") ||
+  !powerShellInstaller.includes("'X64' { 'amd64' }") ||
+  !powerShellInstaller.includes("'Arm64' { 'arm64' }") ||
+  !powerShellInstaller.includes('Invoke-WebRequest @Request') ||
+  !powerShellInstaller.includes(
+    "[Environment]::SetEnvironmentVariable(\n        'Path'",
+  ) ||
+  !powerShellInstaller.includes('& $Executable --version')
+) {
+  throw new Error('PowerShell installer behavior is incomplete');
+}
 const homeSource = await readFile('docs/index.md', 'utf8');
 if (
   !homeSource.includes('source <(curl -sL yamlschema.org/install)') ||
   !homeSource.includes('curl -sL yamlschema.org/install | source -') ||
+  !homeSource.includes('irm https://yamlschema.org/install.ps1 | iex') ||
   !homeSource.includes(
     'enables tab completion and the YAMLSchema man pages',
   ) ||
@@ -1040,7 +1054,13 @@ const gettingStartedSource = await readFile(
 );
 if (
   !gettingStartedSource.includes('immediately enables tab completion') ||
-  !gettingStartedSource.includes('Try `ysd --<TAB>` or `man ysd`')
+  !gettingStartedSource.includes('Try `ysd --<TAB>` or `man ysd`') ||
+  !gettingStartedSource.includes(
+    'irm https://yamlschema.org/install.ps1 | iex',
+  ) ||
+  !gettingStartedSource.includes(
+    'Native PowerShell completion and man pages are not yet available.',
+  )
 ) {
   throw new Error('installation shell features are not documented');
 }

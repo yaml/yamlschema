@@ -65,9 +65,18 @@ tags?: +Str[] [=good, bad, ugly]</code></pre>
     curl -sL yamlschema.org/install | source -
     ```
 
-Running the sourced command adds `ysd` to the current shell and immediately
-enables tab completion and the YAMLSchema man pages.
-The matching source release is kept under `$PREFIX/share/yamlschema/`.
+=== "PowerShell"
+
+    ```powershell
+    irm https://yamlschema.org/install.ps1 | iex
+    ```
+
+The Bash, Zsh, and Fish command installs `ysd` into the current shell.
+It immediately enables tab completion and the YAMLSchema man pages.
+The PowerShell command installs the native Windows executable and updates the
+user `PATH`.
+The Unix installer keeps the matching source release under
+`$PREFIX/share/yamlschema/`.
 [See installation options](getting-started.md#install-the-command).
 
 ## See the difference
