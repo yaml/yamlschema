@@ -52,7 +52,7 @@ prepare_prefix() {
 
 check_install() {
   local shell=$1 prefix=$temporary/prefix-${1##*/}
-  local output expected
+  local output expected path path_dir path_count
   local -a shell_options=()
 
   if [[ ${shell##*/} == zsh ]]; then
@@ -63,12 +63,16 @@ check_install() {
   export YAMLSCHEMA_TEST_PREFIX=$prefix
   export YAMLSCHEMA_TEST_MAKES=$makes
   export YAMLSCHEMA_TEST_REPO=$source_repo
+  export YAMLSCHEMA_TEST_SHADOW=$top/bin
   export YAMLSCHEMA_INSTALL_MK_URL=file://$install_makefile
 
   if [[ ${shell##*/} == fish ]]; then
     # shellcheck disable=SC2016
     output=$(
       "$shell" --no-config -c '
+        set -gx PATH "$YAMLSCHEMA_TEST_SHADOW" \
+          "$YAMLSCHEMA_TEST_PREFIX/bin" $PATH \
+          "$YAMLSCHEMA_TEST_PREFIX/bin"
         source - \
           PREFIX="$YAMLSCHEMA_TEST_PREFIX" \
           VERSION=0.1.3 \
@@ -76,6 +80,7 @@ check_install() {
           YAMLSCHEMA-REPO="$YAMLSCHEMA_TEST_REPO"
         command -v ysd
         ysd --version
+        printf "path=%s\n" (string join : $PATH)
         printf "root=%s\n" "$YAMLSCHEMA_ROOT"
         printf "manpath=%s\n" "$MANPATH"
         functions -q __fish_complete_ysd_inputs
@@ -86,6 +91,8 @@ check_install() {
     # shellcheck disable=SC2016
     output=$(
       "$shell" "${shell_options[@]}" -c '
+        PATH="$YAMLSCHEMA_TEST_SHADOW:$YAMLSCHEMA_TEST_PREFIX/bin:$PATH"
+        PATH="$PATH:$YAMLSCHEMA_TEST_PREFIX/bin"
         source "$1" \
           PREFIX="$YAMLSCHEMA_TEST_PREFIX" \
           VERSION=0.1.3 \
@@ -93,6 +100,7 @@ check_install() {
           YAMLSCHEMA-REPO="$YAMLSCHEMA_TEST_REPO"
         command -v ysd
         ysd --version
+        printf "path=%s\n" "$PATH"
         printf "root=%s\n" "$YAMLSCHEMA_ROOT"
         printf "manpath=%s\n" "$MANPATH"
         type _ysd >/dev/null && echo completion=ok
@@ -107,6 +115,17 @@ check_install() {
   grep -Fxq "  source $prefix/share/yamlschema/.rc" <<< "$output"
   grep -Fxq "$prefix/bin/ysd" <<< "$output"
   grep -Fxq 'ysd 0.1.3' <<< "$output"
+  path=$(grep -m1 '^path=' <<< "$output")
+  path=${path#path=}
+  [[ ${path%%:*} == "$prefix/bin" ]]
+  path_count=0
+  path=$path:
+  while [[ $path == *:* ]]; do
+    path_dir=${path%%:*}
+    path=${path#*:}
+    [[ $path_dir != "$prefix/bin" ]] || ((path_count += 1))
+  done
+  [[ $path_count -eq 1 ]]
   grep -Fxq "root=$prefix/share/yamlschema" <<< "$output"
   grep -Fq "manpath=$prefix/share/yamlschema/man:" <<< "$output"
   grep -Fxq 'completion=ok' <<< "$output"

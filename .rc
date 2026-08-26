@@ -14,16 +14,22 @@ if [[ $(basename "$_yamlschema_parent") == share ]]; then
   fi
 fi
 
-case :$PATH: in
-  *:$_yamlschema_bin_dir:*) ;;
-  *) PATH=$_yamlschema_bin_dir${PATH:+:$PATH} ;;
-esac
+_yamlschema_path=$PATH:
+PATH=$_yamlschema_bin_dir
+while [[ $_yamlschema_path == *:* ]]; do
+  _yamlschema_path_dir=${_yamlschema_path%%:*}
+  _yamlschema_path=${_yamlschema_path#*:}
+  if [[ $_yamlschema_path_dir != "$_yamlschema_bin_dir" ]]; then
+    PATH=$PATH:$_yamlschema_path_dir
+  fi
+done
 MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
 export YAMLSCHEMA_ROOT PATH MANPATH
 
 source "$YAMLSCHEMA_ROOT/share/complete.bash"
 
 unset _yamlschema_bin_dir _yamlschema_parent _yamlschema_prefix
+unset _yamlschema_path _yamlschema_path_dir
 return 0
 '
 
@@ -39,8 +45,13 @@ if test (path basename "$yamlschema_parent") = share
   end
 end
 
-contains -- "$yamlschema_bin_dir" $PATH
-or set -gx PATH "$yamlschema_bin_dir" $PATH
+set -l yamlschema_path "$yamlschema_bin_dir"
+for path_dir in $PATH
+  if test "$path_dir" != "$yamlschema_bin_dir"
+    set -a yamlschema_path "$path_dir"
+  end
+end
+set -gx PATH $yamlschema_path
 set -gx MANPATH "$YAMLSCHEMA_ROOT/man" (manpath 2>/dev/null)
 
 source "$YAMLSCHEMA_ROOT/share/complete.fish"
@@ -60,16 +71,22 @@ if [[ $(basename "$_yamlschema_parent") == share ]]; then
   fi
 fi
 
-case :$PATH: in
-  *:$_yamlschema_bin_dir:*) ;;
-  *) PATH=$_yamlschema_bin_dir${PATH:+:$PATH} ;;
-esac
+_yamlschema_path=$PATH:
+PATH=$_yamlschema_bin_dir
+while [[ $_yamlschema_path == *:* ]]; do
+  _yamlschema_path_dir=${_yamlschema_path%%:*}
+  _yamlschema_path=${_yamlschema_path#*:}
+  if [[ $_yamlschema_path_dir != "$_yamlschema_bin_dir" ]]; then
+    PATH=$PATH:$_yamlschema_path_dir
+  fi
+done
 MANPATH=$YAMLSCHEMA_ROOT/man:$(manpath 2>/dev/null)
 export YAMLSCHEMA_ROOT PATH MANPATH
 
 source "$YAMLSCHEMA_ROOT/share/complete.zsh"
 
 unset _yamlschema_bin_dir _yamlschema_parent _yamlschema_prefix
+unset _yamlschema_path _yamlschema_path_dir
 return 0
 '
 
