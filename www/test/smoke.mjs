@@ -564,6 +564,9 @@ if (
 }
 if (
   !appSource.includes("person: {url: assetURL('examples/person.ysd.yaml')}") ||
+  !appSource.includes(
+    "yamlschema: {url: assetURL('examples/yamlschema.ysd.yaml')}",
+  ) ||
   !appSource.includes("'harbor-next': {url: assetURL('values.ysd.yaml')}") ||
   !appSource.includes(
     "if (side === 'json') await showJsonSample(content, normal)",
@@ -658,6 +661,29 @@ if (!pastedRoundtrip.ok || pastedRoundtrip.value !== true) {
   )}`);
 }
 
+const yamlschemaYSD = await readFile(
+  'docs/assets/editor/examples/yamlschema.ysd.yaml',
+  'utf8',
+);
+const yamlschemaResult = globalThis.gloat.exports[
+  'ysd-to-json-schema'
+](yamlschemaYSD);
+const yamlschemaRoundtrip = globalThis.gloat.exports[
+  'ysd-roundtrip-works'
+](yamlschemaYSD);
+if (
+  !yamlschemaResult.ok ||
+  JSON.parse(yamlschemaResult.value).$id !==
+    'https://yamlschema.org/schema/yamlschema.schema.json' ||
+  !yamlschemaRoundtrip.ok ||
+  yamlschemaRoundtrip.value !== true
+) {
+  throw new Error(`YAMLSchema meta-schema failed: ${JSON.stringify({
+    conversion: yamlschemaResult,
+    roundtrip: yamlschemaRoundtrip,
+  })}`);
+}
+
 const ansibleBuilderJSON = await readFile(
   'docs/assets/editor/examples/ansible-builder.schema.json',
   'utf8',
@@ -716,12 +742,14 @@ const exampleFiles = [
   'movie',
   'user-profile',
   'ansible-builder',
+  'json-schema-2020-12',
   'openapi-3-schema',
   'petstore',
   'netbox-generated',
 ];
 const routedExamples = [
   ['person', 'ysd'],
+  ['yamlschema', 'ysd'],
   ['harbor-next', 'ysd'],
   ...exampleFiles.map((name) => [name, 'json']),
 ];
@@ -876,7 +904,7 @@ for (const selectHTML of [yamlSelectHTML, jsonSelectHTML]) {
     throw new Error('example selector placeholder is missing');
   }
 }
-for (const name of ['person', 'harbor-next']) {
+for (const name of ['person', 'yamlschema', 'harbor-next']) {
   if (!yamlSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is missing from the YAMLSchema selector`);
   }
@@ -885,7 +913,9 @@ for (const name of ['person', 'harbor-next']) {
   }
 }
 if (yamlSelectHTML.indexOf('value="person"') >
-    yamlSelectHTML.indexOf('value="harbor-next"')) {
+      yamlSelectHTML.indexOf('value="yamlschema"') ||
+    yamlSelectHTML.indexOf('value="yamlschema"') >
+      yamlSelectHTML.indexOf('value="harbor-next"')) {
   throw new Error('YAMLSchema example order is wrong');
 }
 if (jsonSelectHTML.indexOf('value="netbox-generated"') <
@@ -1055,6 +1085,27 @@ for (const name of exampleFiles) {
       roundtrip.value !== true
     ) {
       throw new Error('OpenAPI PetStore schema is incorrect');
+    }
+  }
+  if (name === 'json-schema-2020-12') {
+    const vocabularyNames = Object.keys(schema.$vocabulary || {});
+    const references = schema.allOf?.map((entry) => entry.$ref);
+    if (
+      schema.$id !== 'https://json-schema.org/draft/2020-12/schema' ||
+      schema.$dynamicAnchor !== 'meta' ||
+      vocabularyNames.length !== 7 ||
+      !vocabularyNames.every((name) => schema.$vocabulary[name] === true) ||
+      JSON.stringify(references) !== JSON.stringify([
+        'meta/core',
+        'meta/applicator',
+        'meta/unevaluated',
+        'meta/validation',
+        'meta/meta-data',
+        'meta/format-annotation',
+        'meta/content',
+      ])
+    ) {
+      throw new Error('JSON Schema 2020-12 meta-schema is incorrect');
     }
   }
   if (name === 'openapi-3-schema') {
