@@ -130,7 +130,7 @@ test::
   cmnd: |
     sh -c 'printf "%s\n" \
       "{\"\$schema\":\"https://example.com/unsupported-draft\"}" |
-      bin/ysd -t ysd.yaml - >/dev/null 2>&1; test $? -eq 2 && echo ok'
+      bin/ysd -t ysd.yaml - >/dev/null 2>&1; test $? -eq 1 && echo ok'
   want: |
     ok
 

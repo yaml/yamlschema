@@ -195,6 +195,19 @@ test::
     ysd: unknown option -F
     ysd: unknown option --fmt
 
+- name: schema-errors-omit-usage
+  cmnd: |
+    sh -c '
+      output=$(bin/ysd - --to jsc 2>&1)
+      status=$?
+      printf "%s\nstatus=%s\n" "$output" "$status"
+    '
+  stdi: |
+    foo: ==bar
+  want: |
+    ysd: const requires a preceding type reference
+    status=1
+
 - name: norm-compact
   cmnd: bin/ysd -NC
   stdi: |

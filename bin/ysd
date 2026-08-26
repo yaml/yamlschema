@@ -20,6 +20,9 @@ JSON-SCHEMA-FORMATS =:
     date-time date time duration email idn-email hostname idn-hostname
     ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
     json-pointer relative-json-pointer regex)
+CLI-FORMATS =:
+  set: +[
+    'ysd.yaml', 'ysdc.yaml', 'ysdc.json', 'schema.json']
 HELP =: |
   Usage: ysd [INPUT]
          ysd (-t FORMAT | -o FILE) [INPUT]
@@ -194,6 +197,14 @@ defn run-main(*args):
   handle-info-options: args
   opts =: parse-args(args)
   validate-format-options: opts
+  try:
+    run-schema-command: opts
+    catch Exception error:
+      if ex-data(error).type == 'yamlschema/usage':
+        handle-schema-error: error
+        throw: error
+
+defn run-schema-command(opts):
   path =: opts.input || '-'
   text =: (path == '-').if(IN path):read
   when opts.roundtrip:
@@ -353,11 +364,17 @@ defn unsupported-format(format):
   usage: "unsupported format: $format"
 
 defn validate-format-options(opts):
-  when opts.to.?: normalize-format(opts.to)
-  when opts.from.?: normalize-format(opts.from)
+  validate-format-option: opts.to 'output'
+  validate-format-option: opts.from 'input'
   reject-old-file-extension: opts.input
   reject-old-file-extension: opts.output
   validate-roundtrip-options: opts
+
+defn validate-format-option(format direction):
+  when format:
+    normalized =: normalize-format(format)
+    when-not CLI-FORMATS.has?(normalized):
+      usage: "unsupported $direction format: $format"
 
 defn validate-roundtrip-options(opts):
   when opts.roundtrip:
@@ -485,6 +502,10 @@ defn handle-usage-error(error):
   err: "ysd: $(ex-message(error))\n"
   err: HELP
   exit: 2
+
+defn handle-schema-error(error):
+  err: "ysd: $(ex-message(error))\n"
+  exit: 1
 
 defn handle-info-options(args):
   when args.# == 0:
