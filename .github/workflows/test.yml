@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - ubuntu-latest
+        - macos-latest
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y build-essential curl perl xz-utils
+
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      run: brew install xz
+
+    - name: Cache Makes dependencies
+      uses: actions/cache@v5
+      with:
+        path: .cache/
+        key: makes-${{ runner.os }}-${{ hashFiles('Makefile', 'man/Makefile') }}
+        restore-keys: makes-${{ runner.os }}-
+
+    - name: Run tests
+      run: make test v=1
