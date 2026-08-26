@@ -531,6 +531,8 @@ if (
   !appSource.includes("document.querySelectorAll('.editor-copy')") ||
   !appSource.includes('await copyText(editor.value)') ||
   !appSource.includes('void copyEditorText(button)') ||
+  !appSource.includes('await copyText(roundtripDiff)') ||
+  !appSource.includes('void copyRoundtripDiff()') ||
   !appSource.includes('void button.offsetWidth') ||
   !styleSource.includes('.schema-editor .editor-copy') ||
   !styleSource.includes('content: "Copied"') ||
@@ -874,7 +876,11 @@ if (jsonSelectHTML.indexOf('value="netbox-generated"') <
 }
 if (
   !indexHTML.includes('id="roundtrip-diff-dialog"') ||
-  !indexHTML.includes('id="roundtrip-diff"')
+  !indexHTML.includes('id="roundtrip-diff"') ||
+  !indexHTML.includes('id="roundtrip-diff-copy"') ||
+  !indexHTML.includes('aria-label="Copy roundtrip diff text"') ||
+  !indexHTML.includes('id="roundtrip-diff-close"') ||
+  !indexHTML.includes('aria-label="Close roundtrip diff"')
 ) {
   throw new Error('roundtrip diff dialog is missing');
 }

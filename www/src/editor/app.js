@@ -28,6 +28,7 @@ const roundtripDiffDialog = document.querySelector(
   '#roundtrip-diff-dialog',
 );
 const roundtripDiffOutput = document.querySelector('#roundtrip-diff');
+const roundtripDiffCopy = document.querySelector('#roundtrip-diff-copy');
 const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
 const editorHelpOpen = document.querySelector('#editor-help-open');
 const editorHelpDialog = document.querySelector('#editor-help-dialog');
@@ -391,6 +392,15 @@ async function copyEditorText(button) {
     setEditorCopyStatus(button, true);
   } catch {
     setEditorCopyStatus(button, false);
+  }
+}
+
+async function copyRoundtripDiff() {
+  try {
+    await copyText(roundtripDiff);
+    setEditorCopyStatus(roundtripDiffCopy, true);
+  } catch {
+    setEditorCopyStatus(roundtripDiffCopy, false);
   }
 }
 
@@ -965,6 +975,9 @@ for (const indicator of roundtripStatuses) {
   indicator.addEventListener('click', showRoundtripDiff);
 }
 roundtripDiffDialog.addEventListener('click', closeDiffFromBackdrop);
+roundtripDiffCopy.addEventListener('click', () => {
+  void copyRoundtripDiff();
+});
 roundtripDiffClose.addEventListener('click', () => {
   roundtripDiffDialog.close();
 });

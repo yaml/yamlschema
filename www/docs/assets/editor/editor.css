@@ -152,7 +152,6 @@ body:has(.schema-editor) .md-main__inner {
   font-size: 0.75rem;
 }
 
-.schema-editor #roundtrip-diff-close,
 .schema-editor #editor-help-close,
 .schema-editor #editor-settings-close {
   border: 1px solid var(--editor-border);
@@ -213,12 +212,9 @@ body:has(.schema-editor) .md-main__inner {
   position: relative;
 }
 
-.schema-editor .editor-copy {
+.schema-editor .editor-copy,
+.schema-editor .dialog-icon-button {
   display: inline-grid;
-  position: absolute;
-  z-index: 4;
-  top: 0.45rem;
-  right: 1.1rem;
   width: 1.8rem;
   height: 1.8rem;
   place-items: center;
@@ -230,21 +226,37 @@ body:has(.schema-editor) .md-main__inner {
   cursor: pointer;
 }
 
-.schema-editor .editor-copy:hover {
+.schema-editor .editor-copy {
+  position: absolute;
+  z-index: 4;
+  top: 0.45rem;
+  right: 1.1rem;
+}
+
+.schema-editor .dialog-icon-button {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.schema-editor .editor-copy:hover,
+.schema-editor .dialog-icon-button:hover {
   border-color: var(--editor-border-focus);
   color: var(--editor-border-focus);
 }
 
-.schema-editor .editor-copy:focus-visible {
+.schema-editor .editor-copy:focus-visible,
+.schema-editor .dialog-icon-button:focus-visible {
   outline: 2px solid var(--editor-border-focus);
   outline-offset: 2px;
 }
 
-.schema-editor .editor-copy.copied {
+.schema-editor .editor-copy.copied,
+.schema-editor #roundtrip-diff-copy.copied {
   color: #218739;
 }
 
-.schema-editor .editor-copy.copied::after {
+.schema-editor .editor-copy.copied::after,
+.schema-editor #roundtrip-diff-copy.copied::after {
   position: absolute;
   top: 50%;
   right: calc(100% + 0.4rem);
@@ -275,15 +287,24 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .schema-editor .editor-copy.copied::after {
+  .schema-editor .editor-copy.copied::after,
+  .schema-editor #roundtrip-diff-copy.copied::after {
     animation: none;
   }
 }
 
-.schema-editor .editor-copy svg {
+.schema-editor .editor-copy svg,
+.schema-editor .dialog-icon-button svg {
   width: 1rem;
   height: 1rem;
   fill: currentColor;
+}
+
+.schema-editor #roundtrip-diff-close svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
 }
 
 .schema-editor .code-editor {
@@ -504,6 +525,12 @@ body:has(.schema-editor) .md-main__inner {
 .schema-editor .diff-dialog-heading h2 {
   margin: 0;
   font-size: 1rem;
+}
+
+.schema-editor .diff-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .schema-editor #roundtrip-diff {

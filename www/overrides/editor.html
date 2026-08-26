@@ -135,8 +135,27 @@
           aria-labelledby="roundtrip-diff-title">
     <div class="diff-dialog-heading">
       <h2 id="roundtrip-diff-title">Roundtrip diff</h2>
-      <button type="button" id="roundtrip-diff-close"
-              aria-label="Close roundtrip diff">Close</button>
+      <div class="diff-dialog-actions">
+        <button type="button" id="roundtrip-diff-copy"
+                class="dialog-icon-button"
+                data-copy-label="roundtrip diff text"
+                title="Copy text" aria-label="Copy roundtrip diff text"
+                aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="
+              M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2
+              2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0
+              16H8V7h11v14Z"/>
+          </svg>
+        </button>
+        <button type="button" id="roundtrip-diff-close"
+                class="dialog-icon-button" title="Close"
+                aria-label="Close roundtrip diff">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6 18 18M18 6 6 18"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <pre id="roundtrip-diff" tabindex="0"></pre>
   </dialog>
