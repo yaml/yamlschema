@@ -304,6 +304,7 @@ publish() {
       --title "YAMLSchema $tag" --notes-file "$notes_file" \
       "$top"/dist/ysd-*
   fi
+  make publish
   echo "Release $tag complete"
 }
 

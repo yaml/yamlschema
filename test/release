@@ -23,6 +23,7 @@ repo="$temporary/repo"
 origin="$temporary/origin.git"
 fake_bin="$temporary/bin"
 make_log="$temporary/make.log"
+gh_log="$temporary/gh.log"
 
 mkdir -p "$repo/bin" "$repo/util" "$fake_bin"
 cp "$top/Changes" "$top/Makefile" "$repo/"
@@ -57,7 +58,8 @@ run_release() {
     PATH="$fake_bin:$PATH" \
       PERL="$perl" \
       MAKE_LOG="$make_log" \
-      GH=/bin/false \
+      GH_LOG="$gh_log" \
+      GH="$fake_bin/gh" \
       "$release" release "$version"
   )
 }
@@ -100,5 +102,31 @@ set -e
 [[ $resume_status -ne 0 ]]
 grep -Fq "Resuming release $version" <<< "$resume_output"
 [[ $(git -C "$repo" rev-parse HEAD) == "$head_before" ]]
+
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$*" >> "$MAKE_LOG"' \
+  '[[ ${1-} != release-smoke ]] || mkdir -p .cache' \
+  > "$fake_bin/make"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$*" >> "$GH_LOG"' \
+  '[[ $1 != release || $2 != view ]]' \
+  > "$fake_bin/gh"
+chmod 0755 "$fake_bin/gh"
+rm -f "$make_log" "$gh_log"
+
+run_release >/dev/null
+
+expected=$(printf '%s\n' \
+  test \
+  "release-smoke VERSION=$version" \
+  publish)
+[[ $(< "$make_log") == "$expected" ]]
+grep -Fqx "release view v$version --repo yaml/yamlschema" "$gh_log"
+grep -Fq "release create v$version --repo yaml/yamlschema" "$gh_log"
+[[ $(git --git-dir="$origin" rev-parse refs/heads/main) == "$head_before" ]]
+[[ $(git --git-dir="$origin" rev-parse "refs/tags/v$version^{commit}") == \
+   "$head_before" ]]
 
 echo 'Release workflow checks passed'
