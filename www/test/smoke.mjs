@@ -50,6 +50,17 @@ const sectionJSON = EditorState.create({
 }`,
   extensions: [jsonLanguage()],
 });
+const sectionLegacyJSON = EditorState.create({
+  doc: `{
+  "definitions": {"thing": {"type": "string"}},
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "age": {"type": "integer"}
+  }
+}`,
+  extensions: [jsonLanguage()],
+});
 const sectionYSD = EditorState.create({
   doc: `+thing: +Str
 name: +Str
@@ -69,10 +80,14 @@ const sectionYSDC = EditorState.create({
 const expectedSections = 'defs/thing,properties/name,properties/age';
 for (const [state, format] of [
   [sectionJSON, 'json'],
+  [sectionLegacyJSON, 'legacy JSON'],
   [sectionYSD, 'ysd'],
   [sectionYSDC, 'ysdc'],
 ]) {
-  const sections = schemaSections(state, format)
+  const sections = schemaSections(
+    state,
+    format === 'legacy JSON' ? 'json' : format,
+  )
     .map((section) => section.id).join(',');
   if (sections !== expectedSections) {
     throw new Error(`unexpected ${format} schema sections: ${sections}`);

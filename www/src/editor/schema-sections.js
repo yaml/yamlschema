@@ -38,13 +38,15 @@ function jsonSections(state) {
   const groups = new Map();
   for (const property of children(object, 'Property')) {
     const name = jsonPropertyName(state, property);
-    if (name !== '$defs' && name !== 'properties') continue;
+    if (name !== '$defs' && name !== 'definitions' &&
+        name !== 'properties') continue;
     const value = jsonPropertyValue(property);
     if (value?.name === 'Object') groups.set(name, value);
   }
   const result = [];
   for (const [group, prefix] of [
     ['$defs', 'defs'],
+    ['definitions', 'defs'],
     ['properties', 'properties'],
   ]) {
     const objectValue = groups.get(group);
