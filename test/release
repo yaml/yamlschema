@@ -60,7 +60,7 @@ run_release() {
       MAKE_LOG="$make_log" \
       GH_LOG="$gh_log" \
       GH="$fake_bin/gh" \
-      RELEASE_BRANCH="${RELEASE_BRANCH:-main}" \
+      RELEASE_BRANCH="${TEST_RELEASE_BRANCH:-main}" \
       "$release" release "$version"
   )
 }
@@ -119,7 +119,7 @@ rm -f "$make_log" "$gh_log"
 git -C "$repo" branch -m install-issues
 
 expect_failure default-release-branch run_release
-RELEASE_BRANCH=install-issues run_release >/dev/null
+TEST_RELEASE_BRANCH=install-issues run_release >/dev/null
 
 expected=$(printf '%s\n' \
   test \
