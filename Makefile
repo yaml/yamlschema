@@ -22,7 +22,7 @@ RELEASE-DIST := $(CURDIR)/util/release-dist
 DIST := $(CURDIR)/dist
 RELEASE-BUILD := $(CURDIR)/.cache/release
 RELEASE-SMOKE-INPUT := $(CURDIR)/test/files/person.schema.json
-PREFIX ?= /usr/local
+PREFIX ?= $(if $(filter 0,$(shell id -u)),/usr/local,$(HOME)/.local)
 PREFIX-PATH := $(abspath $(PREFIX))
 YAMLSCHEMA-INSTALL := $(PREFIX-PATH)/share/yamlschema
 YSD-INSTALL := $(PREFIX-PATH)/bin/ysd
@@ -96,6 +96,16 @@ test-installer:
 test-install: build
 	@temporary=$$(mktemp -d); \
 	  trap 'rm -rf -- "$$temporary"' EXIT; \
+	  home="$$temporary/home"; \
+	  if test "$$(id -u)" = 0; then \
+	    default=/usr/local; \
+	  else \
+	    default="$$home/.local"; \
+	  fi; \
+	  actual=$$(HOME="$$home" $(MAKE) --no-print-directory -s \
+	    --eval='print-prefix:;@printf "%s\n" "$$(PREFIX-PATH)"' \
+	    print-prefix); \
+	  test "$$actual" = "$$default"; \
 	  prefix="$$temporary/prefix"; \
 	  output=$$($(MAKE) --no-print-directory install PREFIX="$$prefix"); \
 	  expected=$$(printf '%s\n' \
