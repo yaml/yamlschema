@@ -203,7 +203,8 @@ release-smoke: release-dist $(NODE)
 release: $(GH) $(PERL)
 	@$(if $(filter command line,$(origin VERSION)),,\
 	  $(error VERSION is required on the command line))
-	$Q PERL='$(PERL)' GH='$(GH)' \
+	$Q RELEASE_BRANCH='$(RELEASE_BRANCH)' \
+	  PERL='$(PERL)' GH='$(GH)' \
 	  '$(RELEASE)' release '$(VERSION)'
 
 MAKES-CLEAN += .cache/man-test .cache/release dist ysd

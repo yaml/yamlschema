@@ -8,6 +8,7 @@ command=${1:?usage: release release|prepare|publish VERSION}
 version=${2:?usage: release release|prepare|publish VERSION}
 version=${version#v}
 perl=${PERL:?PERL is required}
+release_branch=${RELEASE_BRANCH:-main}
 
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
   echo 'release: VERSION must have the form X.Y.Z' >&2
@@ -172,8 +173,9 @@ release_commit_ready() {
 validate_git_context() {
   local branch
   branch=$(git branch --show-current)
-  [[ $branch == main ]] || {
-    echo "release: releases must be made from main, not $branch" >&2
+  [[ $branch == "$release_branch" ]] || {
+    echo "release: releases must be made from $release_branch, not $branch" \
+      >&2
     exit 1
   }
   [[ -z $(git status --short) ]] || {
