@@ -114,6 +114,17 @@ const linesOnlyHash = serializeEditorState({
 if (linesOnlyHash !== '#v=1&p=json&l=2-8') {
   throw new Error(`line-only editor URL is unstable: ${linesOnlyHash}`);
 }
+const normalHash = serializeEditorState({normal: true});
+if (normalHash !== '#v=1&n=1') {
+  throw new Error(`JSON normal URL is unstable: ${normalHash}`);
+}
+const parsedNormal = parseEditorState(normalHash);
+if (!parsedNormal.ok || parsedNormal.state.normal !== true) {
+  throw new Error(`JSON normal URL did not parse: ${normalHash}`);
+}
+if (serializeEditorState({normal: false}) !== '') {
+  throw new Error('unchecked JSON normal state produced a fragment');
+}
 if (serializeEditorState({source: 'ysd'}) !== '') {
   throw new Error('canonical editor state produced a fragment');
 }
@@ -121,6 +132,7 @@ for (const invalidHash of [
   '#v=2&s=ysd&z=x',
   '#v=1&s=ysd',
   '#v=1&s=ysd&z=not-gzip',
+  '#v=1&n=0',
 ]) {
   if (parseEditorState(invalidHash).ok) {
     throw new Error(`invalid editor URL was accepted: ${invalidHash}`);
@@ -372,7 +384,8 @@ if (
   !appSource.includes('if (!cached) showGeneratingJSONSchema();') ||
   !appSource.includes('showRoundtripResult(cached);') ||
   !appSource.includes('(roundtripBusy || roundtripTimer !== undefined)') ||
-  !appSource.includes('cachedYSDCForYSD(ysd)')
+  !appSource.includes('cachedYSDCForYSD(ysd)') ||
+  !appSource.includes("const operation = 'json-schema-normalize';")
 ) {
   throw new Error('generated documents are not reused for unchanged inputs');
 }
@@ -430,9 +443,14 @@ if (
 if (
   !appSource.includes('if (sharedState.content !== undefined)') ||
   !appSource.includes('canonicalSourceValues = {};') ||
-  !appSource.includes('} else {\n    await loadSelectedSample(')
+  !appSource.includes('} else {\n    await loadSelectedSample(') ||
+  !appSource.includes(
+    'for (const select of Object.values(sampleSelects)) {\n' +
+    '    select.disabled = false;\n  }\n\n' +
+    '  if (sharedState.pane && sharedState.lines)',
+  )
 ) {
-  throw new Error('shared content does not bypass initial sample conversion');
+  throw new Error('shared content initialization is incomplete');
 }
 if (
   !appSource.includes("setEditorValue(yamlEditor, 'Generating YSDC...')") ||
@@ -493,7 +511,9 @@ if (
 if (
   !appSource.includes("person: {url: assetURL('examples/person.ysd.yaml')}") ||
   !appSource.includes("'harbor-next': {url: assetURL('values.ysd.yaml')}") ||
-  !appSource.includes("if (side === 'json') await showJsonSample(content)") ||
+  !appSource.includes(
+    "if (side === 'json') await showJsonSample(content, normal)",
+  ) ||
   !appSource.includes('else await showSample(content)')
 ) {
   throw new Error('packaged examples do not convert from their own side');
@@ -521,10 +541,19 @@ if (
   throw new Error('editor schema routes do not select canonical inputs');
 }
 if (
-  !appSource.includes("callWorker('json-schema-normalize', json)") ||
-  !appSource.includes('await convertJsonToYaml()')
+  !appSource.includes('let jsonNormal = false;') ||
+  !appSource.includes("let jsonValue = '';") ||
+  !appSource.includes('json = normalizeJson(jsonValue);') ||
+  !appSource.includes('setEditorValue(jsonEditor, jsonValue);') ||
+  !appSource.includes('setJsonNormal(false);') ||
+  !appSource.includes('setJsonNormal(true);') ||
+  !appSource.includes("jsonNormalControl.addEventListener('click'") ||
+  !appSource.includes('if (jsonNormal) {') ||
+  !appSource.includes('event.preventDefault();') ||
+  !appSource.includes("normal: documentSource === 'json' && jsonNormal") ||
+  !appSource.includes('sharedState.normal === true')
 ) {
-  throw new Error('Normalize does not run conversion and roundtrip');
+  throw new Error('JSON Schema Normal checkbox behavior is incomplete');
 }
 if (
   !styleSource.includes('.roundtrip-status:not(.source-active)') ||
@@ -656,8 +685,18 @@ if (
   throw new Error('header icon and title do not link to the home page');
 }
 if (
-  !indexHTML.includes('id="normalize-json"') ||
   !indexHTML.includes('id="json-schema-title"') ||
+  !indexHTML.includes('<label title="YAMLSchema Definition">\n' +
+    '            <input type="radio" name="yaml-format" value="ysd" ' +
+    'checked>\n            .ysd') ||
+  !indexHTML.includes('<label title="YAMLSchema Definition Canonical">\n' +
+    '            <input type="radio" name="yaml-format" value="ysdc">' +
+    '\n            .ysdc') ||
+  !indexHTML.includes('<label title="Normalized/Canonical Form">\n' +
+    '            <input type="checkbox" id="json-normal" disabled>\n' +
+    '            Normal') ||
+  indexHTML.includes('name="json-view"') ||
+  indexHTML.includes('id="normalize-json"') ||
   !indexHTML.includes('id="editor-settings-open"') ||
   !indexHTML.includes('aria-label="Open editor settings"') ||
   !indexHTML.includes('class="editor-actions"') ||
@@ -697,7 +736,9 @@ if (
   !indexHTML.includes('a diff is available to show') ||
   !indexHTML.includes('Choose a starting schema') ||
   !indexHTML.includes('Understand roundtrip status') ||
-  !indexHTML.includes('Normalize JSON Schema') ||
+  !indexHTML.includes('Generated JSON Schema is marked Normal') ||
+  !indexHTML.includes('Editing the JSON Schema clears that mark') ||
+  !indexHTML.includes('Select Normal to replace edited JSON Schema') ||
   !indexHTML.includes('Share content and lines')
 ) {
   throw new Error('editor help instructions are incomplete');
@@ -724,7 +765,12 @@ if (
 }
 if (
   !styleSource.includes('.schema-editor .editor-help-link::after') ||
-  !styleSource.includes('color: var(--md-typeset-a-color)') ||
+  !styleSource.includes(
+    '.editor-help-link {\n  color: var(--md-default-fg-color)',
+  ) ||
+  !styleSource.includes(
+    'border-radius: 50%;\n  color: var(--md-typeset-a-color)',
+  ) ||
   !styleSource.includes('.schema-editor .editor-help-link:focus-visible')
 ) {
   throw new Error('YAMLSchema help link is not styled as a link');

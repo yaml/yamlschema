@@ -80,16 +80,26 @@ export function nextLineRange(current, line, extend) {
   };
 }
 
-export function serializeEditorState({source, content, pane, lines} = {}) {
+export function serializeEditorState({
+  source,
+  content,
+  pane,
+  lines,
+  normal,
+} = {}) {
   const hasContent = content !== undefined;
   const hasLines = Boolean(pane && lines);
-  if (!hasContent && !hasLines) return '';
+  const hasNormal = normal === true;
+  if (!hasContent && !hasLines && !hasNormal) return '';
 
   if (hasContent && !sourceNames.has(source)) {
     throw new Error(`invalid editor source: ${source}`);
   }
   if (hasLines && !paneNames.has(pane)) {
     throw new Error(`invalid editor pane: ${pane}`);
+  }
+  if (normal !== undefined && typeof normal !== 'boolean') {
+    throw new Error(`invalid JSON Schema normal state: ${normal}`);
   }
 
   const parameters = new URLSearchParams();
@@ -98,6 +108,7 @@ export function serializeEditorState({source, content, pane, lines} = {}) {
     parameters.set('s', source);
     parameters.set('z', encodeContent(content));
   }
+  if (hasNormal) parameters.set('n', '1');
   if (hasLines) {
     parameters.set('p', pane);
     parameters.set('l', formatLineRange(lines));
@@ -115,6 +126,7 @@ export function parseEditorState(hash) {
 
     const source = parameters.get('s');
     const encoded = parameters.get('z');
+    const normal = parameters.get('n');
     const state = {};
     if (source !== null || encoded !== null) {
       if (!sourceNames.has(source) || encoded === null) {
@@ -122,6 +134,12 @@ export function parseEditorState(hash) {
       }
       state.source = source;
       state.content = decodeContent(encoded);
+    }
+    if (normal !== null) {
+      if (normal !== '1') {
+        throw new Error(`invalid JSON Schema normal state: ${normal}`);
+      }
+      state.normal = true;
     }
 
     const pane = parameters.get('p');

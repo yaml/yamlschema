@@ -14,7 +14,6 @@ const yamlError = document.querySelector('#yaml-error');
 const yamlSampleSelect = document.querySelector('#yaml-sample-select');
 const jsonSampleSelect = document.querySelector('#json-sample-select');
 const jsonSchemaTitle = document.querySelector('#json-schema-title');
-const normalizeJsonButton = document.querySelector('#normalize-json');
 const editorSettingsOpen = document.querySelector('#editor-settings-open');
 const editorSettingsDialog = document.querySelector(
   '#editor-settings-dialog',
@@ -32,9 +31,10 @@ const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
 const editorHelpOpen = document.querySelector('#editor-help-open');
 const editorHelpDialog = document.querySelector('#editor-help-dialog');
 const editorHelpClose = document.querySelector('#editor-help-close');
-const formatControls = document.querySelectorAll(
+const yamlFormatControls = document.querySelectorAll(
   'input[name="yaml-format"]',
 );
+const jsonNormalControl = document.querySelector('#json-normal');
 const formatStorageKey = 'yamlschema.yaml-format';
 const scrollSyncStorageKey = 'yamlschema.scroll-sync';
 const legacySampleStorageKey = 'yamlschema.sample';
@@ -93,11 +93,14 @@ let roundtripRequest = 0;
 let roundtripRequestKey;
 let roundtripSource;
 let conversionRequest = 0;
+let jsonNormalRequest = 0;
 let workerRequest = 0;
 let schemaWorkerReady = false;
 let updating = false;
 let yamlFormat = loadYamlFormat();
+let jsonNormal = false;
 let ysdValue = '';
+let jsonValue = '';
 let roundtripDiff = '';
 let selectedSample;
 let selectedSampleSource;
@@ -154,7 +157,9 @@ function saveScrollSync(enabled) {
 }
 
 function editorFocused(editor) {
-  if (!updating && (editor === jsonEditor || yamlFormat === 'ysd')) {
+  const editableJson = editor === jsonEditor;
+  const editableYSD = editor === yamlEditor && yamlFormat === 'ysd';
+  if (!updating && (editableJson || editableYSD)) {
     const source = editor === jsonEditor ? 'json' : 'ysd';
     documentSource = source;
     if (!sampleRouteSelected || source !== selectedSampleSource) {
@@ -203,6 +208,11 @@ function saveYamlFormat(format) {
   } catch {
     // The selector still works when storage is unavailable.
   }
+}
+
+function setJsonNormal(normal) {
+  jsonNormal = normal;
+  jsonNormalControl.checked = normal;
 }
 
 function defaultSample(source) {
@@ -289,7 +299,7 @@ function showCustomSelection(source) {
 }
 
 function currentSourceContent(source) {
-  if (source === 'json') return jsonEditor.value;
+  if (source === 'json') return jsonValue;
   return yamlFormat === 'ysd' ? yamlEditor.value : ysdValue;
 }
 
@@ -304,6 +314,9 @@ function updateEditorURL() {
     content: custom,
     pane: linkedPane,
     lines: linkedLines,
+    normal: documentSource === 'json' && jsonNormal
+      ? true
+      : undefined,
   });
   replaceEditorURL(sampleRouteSelected ? selectedSample : undefined, hash);
   if (custom === undefined) {
@@ -464,7 +477,7 @@ function showRoundtripDiff() {
 function failWorker(error) {
   const message = `Worker error: ${error}`;
   schemaWorkerReady = false;
-  normalizeJsonButton.disabled = true;
+  jsonNormalControl.disabled = true;
   for (const resolve of workerCalls.values()) {
     resolve({ok: false, error: message});
   }
@@ -584,7 +597,7 @@ async function convertJsonToYaml(
 ) {
   let json;
   try {
-    json = normalizeJson(jsonEditor.value);
+    json = normalizeJson(jsonValue);
   } catch (error) {
     cancelRoundtripStatus();
     setRoundtripStatus('unknown');
@@ -623,65 +636,95 @@ async function convertJsonToYaml(
   showResult(jsonEditor, yamlEditor, jsonError, yamlError, result);
 }
 
+async function normalizeJsonSchema() {
+  if (!schemaWorkerReady || updating || jsonNormal) {
+    jsonNormalControl.checked = jsonNormal;
+    return;
+  }
+  const sourceValue = jsonValue;
+  const id = ++jsonNormalRequest;
+  conversionRequest++;
+  clearTimeout(timer);
+  clearTimeout(checkingTimer);
+  documentSource = 'json';
+  setJsonNormal(false);
+  jsonNormalControl.disabled = true;
+  cancelRoundtripStatus();
+  setRoundtripSource('json');
+  setRoundtripStatus('checking');
+  let json;
+  try {
+    json = normalizeJson(sourceValue);
+  } catch (error) {
+    if (id !== jsonNormalRequest || jsonValue !== sourceValue) return;
+    jsonEditor.classList.add('invalid');
+    jsonError.textContent = error.message;
+    setRoundtripStatus('unknown');
+    jsonNormalControl.disabled = !schemaWorkerReady;
+    return;
+  }
+  const operation = 'json-schema-normalize';
+  const cached = cachedWorkerResult(operation, json);
+  const result = cached || await callWorker(operation, json);
+  if (id !== jsonNormalRequest || jsonValue !== sourceValue) return result;
+  if (!result.ok) {
+    jsonEditor.classList.add('invalid');
+    jsonError.textContent = result.error;
+    setRoundtripStatus('unknown', 'JSON Schema Normalize Error');
+    jsonNormalControl.disabled = !schemaWorkerReady;
+    return result;
+  }
+  jsonEditor.classList.remove('invalid');
+  jsonError.textContent = '';
+  jsonValue = result.value;
+  setEditorValue(jsonEditor, jsonValue);
+  setJsonNormal(true);
+  await convertJsonToYaml();
+  if (id !== jsonNormalRequest) return result;
+  jsonNormalControl.disabled = !schemaWorkerReady;
+  updateEditorURL();
+  return result;
+}
+
 async function convertYamlToJson() {
   const id = ++conversionRequest;
   const ysd = yamlEditor.value;
   ysdValue = ysd;
+  jsonNormalRequest++;
+  setJsonNormal(false);
+  jsonNormalControl.disabled = true;
   const operation = 'ysd-to-json-schema';
   const cached = cachedWorkerResult(operation, ysd);
   if (!cached) showGeneratingJSONSchema();
   const result = cached || await callWorker(operation, ysd);
   if (id !== conversionRequest) return;
-  showResult(yamlEditor, jsonEditor, yamlError, jsonError, result);
   if (result.ok) {
+    yamlEditor.classList.remove('invalid');
+    jsonEditor.classList.remove('invalid');
+    yamlError.textContent = '';
+    jsonError.textContent = '';
+    jsonValue = result.value;
+    setEditorValue(jsonEditor, jsonValue);
+    setJsonNormal(true);
+    jsonNormalControl.disabled = !schemaWorkerReady;
+    scheduleScrollSync(yamlEditor);
     updateRoundtripStatus('ysd', ysd);
   } else {
+    showResult(yamlEditor, jsonEditor, yamlError, jsonError, result);
+    jsonNormalControl.disabled = !schemaWorkerReady;
     cancelRoundtripStatus();
     setRoundtripStatus('unknown', 'YAML Schema Error');
   }
   return result;
 }
 
-async function normalizeJsonSchema() {
-  if (!schemaWorkerReady || updating) return;
-  documentSource = 'json';
-  normalizeJsonButton.disabled = true;
-  const id = ++conversionRequest;
-  clearTimeout(timer);
-  clearTimeout(checkingTimer);
-  setRoundtripSource('json');
-  cancelRoundtripStatus();
-  setRoundtripStatus('checking');
-  try {
-    let json;
-    try {
-      json = normalizeJson(jsonEditor.value);
-    } catch (error) {
-      jsonEditor.classList.add('invalid');
-      jsonError.textContent = error.message;
-      setRoundtripStatus('unknown');
-      return;
-    }
-    const result = await callWorker('json-schema-normalize', json);
-    if (id !== conversionRequest) return;
-    if (!result.ok) {
-      jsonEditor.classList.add('invalid');
-      jsonError.textContent = result.error;
-      setRoundtripStatus('unknown', 'JSON Schema Normalize Error');
-      return;
-    }
-    setEditorValue(jsonEditor, result.value);
-    await convertJsonToYaml();
-    updateEditorURL();
-  } finally {
-    normalizeJsonButton.disabled = !schemaWorkerReady;
-  }
-}
-
 function convertFrom(editor) {
   if (!schemaWorkerReady || updating) return;
-  if (editor === jsonEditor) void convertJsonToYaml();
-  else if (yamlFormat === 'ysd') void convertYamlToJson();
+  if (editor === jsonEditor) {
+    void convertJsonToYaml();
+  } else if (yamlFormat === 'ysd') {
+    void convertYamlToJson();
+  }
 }
 
 function roundtripOnFocus(editor) {
@@ -696,7 +739,7 @@ function roundtripOnFocus(editor) {
     return;
   }
   try {
-    const json = normalizeJson(jsonEditor.value);
+    const json = normalizeJson(jsonValue);
     updateRoundtripStatus('json', json, 0);
   } catch {
     cancelRoundtripStatus();
@@ -785,16 +828,24 @@ async function showSample(ysd) {
   }
 }
 
-async function showJsonSample(json) {
-  setEditorValue(jsonEditor, json);
+async function showJsonSample(json, normal = false) {
+  jsonValue = json;
+  jsonNormalRequest++;
+  setEditorValue(jsonEditor, jsonValue);
+  setJsonNormal(normal);
   await convertJsonToYaml();
 }
 
-async function loadSelectedSample(side = loadSampleSource()) {
+async function loadSelectedSample(
+  side = loadSampleSource(),
+  normal = false,
+) {
+  conversionRequest++;
+  jsonNormalRequest++;
   for (const select of Object.values(sampleSelects)) {
     select.disabled = true;
   }
-  normalizeJsonButton.disabled = true;
+  jsonNormalControl.disabled = true;
   const select = sampleSelects[side];
   const sources = sampleSources[side];
   const sample = sources[select.value] || sources[defaultSample(side)];
@@ -813,7 +864,7 @@ async function loadSelectedSample(side = loadSampleSource()) {
       }
       content = await response.text();
     }
-    if (side === 'json') await showJsonSample(content);
+    if (side === 'json') await showJsonSample(content, normal);
     else await showSample(content);
   } catch (error) {
     cancelRoundtripStatus();
@@ -826,7 +877,7 @@ async function loadSelectedSample(side = loadSampleSource()) {
     for (const current of Object.values(sampleSelects)) {
       current.disabled = false;
     }
-    normalizeJsonButton.disabled = !schemaWorkerReady;
+    jsonNormalControl.disabled = !schemaWorkerReady;
   }
 }
 
@@ -853,6 +904,14 @@ async function selectYamlFormat(format, remember = true) {
 
 function schedule(editor) {
   const source = editor === jsonEditor ? 'json' : 'ysd';
+  jsonNormalRequest++;
+  setJsonNormal(false);
+  if (source === 'json') {
+    jsonValue = jsonEditor.value;
+    jsonNormalControl.disabled = !schemaWorkerReady;
+  } else {
+    jsonNormalControl.disabled = true;
+  }
   documentSource = source;
   setRoundtripSource(source);
   conversionRequest++;
@@ -899,7 +958,14 @@ scrollSyncControl.addEventListener('change', () => {
   if (scrollSyncEnabled && source) synchronizeScroll(source);
 });
 jsonSchemaTitle.addEventListener('dblclick', clearSiteCookies);
-normalizeJsonButton.addEventListener('click', () => {
+jsonNormalControl.addEventListener('click', (event) => {
+  if (jsonNormal) {
+    event.preventDefault();
+    jsonNormalControl.checked = true;
+    return;
+  }
+  if (!jsonNormalControl.checked) return;
+  jsonNormalControl.checked = false;
   void normalizeJsonSchema();
 });
 const requestedSample = routedSampleSelection();
@@ -935,13 +1001,13 @@ for (const [source, select] of Object.entries(sampleSelects)) {
     await loadSelectedSample(source);
     canonicalSourceValues = {
       ysd: ysdValue,
-      json: jsonEditor.value,
+      json: jsonValue,
     };
     loadingEditorState = false;
     updateEditorURL();
   });
 }
-for (const control of formatControls) {
+for (const control of yamlFormatControls) {
   control.checked = control.value === yamlFormat;
   control.addEventListener('change', () => {
     if (control.checked) void selectYamlFormat(control.value);
@@ -954,22 +1020,28 @@ async function initializeEditor() {
     documentSource = sharedState.source;
     canonicalSourceValues = {};
     if (sharedState.source === 'json') {
-      await showJsonSample(sharedState.content);
+      await showJsonSample(sharedState.content, sharedState.normal === true);
     } else {
       await showSample(sharedState.content);
     }
   } else {
-    await loadSelectedSample(initialSampleSource);
+    await loadSelectedSample(
+      initialSampleSource,
+      initialSampleSource === 'json' && sharedState.normal === true,
+    );
     canonicalSourceValues = {
       ysd: ysdValue,
-      json: jsonEditor.value,
+      json: jsonValue,
     };
+  }
+  for (const select of Object.values(sampleSelects)) {
+    select.disabled = false;
   }
 
   if (sharedState.pane && sharedState.lines) {
     if (sharedState.pane === 'ysd' || sharedState.pane === 'ysdc') {
       await selectYamlFormat(sharedState.pane, false);
-      for (const control of formatControls) {
+      for (const control of yamlFormatControls) {
         control.checked = control.value === yamlFormat;
       }
       linkedPane = sharedState.pane;
@@ -987,7 +1059,7 @@ async function initializeEditor() {
 schemaWorker.addEventListener('message', ({data}) => {
   if (data.type === 'ready') {
     schemaWorkerReady = true;
-    normalizeJsonButton.disabled = false;
+    jsonNormalControl.disabled = false;
     void initializeEditor();
     return;
   }

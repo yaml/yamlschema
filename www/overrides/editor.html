@@ -46,13 +46,13 @@
            title="Open editor help">YAMLSchema</a>
         <div class="format-selector" role="radiogroup"
              aria-label="YAML Schema format">
-          <label>
+          <label title="YAMLSchema Definition">
             <input type="radio" name="yaml-format" value="ysd" checked>
-            YSD
+            .ysd
           </label>
-          <label>
+          <label title="YAMLSchema Definition Canonical">
             <input type="radio" name="yaml-format" value="ysdc">
-            YSDC
+            .ysdc
           </label>
         </div>
         <select id="yaml-sample-select" class="sample-select"
@@ -74,8 +74,12 @@
                 title="Checking Roundtrip" aria-label="Checking Roundtrip"
                 disabled>…</button>
         <span id="json-schema-title" class="editor-title">JSON Schema</span>
-        <button type="button" id="normalize-json"
-                title="Normalize JSON Schema" disabled>Normalize</button>
+        <div class="format-selector">
+          <label title="Normalized/Canonical Form">
+            <input type="checkbox" id="json-normal" disabled>
+            Normal
+          </label>
+        </div>
         <select id="json-sample-select" class="sample-select"
                 aria-label="JSON Schema example" disabled>
           <option value="" disabled selected>Choose a schema</option>
@@ -166,6 +170,12 @@
           YSDC is generated and read-only, so switch back to YSD to edit the
           YAMLSchema source.
         </p>
+        <p>
+          Generated JSON Schema is marked Normal.
+          Editing the JSON Schema clears that mark.
+          Select Normal to replace edited JSON Schema with its normalized,
+          canonical form and regenerate YAMLSchema.
+        </p>
       </section>
       <section>
         <h3>Share content and lines</h3>
@@ -206,14 +216,6 @@
         <p>
           The indicator appears only beside the current source pane.
           Focusing an editable pane also starts a fresh roundtrip check.
-        </p>
-      </section>
-      <section>
-        <h3>Normalize JSON Schema</h3>
-        <p>
-          Normalize rewrites the JSON Schema into the converter's canonical
-          representation, regenerates YAMLSchema, and runs another roundtrip
-          check.
         </p>
       </section>
       <p class="editor-help-note">

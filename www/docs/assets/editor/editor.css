@@ -89,7 +89,7 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 .schema-editor .editor-help-link {
-  color: var(--md-typeset-a-color);
+  color: var(--md-default-fg-color);
   text-decoration: underline;
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.18em;
@@ -103,6 +103,7 @@ body:has(.schema-editor) .md-main__inner {
   place-items: center;
   border: 1px solid currentColor;
   border-radius: 50%;
+  color: var(--md-typeset-a-color);
   content: "?";
   font-size: 0.68rem;
   line-height: 1;
@@ -111,7 +112,7 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 .schema-editor .editor-help-link:hover {
-  color: var(--md-accent-fg-color);
+  color: var(--md-default-fg-color);
 }
 
 .schema-editor .editor-help-link:focus-visible {
@@ -151,7 +152,6 @@ body:has(.schema-editor) .md-main__inner {
   font-size: 0.75rem;
 }
 
-.schema-editor #normalize-json,
 .schema-editor #roundtrip-diff-close,
 .schema-editor #editor-help-close,
 .schema-editor #editor-settings-close {
@@ -163,11 +163,6 @@ body:has(.schema-editor) .md-main__inner {
   font: inherit;
   font-size: 0.72rem;
   cursor: pointer;
-}
-
-.schema-editor #normalize-json:disabled {
-  cursor: wait;
-  opacity: 0.55;
 }
 
 .schema-editor .roundtrip-status {
