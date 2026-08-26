@@ -76,6 +76,10 @@ const sampleSources = {
     'ansible-builder': {
       url: assetURL('examples/ansible-builder.schema.json'),
     },
+    'openapi-3-schema': {
+      url: assetURL('examples/openapi-3-schema.schema.json'),
+    },
+    petstore: {url: assetURL('examples/petstore.schema.json')},
     'netbox-generated': {
       url: assetURL('examples/netbox-generated.schema.json'),
     },

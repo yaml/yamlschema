@@ -698,6 +698,8 @@ const exampleFiles = [
   'movie',
   'user-profile',
   'ansible-builder',
+  'openapi-3-schema',
+  'petstore',
   'netbox-generated',
 ];
 const routedExamples = [
@@ -1000,9 +1002,12 @@ for (const name of exampleFiles) {
     'utf8',
   );
   const schema = JSON.parse(text);
+  const dialect = name === 'openapi-3-schema'
+    ? 'http://json-schema.org/draft-04/schema#'
+    : 'https://json-schema.org/draft/2020-12/schema';
   if (schema.$schema &&
-      schema.$schema !== 'https://json-schema.org/draft/2020-12/schema') {
-    throw new Error(`${name} does not use JSON Schema 2020-12`);
+      schema.$schema !== dialect) {
+    throw new Error(`${name} has the wrong JSON Schema dialect`);
   }
   const converted = globalThis.gloat.exports['json-schema-to-ysd'](text);
   if (!converted.ok) {
@@ -1017,6 +1022,25 @@ for (const name of exampleFiles) {
     throw new Error(`${name} roundtrip check failed: ${JSON.stringify(
       roundtrip,
     )}`);
+  }
+  if (name === 'petstore') {
+    if (
+      schema.title !== 'OpenAPI PetStore' ||
+      Object.keys(schema.$defs).length !== 5 ||
+      schema.properties.category.$ref !== '#/$defs/Category' ||
+      roundtrip.value !== true
+    ) {
+      throw new Error('OpenAPI PetStore schema is incorrect');
+    }
+  }
+  if (name === 'openapi-3-schema') {
+    if (
+      schema.id !==
+        'https://spec.openapis.org/oas/3.0/schema/2024-10-18' ||
+      Object.keys(schema.definitions).length !== 42
+    ) {
+      throw new Error('OpenAPI 3.0 schema is incorrect');
+    }
   }
   if (name === 'address') {
     if (roundtrip.value !== true) {
