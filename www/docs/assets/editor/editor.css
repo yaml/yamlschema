@@ -447,6 +447,8 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 .schema-editor .editor-settings-content {
+  display: grid;
+  gap: 1rem;
   padding: 1rem;
 }
 

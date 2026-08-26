@@ -129,6 +129,7 @@ export class CodeEditor {
     this.fontMeasureContext = document.createElement('canvas')
       .getContext('2d');
     this.readOnlyCompartment = new Compartment();
+    this.languageCompartment = new Compartment();
 
     const lineNumberExtension = lineNumbers({
       domEventHandlers: {
@@ -157,7 +158,7 @@ export class CodeEditor {
       parent: mount,
       extensions: [
         minimalSetup,
-        language,
+        this.languageCompartment.of(language),
         syntaxHighlighting(schemaHighlightStyle),
         lineNumberExtension,
         linkedLinesField,
@@ -282,6 +283,12 @@ export class CodeEditor {
       ]),
     });
     this.mount.classList.toggle('readonly', readOnly);
+  }
+
+  setLanguage(language) {
+    this.view.dispatch({
+      effects: this.languageCompartment.reconfigure(language),
+    });
   }
 
   setLinkedLines(range, scroll = false) {

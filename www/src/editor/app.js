@@ -20,6 +20,7 @@ const editorSettingsDialog = document.querySelector(
 );
 const editorSettingsClose = document.querySelector('#editor-settings-close');
 const scrollSyncControl = document.querySelector('#scroll-sync');
+const ysdcJsonControl = document.querySelector('#ysdc-json');
 const editorShare = document.querySelector('#editor-share');
 const editorShareStatus = document.querySelector('#editor-share-status');
 const editorCopyButtons = document.querySelectorAll('.editor-copy');
@@ -39,6 +40,7 @@ const yamlFormatControls = document.querySelectorAll(
 const jsonNormalControl = document.querySelector('#json-normal');
 const formatStorageKey = 'yamlschema.yaml-format';
 const scrollSyncStorageKey = 'yamlschema.scroll-sync';
+const ysdcJsonStorageKey = 'yamlschema.ysdc-json';
 const legacySampleStorageKey = 'yamlschema.sample';
 const sampleSourceStorageKey = 'yamlschema.sample-source';
 const sampleStorageKeys = {
@@ -118,6 +120,7 @@ let canonicalSourceValues = {};
 let sampleRouteSelected = false;
 let scrollSyncFrame;
 let scrollSyncEnabled = loadScrollSync();
+let ysdcJson = loadYSDCJson();
 let shareStatusTimer;
 const editorCopyTimers = new WeakMap();
 const workerCalls = new Map();
@@ -185,9 +188,9 @@ function scrollSyncSourceEditor() {
 
 function synchronizeScroll(editor) {
   if (!scrollSyncEnabled || editor !== scrollSyncSourceEditor()) return;
-  const sourceFormat = editor === jsonEditor ? 'json' : yamlFormat;
+  const sourceFormat = editor === jsonEditor ? 'json' : yamlPaneFormat();
   const target = editor === jsonEditor ? yamlEditor : jsonEditor;
-  const targetFormat = target === jsonEditor ? 'json' : yamlFormat;
+  const targetFormat = target === jsonEditor ? 'json' : yamlPaneFormat();
   target.scrollToSchemaLocation(
     editor.schemaLocation(sourceFormat),
     targetFormat,
@@ -215,6 +218,37 @@ function saveYamlFormat(format) {
   } catch {
     // The selector still works when storage is unavailable.
   }
+}
+
+function loadYSDCJson() {
+  try {
+    return localStorage.getItem(ysdcJsonStorageKey) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function saveYSDCJson(enabled) {
+  try {
+    localStorage.setItem(ysdcJsonStorageKey, String(enabled));
+  } catch {
+    // The display option still works when storage is unavailable.
+  }
+}
+
+function yamlPaneFormat() {
+  return yamlFormat === 'ysdc' && ysdcJson ? 'ysdc-json' : yamlFormat;
+}
+
+function currentYSDCOperation() {
+  return ysdcJson
+    ? 'json-schema-to-ysdc-json'
+    : 'json-schema-to-ysdc';
+}
+
+function updateYamlEditorLanguage() {
+  const language = yamlPaneFormat() === 'ysdc-json' ? json() : yaml();
+  yamlEditor.setLanguage(language);
 }
 
 function setJsonNormal(normal) {
@@ -655,7 +689,7 @@ async function convertJsonToYaml(
   }
   const id = ++conversionRequest;
   const ysdOperation = 'json-schema-to-ysd';
-  const ysdcOperation = 'json-schema-to-ysdc';
+  const ysdcOperation = currentYSDCOperation();
   const cachedYSD = cachedWorkerResult(ysdOperation, json);
   const cachedYSDC = cachedWorkerResult(ysdcOperation, json);
   const cachedVisible = yamlFormat === 'ysdc' ? cachedYSDC : cachedYSD;
@@ -857,7 +891,7 @@ function cachedYSDCForYSD(ysd) {
   const json = cachedWorkerResult('ysd-to-json-schema', ysd);
   if (!json?.ok) return undefined;
   return cachedWorkerResult(
-    'json-schema-to-ysdc',
+    currentYSDCOperation(),
     normalizeJson(json.value),
   );
 }
@@ -930,6 +964,7 @@ async function loadSelectedSample(
 async function selectYamlFormat(format, remember = true) {
   yamlFormat = format;
   if (remember) saveYamlFormat(format);
+  updateYamlEditorLanguage();
   const readonly = format === 'ysdc';
   yamlEditor.setReadOnly(readonly);
   yamlEditor.classList.remove('invalid');
@@ -1010,6 +1045,15 @@ scrollSyncControl.addEventListener('change', () => {
   saveScrollSync(scrollSyncEnabled);
   const source = scrollSyncSourceEditor();
   if (scrollSyncEnabled && source) synchronizeScroll(source);
+});
+ysdcJsonControl.checked = ysdcJson;
+ysdcJsonControl.addEventListener('change', () => {
+  ysdcJson = ysdcJsonControl.checked;
+  saveYSDCJson(ysdcJson);
+  updateYamlEditorLanguage();
+  if (yamlFormat === 'ysdc' && schemaWorkerReady) {
+    void convertJsonToYaml(false, false);
+  }
 });
 jsonSchemaTitle.addEventListener('dblclick', clearSiteCookies);
 jsonNormalControl.addEventListener('click', (event) => {

@@ -77,12 +77,23 @@ const sectionYSDC = EditorState.create({
 `,
   extensions: [yamlLanguage()],
 });
+const sectionJSONYSDC = EditorState.create({
+  doc: `{
+  "+thing": {".type": "+Str"},
+  ".root": {
+    "name": "+Str",
+    "age?": "+Int"
+  }
+}`,
+  extensions: [jsonLanguage()],
+});
 const expectedSections = 'defs/thing,properties/name,properties/age';
 for (const [state, format] of [
   [sectionJSON, 'json'],
   [sectionLegacyJSON, 'legacy JSON'],
   [sectionYSD, 'ysd'],
   [sectionYSDC, 'ysdc'],
+  [sectionJSONYSDC, 'ysdc-json'],
 ]) {
   const sections = schemaSections(
     state,
@@ -432,6 +443,7 @@ for (const feature of [
   'foldGutter()',
   'bracketMatching()',
   'setReadOnly(readOnly)',
+  'setLanguage(language)',
   'setLinkedLines(range, scroll = false)',
   'scrollToLinkedLines(range)',
   "EditorView.scrollIntoView(position, {y: 'start'})",
@@ -514,6 +526,10 @@ if (
 if (
   !appSource.includes('editorSettingsDialog.showModal()') ||
   !appSource.includes('yamlschema.scroll-sync') ||
+  !appSource.includes('yamlschema.ysdc-json') ||
+  !appSource.includes("? 'json-schema-to-ysdc-json'") ||
+  !appSource.includes("yamlPaneFormat() === 'ysdc-json' ? json() : yaml()") ||
+  !appSource.includes('yamlEditor.setLanguage(language)') ||
   !appSource.includes('editor !== scrollSyncSourceEditor()') ||
   !appSource.includes('scrollToSchemaLocation') ||
   !appSource.includes('requestAnimationFrame')
@@ -796,6 +812,8 @@ if (
   !indexHTML.includes('id="editor-settings-dialog"') ||
   !indexHTML.includes('id="scroll-sync" checked') ||
   !indexHTML.includes('<strong>Scroll sync</strong>') ||
+  !indexHTML.includes('id="ysdc-json"') ||
+  !indexHTML.includes('<strong>.ysdc as JSON</strong>') ||
   !styleSource.includes('.schema-editor #editor-settings-dialog')
 ) {
   throw new Error('editor settings dialog is incomplete');
@@ -1246,11 +1264,24 @@ if (!toJSON.ok ||
 }
 
 const toYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](json);
+const toJSONYSDC = globalThis.gloat.exports[
+  'json-schema-to-ysdc-json'
+](json);
 const expectedYSDC =
   '.ysid: https://example.com/person.ysd.yaml\n' +
   '.open: true\nname: +Str';
 if (!toYSDC.ok || toYSDC.value !== expectedYSDC) {
   throw new Error(`JSON to .ysdc failed: ${JSON.stringify(toYSDC)}`);
+}
+const parsedJSONYSDC = toJSONYSDC.ok && JSON.parse(toJSONYSDC.value);
+if (!parsedJSONYSDC ||
+    parsedJSONYSDC['.ysid'] !==
+      'https://example.com/person.ysd.yaml' ||
+    parsedJSONYSDC['.open'] !== true ||
+    parsedJSONYSDC.name !== '+Str') {
+  throw new Error(
+    `JSON to JSON .ysdc failed: ${JSON.stringify(toJSONYSDC)}`,
+  );
 }
 
 const closedYSDC = globalThis.gloat.exports[

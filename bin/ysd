@@ -60,6 +60,7 @@ defn main(*args):
 EXPORT =::
   json-schema-normalize: [str, str]
   json-schema-to-ysd: [str, str]
+  json-schema-to-ysdc-json: [str, str]
   json-schema-to-ysdc: [str, str]
   json-schema-roundtrip-report: [str, str]
   json-schema-roundtrip-works: [str, bool]
@@ -98,6 +99,11 @@ defn json-schema-normalize(text):
 
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
+
+defn json-schema-to-ysdc-json(text):
+  schema =: load-json-schema(text false)
+  data =: canonical-ysdc-data(build-doc(schema) 'ysdc')
+  canonical-json-output: data {}
 
 defn json-schema-to-ysdc(text):
   json-schema-to-ysdc-text: text
@@ -611,9 +617,13 @@ defn json-schema-to-ysdc-text(text):
   canonical-ysdc-text: build-doc(schema) 'ysdc'
 
 defn canonical-ysdc-text(data source):
+  data =: canonical-ysdc-data(data source)
+  post-process ys::yaml/dump(data): true
+
+defn canonical-ysdc-data(data source):
   expanded =: expand-ysdc(data source)
   expanded =: canonicalize-document-ysid(expanded)
-  post-process ys::yaml/dump(collapse-direct-types(expanded)): true
+  collapse-direct-types: expanded
 
 defn roundtrip-match(opts):
   when-not opts.quiet:

@@ -64,6 +64,38 @@ function jsonSections(state) {
   return result.sort((left, right) => left.from - right.from);
 }
 
+function jsonYSDCSections(state) {
+  const root = syntaxTree(state).topNode;
+  const object = child(root, 'Object');
+  if (!object) return [];
+  const result = [];
+  for (const property of children(object, 'Property')) {
+    const name = jsonPropertyName(state, property);
+    if (!name) continue;
+    if (name === '.root') {
+      const rootObject = jsonPropertyValue(property);
+      if (rootObject?.name !== 'Object') continue;
+      for (const rootProperty of children(rootObject, 'Property')) {
+        const rootName = jsonPropertyName(state, rootProperty);
+        if (!rootName || rootName.startsWith('.')) continue;
+        result.push({
+          id: `properties/${rootName.replace(/\?$/, '')}`,
+          from: rootProperty.from,
+          to: rootProperty.to,
+        });
+      }
+      continue;
+    }
+    if (!name.startsWith('+') || name === '+Str') continue;
+    result.push({
+      id: `defs/${name.slice(1)}`,
+      from: property.from,
+      to: property.to,
+    });
+  }
+  return result.sort((left, right) => left.from - right.from);
+}
+
 function yamlKey(state, pair) {
   const key = child(pair, 'Key');
   if (!key) return undefined;
@@ -124,5 +156,7 @@ function yamlSections(state) {
 }
 
 export function schemaSections(state, format) {
-  return format === 'json' ? jsonSections(state) : yamlSections(state);
+  if (format === 'json') return jsonSections(state);
+  if (format === 'ysdc-json') return jsonYSDCSections(state);
+  return yamlSections(state);
 }
