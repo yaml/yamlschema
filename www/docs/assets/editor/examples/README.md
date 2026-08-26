@@ -13,6 +13,15 @@ Only its first document, the top-level device schema, is included here.
 The examples are distributed under the BSD 3-Clause License in
 [LICENSE](LICENSE).
 
+`json-schema-2020-12.schema.json` is the official
+[Draft 2020-12 meta-schema](https://json-schema.org/draft/2020-12/schema).
+It retains the published references to the seven vocabulary meta-schemas.
+
+`yamlschema.ysd.yaml` is a basic schema for the parsed YAMLSchema document
+model.
+It constrains documents to recursively nested YAML values under string keys.
+It does not yet constrain reserved keys or compact type expressions.
+
 `petstore.schema.json` is derived from the
 [ReadMe OpenAPI PetStore example](https://github.com/readmeio/oas-examples/blob/060d4ffbbe63003f923c8cd7268ee39a495cf21f/3.0/json/petstore.json).
 The `Pet` component is the root schema and the other component schemas are in

@@ -1,0 +1,21 @@
+# Basic schema for the parsed YAMLSchema document model.
+# Reserved keys and compact type expressions are not yet constrained.
+.ysid: https://yamlschema.org/schema/yamlschema.ysd.yaml
+.title: YAMLSchema Document
+.desc: Parsed YAMLSchema document with recursively nested YAML values.
+
++schema-node:
+  .one:
+  - +Str
+  - +Num
+  - +Bool
+  - +Null
+  - +schema-map
+  - +schema-list
+
++schema-map:
+  +Str: +schema-node
+
++schema-list: +schema-node[]
+
++Str: +schema-node
