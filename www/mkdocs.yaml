@@ -54,8 +54,8 @@ extra_javascript:
 - javascripts/carousel.js
 
 nav:
-- Demo: demo/index.md
 - Getting Started: getting-started.md
+- Demos: demo/index.md
 - Examples: examples.md
 - Cheat Sheet: cheat-sheet.md
 - CLI: cli.md

@@ -13,10 +13,6 @@ Only its first document, the top-level device schema, is included here.
 The examples are distributed under the BSD 3-Clause License in
 [LICENSE](LICENSE).
 
-`json-schema-2020-12.schema.json` is the official
-[Draft 2020-12 meta-schema](https://json-schema.org/draft/2020-12/schema).
-It retains the published references to the seven vocabulary meta-schemas.
-
 `yamlschema.ysd.yaml` is a basic schema for the parsed YAMLSchema document
 model.
 It constrains documents to recursively nested YAML values under string keys.

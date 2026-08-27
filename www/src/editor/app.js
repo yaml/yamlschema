@@ -81,9 +81,6 @@ const sampleSources = {
     'ansible-builder': {
       url: assetURL('examples/ansible-builder.schema.json'),
     },
-    'json-schema-2020-12': {
-      url: assetURL('examples/json-schema-2020-12.schema.json'),
-    },
     'openapi-3-schema': {
       url: assetURL('examples/openapi-3-schema.schema.json'),
     },

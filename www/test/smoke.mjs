@@ -767,7 +767,6 @@ const exampleFiles = [
   'movie',
   'user-profile',
   'ansible-builder',
-  'json-schema-2020-12',
   'openapi-3-schema',
   'petstore',
   'netbox-generated',
@@ -782,9 +781,11 @@ const indexHTML = await readFile('site/demo/index.html', 'utf8');
 const mkdocsConfig = await readFile('mkdocs.yaml', 'utf8');
 if (
   mkdocsConfig.includes('- YAMLSchema:') ||
-  !mkdocsConfig.includes('- Demo: demo/index.md')
+  !mkdocsConfig.includes(
+    'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
+  )
 ) {
-  throw new Error('site navigation has an incorrect home or demo tab');
+  throw new Error('site navigation has incorrect home or demo tabs');
 }
 if (
   !indexHTML.includes('<a href=".." title="YAMLSchema"') ||
@@ -1169,27 +1170,6 @@ for (const name of exampleFiles) {
       roundtrip.value !== true
     ) {
       throw new Error('OpenAPI PetStore schema is incorrect');
-    }
-  }
-  if (name === 'json-schema-2020-12') {
-    const vocabularyNames = Object.keys(schema.$vocabulary || {});
-    const references = schema.allOf?.map((entry) => entry.$ref);
-    if (
-      schema.$id !== 'https://json-schema.org/draft/2020-12/schema' ||
-      schema.$dynamicAnchor !== 'meta' ||
-      vocabularyNames.length !== 7 ||
-      !vocabularyNames.every((name) => schema.$vocabulary[name] === true) ||
-      JSON.stringify(references) !== JSON.stringify([
-        'meta/core',
-        'meta/applicator',
-        'meta/unevaluated',
-        'meta/validation',
-        'meta/meta-data',
-        'meta/format-annotation',
-        'meta/content',
-      ])
-    ) {
-      throw new Error('JSON Schema 2020-12 meta-schema is incorrect');
     }
   }
   if (name === 'openapi-3-schema') {
