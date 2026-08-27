@@ -132,14 +132,19 @@
       `+${rangeText(newStart, newCount)} @@`;
   }
 
-  function createUnifiedDiff(original, roundtripped, context = 3) {
+  function createUnifiedDiff(
+    original,
+    roundtripped,
+    context = 3,
+    originalLabel = 'original',
+  ) {
     const before = lines(original);
     const after = lines(roundtripped);
     const edits = editScript(before, after);
     const ranges = hunkRanges(edits, context);
     if (ranges.length === 0) return '';
 
-    const output = ['--- original', '+++ roundtrip'];
+    const output = [`--- ${originalLabel}`, '+++ roundtrip'];
     for (const {start, end} of ranges) {
       output.push(hunkHeader(edits, start, end));
       for (const edit of edits.slice(start, end)) {

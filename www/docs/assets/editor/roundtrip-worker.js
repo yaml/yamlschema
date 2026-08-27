@@ -1,10 +1,10 @@
 importScripts('wasm_exec.js?v=3');
-importScripts('unified-diff.js?v=1');
+importScripts('unified-diff.js?v=2');
 
 let ready = false;
 let pending;
 
-function checkRoundtrip({id, source, input}) {
+function checkRoundtrip({id, source, input, filename}) {
   try {
     const operation = {
       json: 'json-schema-roundtrip-report',
@@ -19,6 +19,8 @@ function checkRoundtrip({id, source, input}) {
       : globalThis.createUnifiedDiff(
         report.original,
         report.roundtripped,
+        3,
+        filename,
       );
     if (!report.works && !diff) {
       throw new Error('Roundtrip mismatch produced an empty diff');
@@ -28,6 +30,7 @@ function checkRoundtrip({id, source, input}) {
       id,
       works: Boolean(report.works),
       diff,
+      filename,
     });
   } catch (error) {
     postMessage({type: 'error', id, error: String(error)});

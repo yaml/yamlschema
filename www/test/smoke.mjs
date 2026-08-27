@@ -197,6 +197,17 @@ const expectedChangedDiff = `--- original
 if (changedDiff !== expectedChangedDiff) {
   throw new Error(`unexpected unified diff:\n${changedDiff}`);
 }
+const labeledDiff = unifiedDiff(
+  'before',
+  'after',
+  3,
+  'openapi-3-schema.schema.json',
+);
+if (!labeledDiff.startsWith(
+  '--- openapi-3-schema.schema.json\n+++ roundtrip\n',
+)) {
+  throw new Error(`unexpected labeled unified diff:\n${labeledDiff}`);
+}
 if (unifiedDiff('same\n', 'same') !== '') {
   throw new Error('trailing newline produced a diff');
 }
@@ -419,6 +430,16 @@ if (!appSource.includes('roundtripDiffDialog.showModal()')) {
   throw new Error('roundtrip diff modal is not opened by the browser app');
 }
 if (
+  !appSource.includes('function roundtripFilename(source)') ||
+  !appSource.includes('`Roundtrip diff for ${roundtripDiffFilename}`') ||
+  !appSource.includes('resultCacheKey([source, filename], input)') ||
+  !appSource.includes(
+    'getRoundtripWorker().postMessage({id, source, input, filename})',
+  )
+) {
+  throw new Error('roundtrip diff does not identify its source filename');
+}
+if (
   !appSource.includes("updateRoundtripStatus('json', json)") ||
   !appSource.includes("updateRoundtripStatus('ysd', ysd)")
 ) {
@@ -636,9 +657,13 @@ const roundtripWorkerSource = await readFile(
   'utf8',
 );
 if (
-  !roundtripWorkerSource.includes("importScripts('unified-diff.js?v=1')") ||
+  !roundtripWorkerSource.includes("importScripts('unified-diff.js?v=2')") ||
   !roundtripWorkerSource.includes("'json-schema-roundtrip-report'") ||
-  !roundtripWorkerSource.includes("'ysd-roundtrip-report'")
+  !roundtripWorkerSource.includes("'ysd-roundtrip-report'") ||
+  !roundtripWorkerSource.includes(
+    'function checkRoundtrip({id, source, input, filename})',
+  ) ||
+  !roundtripWorkerSource.includes('filename,\n    });')
 ) {
   throw new Error('roundtrip worker does not generate browser diffs');
 }
@@ -924,6 +949,7 @@ if (jsonSelectHTML.indexOf('value="netbox-generated"') <
 }
 if (
   !indexHTML.includes('id="roundtrip-diff-dialog"') ||
+  !indexHTML.includes('id="roundtrip-diff-title"') ||
   !indexHTML.includes('id="roundtrip-diff"') ||
   !indexHTML.includes('id="roundtrip-diff-copy"') ||
   !indexHTML.includes('aria-label="Copy roundtrip diff text"') ||

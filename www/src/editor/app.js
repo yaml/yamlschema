@@ -28,6 +28,7 @@ const roundtripStatuses = document.querySelectorAll('.roundtrip-status');
 const roundtripDiffDialog = document.querySelector(
   '#roundtrip-diff-dialog',
 );
+const roundtripDiffTitle = document.querySelector('#roundtrip-diff-title');
 const roundtripDiffOutput = document.querySelector('#roundtrip-diff');
 const roundtripDiffCopy = document.querySelector('#roundtrip-diff-copy');
 const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
@@ -114,6 +115,7 @@ let jsonNormal = false;
 let ysdValue = '';
 let jsonValue = '';
 let roundtripDiff = '';
+let roundtripDiffFilename = '';
 let selectedSample;
 let selectedSampleSource;
 let documentSource;
@@ -527,8 +529,12 @@ function setRoundtripSource(source) {
   }
 }
 
-function setRoundtripDiff(diff) {
+function setRoundtripDiff(diff, filename = '') {
   roundtripDiff = diff;
+  roundtripDiffFilename = diff ? filename : '';
+  roundtripDiffTitle.textContent = roundtripDiffFilename
+    ? `Roundtrip diff for ${roundtripDiffFilename}`
+    : 'Roundtrip diff';
   if (diff) return;
   for (const indicator of roundtripStatuses) indicator.disabled = true;
   roundtripDiffOutput.replaceChildren();
@@ -607,7 +613,11 @@ function getRoundtripWorker() {
       setRoundtripDiff('');
       setRoundtripStatus('unknown', 'Roundtrip Check Error');
     } else {
-      const result = {works: data.works, diff: data.diff || ''};
+      const result = {
+        works: data.works,
+        diff: data.diff || '',
+        filename: data.filename,
+      };
       roundtripResultCache.set(roundtripRequestKey, result);
       showRoundtripResult(result);
     }
@@ -622,13 +632,24 @@ function getRoundtripWorker() {
 }
 
 function showRoundtripResult(result) {
-  setRoundtripDiff(result.diff);
+  setRoundtripDiff(result.diff, result.filename);
   setRoundtripStatus(result.works ? 'works' : 'fails');
+}
+
+function roundtripFilename(source) {
+  const sample = sampleSources[source]?.[selectedSample];
+  if (sample?.url) {
+    const path = new URL(sample.url).pathname;
+    return decodeURIComponent(path.split('/').pop());
+  }
+  const suffix = source === 'json' ? 'schema.json' : 'ysd.yaml';
+  return `${selectedSample}.${suffix}`;
 }
 
 function updateRoundtripStatus(source, input, delay = 500) {
   setRoundtripSource(source);
-  const key = resultCacheKey(source, input);
+  const filename = roundtripFilename(source);
+  const key = resultCacheKey([source, filename], input);
   const cached = roundtripResultCache.get(key);
   if (cached) {
     if (key !== roundtripRequestKey) cancelRoundtripStatus();
@@ -645,7 +666,7 @@ function updateRoundtripStatus(source, input, delay = 500) {
   roundtripTimer = setTimeout(() => {
     roundtripTimer = undefined;
     roundtripBusy = true;
-    getRoundtripWorker().postMessage({id, source, input});
+    getRoundtripWorker().postMessage({id, source, input, filename});
   }, delay);
 }
 
