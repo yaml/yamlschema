@@ -573,6 +573,7 @@ The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
 dialect identifiers for the direct mappings it supports.
 The \fB$schema\fR keyword is implied by \fB\&.schema.json\fR output and is not encoded
 in YAMLSchema.
+Draft 4 root \fBid\fR imports as \fB\&.ysid\fR and normalizes to \fB$id\fR\&.
 
 .PP
 When the input is a file, generated JSON Schema also has a root \fB$comment\fR:
@@ -596,7 +597,7 @@ allbox;
 l l
 l l .
 \fBJSON Schema\fP	\fBYAMLSchema\fP
-\fB$id\fR	\fB\&.ysid\fR
+\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.ysid\fR
 \fB$anchor\fR	\fB\&.name\fR
 \fBtitle\fR	\fB\&.title\fR
 \fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR

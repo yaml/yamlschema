@@ -535,6 +535,7 @@ The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
 dialect identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by `.schema.json` output and is not encoded
 in YAMLSchema.
+Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 
 When the input is a file, generated JSON Schema also has a root `$comment`:
 
@@ -552,7 +553,7 @@ schema metadata.
 
 | JSON Schema | YAMLSchema |
 | --- | --- |
-| `$id` | `.ysid` |
+| `$id` or Draft 4 root `id` | `.ysid` |
 | `$anchor` | `.name` |
 | `title` | `.title` |
 | `description` | Trailing `"description"` or `.desc` |

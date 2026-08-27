@@ -15,6 +15,7 @@ Generated output places `.ysid` first, although input may place it anywhere.
 .ysd and .ysdc use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
+JSON Schema `$id` and Draft 4 root `id` both import as `.ysid`.
 
 The optional `.name` directive gives a schema node an externally addressable
 name:

@@ -125,6 +125,32 @@ test::
   want: |
     OK
 
+- name: uppercase-singleton-ref-allof-with-properties-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "definitions": {
+        "Base": {
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "object",
+          "allOf": [
+            {"$ref": "#/definitions/Base"}
+          ],
+          "properties": {
+            "x": {"type": "string"}
+          }
+        }
+      }
+    }
+  want: |
+    OK
+
 - name: required-only-combinator-branches-roundtrip
   cmnd: bin/ysd -R -f jsc -
   stdi: |

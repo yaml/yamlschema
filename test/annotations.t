@@ -109,6 +109,61 @@ test::
   want: |
     OK
 
+- name: draft4-json-id-to-ysd
+  cmnd: bin/ysd -t ysd -
+  stdi: |
+    {
+      "id": "https://example.com/device",
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object"
+    }
+  want: |
+    # Converted from JSON Schema
+    .ysid: https://example.com/device.ysd.yaml
+    .open: true
+
+- name: draft4-json-id-is-canonicalized
+  cmnd: bin/ysd -N -
+  stdi: |
+    {
+      "id": "https://example.com/device",
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object"
+    }
+  want: |
+    {
+      "$id": "https://example.com/device.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object"
+    }
+
+- name: draft4-json-id-roundtrips
+  cmnd: sh -c 'bin/ysd -Rq - && echo OK'
+  stdi: |
+    {
+      "id": "https://example.com/device",
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object"
+    }
+  want: |
+    OK
+
+- name: modern-json-id-takes-precedence
+  cmnd: bin/ysd -N -
+  stdi: |
+    {
+      "id": "https://example.com/legacy",
+      "$id": "https://example.com/modern",
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object"
+    }
+  want: |
+    {
+      "$id": "https://example.com/modern.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object"
+    }
+
 - name: legacy-json-id-is-rejected
   cmnd: |
     sh -c 'bin/ysd -t jsc - 2>&1 | perl -ne "print if \$. == 1"'

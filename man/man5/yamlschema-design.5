@@ -961,6 +961,7 @@ The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The \fB$schema\fR keyword is implied by the target and is not encoded in
 YAMLSchema.
+Draft 4 root \fBid\fR imports as \fB\&.ysid\fR and normalizes to \fB$id\fR\&.
 
 .TS
 allbox;
@@ -994,7 +995,7 @@ constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
 \fBdefault\fR	\fB\&.init\fR
 \fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR
 \fBtitle\fR	\fB\&.title\fR
-\fB$id\fR	\fB\&.ysid\fR
+\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.ysid\fR
 \fB$anchor\fR	\fB\&.name\fR
 known string \fBformat\fR	\fB+JSONSchema/format\fR
 \fB$defs\fR / \fBdefinitions\fR	Top-level \fB+name\fR definitions

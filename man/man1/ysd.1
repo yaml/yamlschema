@@ -116,6 +116,7 @@ ysd -t jsc -Y contact.ysd.yaml
 .SH Normalize JSON Schema
 Normalization adds the draft 2020-12 dialect, chooses canonical keyword
 positions, and preserves property order.
+Draft 4 root \fBid\fR normalizes to \fB$id\fR\&.
 
 .EX
 ysd -N contact.schema.json

@@ -887,6 +887,7 @@ The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by the target and is not encoded in
 YAMLSchema.
+Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 
 | JSON Schema | YAMLSchema |
 | --- | --- |
@@ -915,7 +916,7 @@ YAMLSchema.
 | `default` | `.init` |
 | `description` | Trailing `"description"` or `.desc` |
 | `title` | `.title` |
-| `$id` | `.ysid` |
+| `$id` or Draft 4 root `id` | `.ysid` |
 | `$anchor` | `.name` |
 | known string `format` | `+JSONSchema/format` |
 | `$defs` / `definitions` | Top-level `+name` definitions |

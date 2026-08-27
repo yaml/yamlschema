@@ -719,9 +719,13 @@ defn inferred-enum-json-type(schema):
     =>: type
 
 defn normalize-root-json-id(result):
-  if result.has?('$id'):
+  modern =: result.has?('$id')
+  legacy =: draft4-json-schema?(result) && result.has?('id')
+  if modern || legacy:
     then:
-      id =: canonical-document-id(result.'$id' 'jsc' 'JSON Schema $id')
+      value =: modern.if(result.'$id' result.id)
+      id =: canonical-document-id(value 'jsc' 'JSON Schema $id')
+      result :if legacy =: result.del('id')
       result: .put('$id' id)
     else: result
 
@@ -3327,6 +3331,11 @@ defn supported-json-schema-dialect?(dialect):
     'https://json-schema.org/draft-04/schema': true
     else: false
 
+defn draft4-json-schema?(schema):
+  schema.'$schema'.in?([
+    'http://json-schema.org/draft-04/schema#'
+    'https://json-schema.org/draft-04/schema'])
+
 # Build the top-level data structure for the whole document.
 defn build-doc(schema):
   schema =: canonicalize-single-required-oneof(schema)
@@ -3348,9 +3357,12 @@ defn build-doc(schema):
   validate-schema-names: result
 
 defn add-document-ysid(result schema):
-  if schema.'$id':
+  modern =: schema.has?('$id')
+  legacy =: draft4-json-schema?(schema) && schema.has?('id')
+  if modern || legacy:
     then:
-      id =: canonical-document-id(schema.'$id' 'ysd' 'JSON Schema $id')
+      value =: modern.if(schema.'$id' schema.id)
+      id =: canonical-document-id(value 'ysd' 'JSON Schema $id')
       ordered-put: result '.ysid' id
     else: result
 
@@ -4059,10 +4071,17 @@ defn only-singleton-ref-allof?(schema):
     singleton-ref-allof?(schema)
     key-set(schema).eq(\{'allOf'})
 
-defn schema-base-ref(schema):
+defn schema-base-reference(schema):
   cond:
-    contains?(schema '$ref'): local-ref-sym(schema.'$ref')
-    singleton-ref-allof?(schema): local-ref-sym(schema.allOf.0.'$ref')
+    contains?(schema '$ref'): schema.'$ref'
+    singleton-ref-allof?(schema): schema.allOf.0.'$ref'
+
+defn schema-base-ref(schema):
+  when has-schema-base-reference?(schema):
+    local-ref-sym: schema-base-reference(schema)
+
+defn has-schema-base-reference?(schema):
+  contains?(schema '$ref') || singleton-ref-allof?(schema)
 
 defn schema-type-ref(schema):
   typed =:
@@ -4385,9 +4404,10 @@ defn reference-scalar(ref):
         =>: "+Ref($reference)"
 
 defn add-external-ref-directive(result schema):
-  if contains?(schema '$ref'):
+  if has-schema-base-reference?(schema):
     then:
-      reference =: validate-external-reference(schema.'$ref')
+      reference =:
+        validate-external-reference(schema-base-reference(schema))
       if local-ref-sym(reference):
         then: result
         else: ordered-put(result '.xref' reference)

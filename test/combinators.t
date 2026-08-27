@@ -168,6 +168,40 @@ test::
       local?: +Int
     alias?: +base
 
+- name: uppercase-singleton-ref-allof-with-properties
+  cmnd: bin/ysd -t ysd -
+  stdi: |
+    {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "definitions": {
+        "Base": {
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "object",
+          "allOf": [
+            {"$ref": "#/definitions/Base"}
+          ],
+          "properties": {
+            "x": {"type": "string"}
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+
+    +Base:
+      +Str: +Any
+
+    value?:
+      .xref: '#/definitions/Base'
+      x?: +Str
+
 - name: referenced-base-with-properties-to-json-schema
   cmnd: bin/ysd -f ysd -t jsc -C -
   stdi: |

@@ -109,6 +109,7 @@ ysd -t jsc -Y contact.ysd.yaml
 
 Normalization adds the draft 2020-12 dialect, chooses canonical keyword
 positions, and preserves property order.
+Draft 4 root `id` normalizes to `$id`.
 
 ```bash
 ysd -N contact.schema.json
