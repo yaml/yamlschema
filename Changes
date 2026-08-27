@@ -1,5 +1,13 @@
 # YAMLSchema release history
 
+- version: 0.1.7
+  date:    Wed Aug 26 08:47:40 PM EDT 2026
+  changes:
+  - Generate manuals during release
+  - Add PowerShell tab completion
+  - Add PowerShell web installer
+  - Add schema language demo examples
+
 - version: 0.1.6
   date:    Wed Aug 26 02:35:50 PM EDT 2026
   changes:
