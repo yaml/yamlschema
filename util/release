@@ -49,6 +49,32 @@ release_files() {
   printf '%s\n' Changes Makefile bin/ysd | sort
 }
 
+generated_files() {
+  printf '%s\n' \
+    man/man1/ysd.1 \
+    man/man5/yamlschema-design.5 \
+    man/man5/yamlschema-json-schema.5 \
+    man/man5/yamlschema.5 | sort
+}
+
+release_changes_ready() {
+  local changed=$1 required allowed missing unexpected
+  required=$(release_files)
+  allowed=$(
+    {
+      release_files
+      generated_files
+    } | sort -u
+  )
+  missing=$(comm -23 \
+    <(printf '%s\n' "$required") \
+    <(printf '%s\n' "$changed"))
+  unexpected=$(comm -23 \
+    <(printf '%s\n' "$changed") \
+    <(printf '%s\n' "$allowed"))
+  [[ -z $missing && -z $unexpected ]]
+}
+
 set_makefile_version() {
   local temporary
   temporary=$(mktemp)
@@ -159,15 +185,14 @@ release_notes() {
 }
 
 release_commit_ready() {
-  local changed expected subject
+  local changed subject
   [[ $(current_version) == "$version" ]] || return 1
   [[ $(source_version) == "$version" ]] || return 1
   has_changes_entry || return 1
   subject=$(git log -1 --format=%s)
   [[ $subject == "Prepare release $version" ]] || return 1
   changed=$(git diff-tree --no-commit-id --name-only -r HEAD | sort)
-  expected=$(release_files)
-  [[ $changed == "$expected" ]]
+  release_changes_ready "$changed"
 }
 
 validate_git_context() {
@@ -245,12 +270,12 @@ preflight_new_release() {
 }
 
 create_release_commit() {
-  local changed expected
+  local changed
   RELEASE_EDIT=0 RELEASE_CONFIRM=0 prepare
+  make update
   changed=$(git diff --name-only | sort)
-  expected=$(release_files)
-  [[ $changed == "$expected" ]] || {
-    echo 'release: version bump changed unexpected files' >&2
+  release_changes_ready "$changed" || {
+    echo 'release: preparation changed unexpected files' >&2
     exit 1
   }
   [[ -z $(git ls-files --others --exclude-standard) ]] || {
@@ -260,7 +285,7 @@ create_release_commit() {
   git diff --check
   while IFS= read -r file; do
     git add -- "$file"
-  done <<< "$expected"
+  done <<< "$changed"
   git commit \
     -m "Prepare release $version" \
     -m "Update the current version and release history.

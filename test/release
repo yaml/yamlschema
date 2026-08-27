@@ -25,10 +25,11 @@ fake_bin="$temporary/bin"
 make_log="$temporary/make.log"
 gh_log="$temporary/gh.log"
 
-mkdir -p "$repo/bin" "$repo/util" "$fake_bin"
+mkdir -p "$repo/bin" "$repo/man/man1" "$repo/util" "$fake_bin"
 cp "$top/Changes" "$top/Makefile" "$repo/"
 cp "$top/bin/ysd" "$repo/bin/"
 cp "$release" "$repo/util/"
+printf 'stale manual\n' > "$repo/man/man1/ysd.1"
 git init --quiet --initial-branch=main "$repo"
 git -C "$repo" config user.name 'Release Test'
 git -C "$repo" config user.email release-test@example.com
@@ -47,8 +48,14 @@ git -C "$repo" commit --quiet \
   -m 'Add local release candidate' \
   -m 'Exercise release preparation from a local commit ahead of origin.'
 
-# shellcheck disable=SC2016
-printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$MAKE_LOG"\nexit 1\n' \
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$*" >> "$MAKE_LOG"' \
+  'if [[ ${1-} == update ]]; then' \
+  "  printf 'generated manual\\n' > man/man1/ysd.1" \
+  '  exit 0' \
+  'fi' \
+  'exit 1' \
   > "$fake_bin/make"
 chmod 0755 "$fake_bin/make"
 
@@ -78,7 +85,8 @@ expect_failure invalid-version \
   env PERL="$perl" "$release" release invalid
 expect_failure validation-stop run_release
 
-grep -Fqx test "$make_log"
+expected=$(printf '%s\n' update test)
+[[ $(< "$make_log") == "$expected" ]]
 [[ $(git --git-dir="$origin" rev-parse refs/heads/main) == \
    "$remote_before" ]]
 [[ $(git -C "$repo" log -1 --format=%s) == \
@@ -90,8 +98,10 @@ grep -Fqx -- "- version: $version" "$repo/Changes"
 changed=$(
   git -C "$repo" diff-tree --no-commit-id --name-only -r HEAD | sort
 )
-expected=$(printf '%s\n' Changes Makefile bin/ysd | sort)
+expected=$(printf '%s\n' \
+  Changes Makefile bin/ysd man/man1/ysd.1 | sort)
 [[ $changed == "$expected" ]]
+grep -Fqx 'generated manual' "$repo/man/man1/ysd.1"
 [[ -z $(git -C "$repo" status --short) ]]
 [[ -z $(git -C "$repo" tag -l) ]]
 
