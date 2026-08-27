@@ -37,7 +37,7 @@ The \fB\&.ysd.yaml\fR succinct form is optimized for humans:
 .EX
 name: +Str
 email?: +Str =~"\\S+@\\S+"
-tags: +Str[1+,!]
+tags: +Str[!1+]
 .EE
 
 .PP
@@ -382,6 +382,54 @@ ratio: +Num 0..1
 .EE
 
 .PP
+Exclusive one-sided bounds use three dots:
+
+.EX
+{
+  "properties": {
+    "positive": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+    "underTen": {
+      "type": "number",
+      "maximum": 10,
+      "exclusiveMaximum": true
+    }
+  }
+}
+.EE
+
+.EX
+positive?: +Num 0...
+underTen?: +Num ...10
+.EE
+
+.PP
+Use \fB:xmin\fR and \fB:xmax\fR for bounded ranges:
+
+.EX
+unit?: +Num 0..1 :xmin :xmax
+.EE
+
+.PP
+The canonical form keeps the inclusive bounds in \fB\&.range\fR and records which
+bounds are exclusive:
+
+.EX
+unit?:
+  .type: +Num
+  .range: [0, 1]
+  .xmin: true
+  .xmax: true
+.EE
+
+.PP
+\fB0...10\fR is ambiguous and is rejected.
+Write \fB0..10 :xmin\fR, \fB0..10 :xmax\fR, or both modifiers instead.
+
+.PP
 String lengths use \fB\&.size\fR:
 
 .EX
@@ -404,6 +452,15 @@ Roundtrip rule:
 .IP \(bu 2
 \fB\&.range\fR on \fB+Int\fR, \fB+Float\fR, or \fB+Num\fR maps its optional bounds to
 \fBminimum\fR and \fBmaximum\fR\&.
+.IP \(bu 2
+\fB\&.xmin: true\fR and \fB\&.xmax: true\fR require the corresponding \fB\&.range\fR bound
+and map to boolean \fBexclusiveMinimum\fR and \fBexclusiveMaximum\fR companions.
+.IP \(bu 2
+Draft 4 style boolean exclusives import natively when the corresponding
+\fBminimum\fR or \fBmaximum\fR is present.
+.IP \(bu 2
+Modern numeric \fBexclusiveMinimum\fR and \fBexclusiveMaximum\fR values remain
+passthrough directives.
 .IP \(bu 2
 \fB\&.size\fR on \fB+Str\fR maps to \fBminLength\fR and \fBmaxLength\fR\&.
 .IP \(bu 2
@@ -463,7 +520,7 @@ Unique arrays add \fB!\fR:
 .EE
 
 .EX
-names: +Str[1+,!]
+names: +Str[!1+]
 .EE
 
 .PP
@@ -479,7 +536,7 @@ l l .
 \fBkey: +Int[3]\fR	plus \fBminItems: 3\fR, \fBmaxItems: 3\fR
 \fBkey: +Str[1-3]\fR	plus \fBminItems: 1\fR, \fBmaxItems: 3\fR
 \fBkey: +Str[!]\fR	plus \fBuniqueItems: true\fR
-\fBkey: +Str[1+,!]\fR	plus \fBuniqueItems: true\fR, \fBminItems: 1\fR
+\fBkey: +Str[!1+]\fR	plus \fBuniqueItems: true\fR, \fBminItems: 1\fR
 .TE
 
 .SH Defaults
@@ -889,7 +946,6 @@ l l .
 \fBcontains\fR	List membership constraints
 \fBunevaluatedItems\fR	Strict list mode
 \fBunevaluatedProperties\fR	Strict map mode
-\fBexclusiveMinimum\fR / \fBexclusiveMaximum\fR	Open-bound range syntax
 \fBformat\fR	Semantic format annotations
 .TE
 

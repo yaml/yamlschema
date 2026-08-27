@@ -672,7 +672,7 @@ defn normalize-json-map(value root?):
   when root?:
     value =: discard-generated-comment(value)
   result =: omap()
-  result =: reduce(\(normalize-json-entry(_1 _2)) result value)
+  result =: reduce(\(normalize-json-entry(_1 _2 value)) result value)
   result =: normalize-definitions(result)
   result =: normalize-ref(result)
   result =: normalize-single-ref-allof(result)
@@ -724,14 +724,17 @@ defn document-id-extension(target):
     else:
       usage: "unsupported document ID target: $target"
 
-defn normalize-json-entry(result entry):
+defn normalize-json-entry(result entry schema):
   key =: entry.0
   value =: entry.1
   unconstrained-additional =:
     value.eq(true) || (map?(value) && empty?(value))
   drop =:
     (key.eq('additionalProperties') && unconstrained-additional) ||
-    (key.eq('dependentRequired') && map?(value) && empty?(value))
+    (key.eq('dependentRequired') && map?(value) && empty?(value)) ||
+    (key.eq('items') && map?(value) && empty?(value) &&
+      contains?(schema 'unevaluatedItems').!) ||
+    (key.eq('uniqueItems') && value.eq(false))
   if drop:
     then: result
     else: ordered-put(result key normalize-json-keyword-value(key value))
@@ -1139,6 +1142,7 @@ defn expand-explicit-type(value):
       expand-tight: reference
       omap:
   result =: reduce(expand-explicit-entry base value)
+  validate-exclusive-range-directives: result
   ordered-directives: result
 
 defn expand-explicit-entry(result entry):
@@ -1163,7 +1167,7 @@ defn expand-explicit-entry(result entry):
 defn type-directive?(key):
   directives =:
     +['.name', '.type', '.xref', '.like', '.match',
-      '.find', '.enum', '.const', '.range', '.size',
+      '.find', '.enum', '.const', '.range', '.xmin', '.xmax', '.size',
       '.list', '.item', '.solo', '.uniq', '.null',
       '.init', '.one', '.any', '.all', '.not',
       '.title', '.desc', '.open', '.need', '.also',
@@ -1197,6 +1201,8 @@ defn normalize-directive(key value):
     '.like': +{key value:S}
     '.match': +{'.like' anchored-pattern(regex-pattern(value))}
     '.find': +{'.like' regex-pattern(value)}
+    '.xmin': +{key validate-exclusive-range-value(key value)}
+    '.xmax': +{key validate-exclusive-range-value(key value)}
     '.size': +{key normalize-size(value)}
     '.item': +{key expand-type(value)}
     '.one': +{key expand-combinator-sequence(key value)}
@@ -1208,6 +1214,11 @@ defn normalize-directive(key value):
     '.open': +{key validate-open-value(value)}
     '.need': +{key validate-need-value(value)}
     else: +{key value}
+
+defn validate-exclusive-range-value(key value):
+  when value != true:
+    usage: "yamlschema $key must be true"
+  =>: value
 
 defn validate-open-value(value):
   when-not boolean?(value):
@@ -1414,7 +1425,7 @@ defn ordered-directives(value):
   order =:
     +['.name', '.type', '.xref', '.open', '.need',
       '.list', '.item', '.one', '.any', '.all',
-      '.not', '.like', '.enum', '.const', '.range',
+      '.not', '.like', '.enum', '.const', '.range', '.xmin', '.xmax',
       '.size', '.solo', '.uniq', '.null', '.init',
       '.title', '.desc', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
@@ -1550,10 +1561,12 @@ defn expand-tight-string(value):
       primary =: bases.0
       result =: expand-primary-token(primary)
       rest =: remove-first-token(tokens primary)
-      reduce expand-tight-token: result rest
+      result =: reduce(expand-tight-token result rest)
+      validate-exclusive-range-directives: result
     else:
       result =: expand-primary-token(tokens.0)
-      reduce expand-tight-token: result vec(tokens:rest)
+      result =: reduce(expand-tight-token result vec(tokens:rest))
+      validate-exclusive-range-directives: result
 
 defn remove-first-token(tokens target):
   state =: +{'found' false, 'tokens' []}
@@ -1786,6 +1799,8 @@ defn primary-block(token):
       +{'.type' '+Str', '.like' tight-label-string(token)}
     token.starts?('range:'):
       range-block(tight-label-raw(token) nil)
+    exclusive-range-modifier?(token):
+      usage: "$token requires a preceding range"
     token.starts?('const:') || token.starts?('=='):
       usage: 'const requires a preceding type reference'
     old-tight-keyword?(token): reject-old-tight-keyword(token)
@@ -1799,6 +1814,8 @@ defn primary-block(token):
       usage: 'compact enum requires a preceding type reference'
     token =~ /\|/:
       usage: 'pipe enums are unsupported; use +Base [a,b]'
+    ambiguous-exclusive-range?(token):
+      reject-ambiguous-exclusive-range: token
     range-literal?(token): range-block(token nil)
     else: literal-block(parse-yaml-scalar(token))
 
@@ -1810,6 +1827,10 @@ defn expand-tight-token(result token):
         result compact-need-block(token) 'need clause'
     token.starts?(':need'):
       usage: "invalid yamlschema need clause: $token"
+    exclusive-range-modifier?(token):
+      directive =: token.replace(/^:/ '.')
+      merge-directives:
+        result {directive true} "range modifier $token"
     token.starts?('=~'):
       merge-directives:
         result
@@ -1821,6 +1842,8 @@ defn expand-tight-token(result token):
         result {'.like' regex-pattern(token)} 'pattern clause'
     slash-delimited-token?(token):
       usage: 'regex literals cannot contain /; use find:"..."'
+    ambiguous-exclusive-range?(token):
+      reject-ambiguous-exclusive-range: token
     range-literal?(token):
       merge-directives: result range-block(token result.'.type') 'range clause'
     compact-enum-token?(token):
@@ -2097,19 +2120,25 @@ defn json-base-for-value(value):
     else: base-for-value(value)
 
 defn range-block(value base):
-  range =: normalize-range(value)
+  info =: range-info(value)
+  range =: info.range
   inferred =:
     base || range-number-type(range).eq('integer').if('+Int' '+Num')
   result =:
     if base:
       then: +{}
       else: +{'.type' inferred}
-  result +: +{'.range' range}
+  result =: result + {'.range' range}
+  result =: map-put-if(result info.xmin '.xmin' true)
+  map-put-if: result info.xmax '.xmax' true
+
+defn range-info(value):
+  if sequential?(value):
+    then: +{'range' normalize-range-sequence(value)}
+    else: range-expression-info(value)
 
 defn normalize-range(value):
-  if sequential?(value):
-    normalize-range-sequence: value
-    normalize-range-expression: value
+  range-info(value).range
 
 defn normalize-range-sequence(value):
   range =: vec(value)
@@ -2125,9 +2154,18 @@ defn normalize-range-sequence(value):
     identity: range
 
 defn normalize-range-expression(value):
+  range-expression-info(value).range
+
+defn range-expression-info(value):
   text =: value:S
+  when ambiguous-exclusive-range?(text):
+    reject-ambiguous-exclusive-range: text
   when-not range-literal?(text):
     usage: "invalid yamlschema range: $text"
+  xmin =: lower-exclusive-range-literal?(text)
+  xmax =: upper-exclusive-range-literal?(text)
+  text =: xmin.if(text.replace(/\.\.\.$/ '..') text)
+  text =: xmax.if(text.replace(/^\.\.\./ '..') text)
   lo-text =: text.replace(/\.\..*$/)
   hi-text =: text.replace(/^.*\.\./)
   lo =:
@@ -2136,7 +2174,33 @@ defn normalize-range-expression(value):
   hi =:
     when-not hi-text:empty?:
       scalar-number: hi-text
-  normalize-range-sequence: lo:nil?.if([nil hi] hi:nil?.if([lo] [lo hi]))
+  range =:
+    normalize-range-sequence: lo:nil?.if([nil hi] hi:nil?.if([lo] [lo hi]))
+  result =: +{'range' range}
+  result =: map-put-if(result xmin 'xmin' true)
+  map-put-if: result xmax 'xmax' true
+
+defn exclusive-range-modifier?(token):
+  token.in?([':xmin' ':xmax'])
+
+defn validate-exclusive-range-directives(value):
+  validate-exclusive-range-directive: value '.xmin' 0
+  validate-exclusive-range-directive: value '.xmax' 1
+  =>: value
+
+defn validate-exclusive-range-directive(value key index):
+  when value.has?(key):
+    validate-exclusive-range-value: key value.$key
+    when-not value.has?('.range'):
+      usage: "yamlschema $key requires a .range directive"
+    range =: normalize-range(value.'.range')
+    in-range =: range.# > index
+    bound-present =: nil?(range.$index).!
+    has-bound =: in-range && bound-present
+    when-not has-bound:
+      bound =: key.eq('.xmin').if('lower' 'upper')
+      article =: key.eq('.xmin').if('a' 'an')
+      usage: "yamlschema $key requires $article $bound range bound"
 
 defn range-number-type(range):
   values =: range.remove(nil?)
@@ -2561,7 +2625,14 @@ defn canonical-item-schema(value inherited-open=false):
     if contains?(value '.range'):
       then: result + dissoc(range-to-schema(value.'.range') 'type')
       else: result
+  result =: add-exclusive-range-schema(result value)
   add-canonical-combinators: result value inherited-open
+
+defn add-exclusive-range-schema(result value):
+  validate-exclusive-range-directives: value
+  result =: map-put-if(
+    result value.has?('.xmin') 'exclusiveMinimum' true)
+  map-put-if: result value.has?('.xmax') 'exclusiveMaximum' true
 
 defn add-passthrough-schema-keywords(result value):
   reduce add-passthrough-schema-entry: result value
@@ -2818,6 +2889,8 @@ defn ysdc-bare-scalar-to-schema(value):
       +{'type' 'string', 'pattern' regex-pattern(s)}
     s =~ /^[^|]+\|[^|]+/:
       +{'type' 'string', 'enum' split(s /\|/)}
+    ambiguous-exclusive-range?(s):
+      reject-ambiguous-exclusive-range: s
     range-literal?(s):
       range-to-schema(s)
     else:
@@ -2832,8 +2905,28 @@ defn value-list-to-schema(s):
   wrap-array-schema: ysdc-bare-scalar-to-schema(base) suffix
 
 defn range-literal?(s):
-  (s =~ /^-?[0-9.]*\.\.-?[0-9.]*$/) &&
-  (s != '..')
+  inclusive-range-literal?(s) ||
+  lower-exclusive-range-literal?(s) ||
+  upper-exclusive-range-literal?(s)
+
+defn inclusive-range-literal?(s):
+  pattern =:
+    /^(?:-?[0-9]+(?:\.[0-9]+)?)?\.\.(?:-?[0-9]+(?:\.[0-9]+)?)?$/
+  matched =: s =~ pattern
+  valid =: matched && (s != '..')
+  =>: valid
+
+defn lower-exclusive-range-literal?(s):
+  s =~ /^-?[0-9]+(?:\.[0-9]+)?\.\.\.$/
+
+defn upper-exclusive-range-literal?(s):
+  s =~ /^\.\.\.-?[0-9]+(?:\.[0-9]+)?$/
+
+defn ambiguous-exclusive-range?(s):
+  s =~ /^-?[0-9]+(?:\.[0-9]+)?\.\.\.-?[0-9]+(?:\.[0-9]+)?$/
+
+defn reject-ambiguous-exclusive-range(value):
+  usage: "ambiguous yamlschema range: $value; use .. with :xmin or :xmax"
 
 defn regex-pattern(value):
   value:S
@@ -2848,7 +2941,8 @@ defn ref-schema(s):
   +{} +: +{'$ref' str('#/$defs/' name)}
 
 defn range-to-schema(value):
-  range =: normalize-range(value)
+  info =: range-info(value)
+  range =: info.range
   lo =: range.0
   hi =: range.#.eq(2).when(range.1)
   t =: range-number-type(range)
@@ -2859,9 +2953,12 @@ defn range-to-schema(value):
     if has-lo:
       then: result + {'minimum' lo}
       else: result
-  if has-hi:
-    then: result + {'maximum' hi}
-    else: result
+  result =:
+    if has-hi:
+      then: result + {'maximum' hi}
+      else: result
+  result =: map-put-if(result info.xmin 'exclusiveMinimum' true)
+  map-put-if: result info.xmax 'exclusiveMaximum' true
 
 defn scalar-number(s):
   ys::json/load: s
@@ -2908,7 +3005,13 @@ defn warn-unsupported-json-schema(value path=''):
       key =: key:S
       child-path =: json-pointer-child(path key)
       native-format =: (key == 'format') && native-json-format?(value)
-      when unsupported-json-schema-keyword?(key) && native-format.!:
+      native-range =: native-exclusive-range-keyword?(value key)
+      unsupported =:
+        and:
+          unsupported-json-schema-keyword?: key
+          not: native-format
+          not: native-range
+      when unsupported:
         warn-unsupported-json-schema-keyword: key child-path
       warn-json-schema-children: key child child-path
 
@@ -3532,7 +3635,8 @@ defn add-block(result schema inherited-open=true):
       then: ordered-put(result '.not' build-value(schema.not child-open))
       else: result
   result =: result
-    .add-numeric-range-directive(schema.minimum schema.maximum)
+    .add-numeric-range-directive(schema)
+    .add-exclusive-range-directives(schema)
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
@@ -3555,10 +3659,31 @@ defn add-size-directive(result lo hi):
     then: ordered-put(result '.size' size-pair(lo hi))
     else: result
 
-defn add-numeric-range-directive(result lo hi):
-  if lo.? || hi.?:
-    then: ordered-put(result '.range' range-token(lo hi))
+defn add-numeric-range-directive(result schema):
+  has-lo =: schema.has?('minimum')
+  has-hi =: schema.has?('maximum')
+  if has-lo || has-hi:
+    then:
+      ordered-put:
+        result '.range' range-token(schema.minimum schema.maximum)
     else: result
+
+defn add-exclusive-range-directives(result schema):
+  result =: map-put-if(
+    result native-exclusive-minimum?(schema) '.xmin' true)
+  map-put-if: result native-exclusive-maximum?(schema) '.xmax' true
+
+defn native-exclusive-minimum?(schema):
+  schema.has?('minimum') && (schema.exclusiveMinimum == true)
+
+defn native-exclusive-maximum?(schema):
+  schema.has?('maximum') && (schema.exclusiveMaximum == true)
+
+defn native-exclusive-range-keyword?(schema key):
+  cond:
+    key == 'exclusiveMinimum': native-exclusive-minimum?(schema)
+    key == 'exclusiveMaximum': native-exclusive-maximum?(schema)
+    else: false
 
 defn add-array-items(result is-array schema inherited-open):
   if is-array && schema.items.?:
@@ -3676,7 +3801,13 @@ defn add-passthrough-directives(result schema):
 defn add-passthrough-directive-entry(result entry schema):
   key =: entry.0:S
   native-format =: (key == 'format') && native-json-format?(schema)
-  if unsupported-json-schema-keyword?(key) && native-format.!:
+  native-range =: native-exclusive-range-keyword?(schema key)
+  unsupported =:
+    and:
+      unsupported-json-schema-keyword?: key
+      not: native-format
+      not: native-range
+  if unsupported:
     then: ordered-put(result ".$key" entry.1)
     else: result
 
@@ -3694,6 +3825,7 @@ defn succinct-scalar(schema):
 defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
+    empty?(schema): '+Any'
     native-json-format-only?(schema): native-json-format-type(schema)
     typed-map-only?(schema): typed-map-base(schema)
     only-singleton-ref-allof?(schema):
@@ -3872,11 +4004,17 @@ defn type-only?(schema):
 defn numeric-range-only?(schema):
   ks =: key-set(schema)
   t =: schema.type
-  allowed =: set(qw(type minimum maximum))
+  allowed =:
+    set(qw(type minimum maximum exclusiveMinimum exclusiveMaximum))
   has-any-bound =: ks.has?('minimum') || ks.has?('maximum')
   is-num =: t.eq('integer') || t.eq('number')
   all-allowed =: ks.every?(\(allowed.has?(_)))
-  all-allowed &&: is-num && has-any-bound
+  xmin-ok =:
+    ks.has?('exclusiveMinimum').! || native-exclusive-minimum?(schema)
+  xmax-ok =:
+    ks.has?('exclusiveMaximum').! || native-exclusive-maximum?(schema)
+  valid =: all-allowed && is-num && has-any-bound && xmin-ok && xmax-ok
+  =>: valid
 
 defn string-constraints-only?(schema):
   (nil?(schema.type) || schema.type.eq('string')) &&
@@ -4027,10 +4165,7 @@ defn list-suffix(sub solo=false):
       mn.? && mx:nil?: "${mn}+"
       else: "$mn-$mx"
   flags =: solo.if('$' '') + sub.uniqueItems.if('!' '')
-  body =:
-    if size.? && flags.?:
-      then: "$size,$flags"
-      else: "$size$flags"
+  body =: "$flags$size"
   =>: "[$body]"
 
 defn json-type(schema):
@@ -4090,7 +4225,20 @@ defn add-external-ref-directive(result schema):
 
 defn range-scalar(schema):
   token =: range-token(schema.minimum schema.maximum)
-  =>: "$(type-sym(schema.type)) $token"
+  xmin =: native-exclusive-minimum?(schema)
+  xmax =: native-exclusive-maximum?(schema)
+  lower-only =: schema.has?('minimum') && schema.has?('maximum').!
+  upper-only =: schema.has?('minimum').! && schema.has?('maximum')
+  shorthand =: (xmin && lower-only) || (xmax && upper-only)
+  token =:
+    cond:
+      xmin && lower-only: token.replace(/\.\.$/ '...')
+      xmax && upper-only: token.replace(/^\.\./ '...')
+      else: token
+  parts =: +[type-sym(schema.type) token]
+  parts =: (xmin && shorthand.!).if(parts.conj(':xmin') parts)
+  parts =: (xmax && shorthand.!).if(parts.conj(':xmax') parts)
+  joins: parts
 
 defn range-token(lo hi):
   lo-s =: lo:nil?.if('' lo)

@@ -36,7 +36,7 @@ The `.ysd.yaml` succinct form is optimized for humans:
 ```yaml
 name: +Str
 email?: +Str =~"\S+@\S+"
-tags: +Str[1+,!]
+tags: +Str[!1+]
 ```
 
 The `.ysdc.json` explicit form is one serialization of the canonical internal
@@ -360,6 +360,50 @@ age: +Int 0..
 ratio: +Num 0..1
 ```
 
+Exclusive one-sided bounds use three dots:
+
+```json
+{
+  "properties": {
+    "positive": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMinimum": true
+    },
+    "underTen": {
+      "type": "number",
+      "maximum": 10,
+      "exclusiveMaximum": true
+    }
+  }
+}
+```
+
+```yaml
+positive?: +Num 0...
+underTen?: +Num ...10
+```
+
+Use `:xmin` and `:xmax` for bounded ranges:
+
+```yaml
+unit?: +Num 0..1 :xmin :xmax
+```
+
+The canonical form keeps the inclusive bounds in `.range` and records which
+bounds are exclusive:
+
+```yaml
+unit?:
+  .type: +Num
+  .range: [0, 1]
+  .xmin: true
+  .xmax: true
+```
+
+`0...10` is ambiguous and is rejected.
+Write `0..10 :xmin`, `0..10 :xmax`, or both modifiers instead.
+
 String lengths use `.size`:
 
 ```json
@@ -381,6 +425,12 @@ Roundtrip rule:
 
 - `.range` on `+Int`, `+Float`, or `+Num` maps its optional bounds to
   `minimum` and `maximum`.
+- `.xmin: true` and `.xmax: true` require the corresponding `.range` bound
+  and map to boolean `exclusiveMinimum` and `exclusiveMaximum` companions.
+- Draft 4 style boolean exclusives import natively when the corresponding
+  `minimum` or `maximum` is present.
+- Modern numeric `exclusiveMinimum` and `exclusiveMaximum` values remain
+  passthrough directives.
 - `.size` on `+Str` maps to `minLength` and `maxLength`.
 - `.size` on lists maps to `minItems` and `maxItems`.
 - `.size` on maps maps to `minProperties` and `maxProperties`.
@@ -437,7 +487,7 @@ Unique arrays add `!`:
 ```
 
 ```yaml
-names: +Str[1+,!]
+names: +Str[!1+]
 ```
 
 Roundtrip mapping:
@@ -449,7 +499,7 @@ Roundtrip mapping:
 | `key: +Int[3]` | plus `minItems: 3`, `maxItems: 3` |
 | `key: +Str[1-3]` | plus `minItems: 1`, `maxItems: 3` |
 | `key: +Str[!]` | plus `uniqueItems: true` |
-| `key: +Str[1+,!]` | plus `uniqueItems: true`, `minItems: 1` |
+| `key: +Str[!1+]` | plus `uniqueItems: true`, `minItems: 1` |
 
 
 ## Defaults
@@ -821,7 +871,6 @@ Open design areas include:
 | `contains` | List membership constraints |
 | `unevaluatedItems` | Strict list mode |
 | `unevaluatedProperties` | Strict map mode |
-| `exclusiveMinimum` / `exclusiveMaximum` | Open-bound range syntax |
 | `format` | Semantic format annotations |
 
 Likely out of scope or JSON Schema-specific:

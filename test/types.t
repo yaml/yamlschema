@@ -24,6 +24,38 @@ test::
     n: +Num
     b: +Bool
 
+- name: unconstrained-and-closed-schemas
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "anything": {},
+        "closed": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    # Converted from JSON Schema
+    anything?: +Any
+    closed?: {}
+
+- name: unconstrained-schema-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "default": {}
+      },
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: yaml-number-inference
   cmnd: bin/ysd -t ysdc -J -C -
   stdi: |

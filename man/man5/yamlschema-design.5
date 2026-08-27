@@ -419,6 +419,9 @@ symbol:
 port: +Int 1..65535
 age: +Int 0..
 ratio: +Num 0..1
+positive: +Num 0...
+underTen: +Num ...10
+unit: +Num 0..1 :xmin :xmax
 .EE
 
 .PP
@@ -434,7 +437,32 @@ age:
 ratio:
   .type: +Num
   .range: [0, 1]
+positive:
+  .type: +Num
+  .range: [0]
+  .xmin: true
+underTen:
+  .type: +Num
+  .range: [null, 10]
+  .xmax: true
+unit:
+  .type: +Num
+  .range: [0, 1]
+  .xmin: true
+  .xmax: true
 .EE
+
+.PP
+Three dots are reserved for a one-sided exclusive bound.
+Bounded exclusive ranges use \fB:xmin\fR, \fB:xmax\fR, or both.
+The spelling \fB0...10\fR is ambiguous and is rejected.
+
+.PP
+The native directives export as Draft 4 style boolean
+\fBexclusiveMinimum\fR and \fBexclusiveMaximum\fR companions to \fBminimum\fR and
+\fBmaximum\fR\&.
+They must be \fBtrue\fR and require the corresponding bound.
+Modern numeric exclusives remain same-named passthrough directives.
 
 .SS Literal Constants
 A type-qualified \fB==\fR clause is a constant constraint:
@@ -487,7 +515,7 @@ tags: +Str[]
 names: +Str[1+]
 triple: +Int[3]
 subset: +Str[1-3]
-unique_tags: +Str[1+,!]
+unique_tags: +Str[!1+]
 .EE
 
 .PP
@@ -999,7 +1027,7 @@ Converts to:
 
 name: +Str
 email?: +email
-tags: +Str[1+,!]
+tags: +Str[!1+]
 .EE
 
 .SH Converter Behavior
@@ -1059,6 +1087,10 @@ exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
 contentEncoding contentMediaType contentSchema
 .EE
+
+.PP
+\fBexclusiveMinimum\fR and \fBexclusiveMaximum\fR are passthrough keywords only when
+they are not boolean \fBtrue\fR companions to \fBminimum\fR and \fBmaximum\fR\&.
 
 .SH Current Scope and Open Design
 Implemented or directly represented by the design:

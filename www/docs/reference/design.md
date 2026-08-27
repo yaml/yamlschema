@@ -363,6 +363,9 @@ symbol:
 port: +Int 1..65535
 age: +Int 0..
 ratio: +Num 0..1
+positive: +Num 0...
+underTen: +Num ...10
+unit: +Num 0..1 :xmin :xmax
 ```
 
 Equivalent explicit form:
@@ -377,7 +380,30 @@ age:
 ratio:
   .type: +Num
   .range: [0, 1]
+positive:
+  .type: +Num
+  .range: [0]
+  .xmin: true
+underTen:
+  .type: +Num
+  .range: [null, 10]
+  .xmax: true
+unit:
+  .type: +Num
+  .range: [0, 1]
+  .xmin: true
+  .xmax: true
 ```
+
+Three dots are reserved for a one-sided exclusive bound.
+Bounded exclusive ranges use `:xmin`, `:xmax`, or both.
+The spelling `0...10` is ambiguous and is rejected.
+
+The native directives export as Draft 4 style boolean
+`exclusiveMinimum` and `exclusiveMaximum` companions to `minimum` and
+`maximum`.
+They must be `true` and require the corresponding bound.
+Modern numeric exclusives remain same-named passthrough directives.
 
 
 ### Literal Constants
@@ -427,7 +453,7 @@ tags: +Str[]
 names: +Str[1+]
 triple: +Int[3]
 subset: +Str[1-3]
-unique_tags: +Str[1+,!]
+unique_tags: +Str[!1+]
 ```
 
 The complete property-key grammar is:
@@ -919,7 +945,7 @@ Converts to:
 
 name: +Str
 email?: +email
-tags: +Str[1+,!]
+tags: +Str[!1+]
 ```
 
 
@@ -968,6 +994,9 @@ exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
 contentEncoding contentMediaType contentSchema
 ```
+
+`exclusiveMinimum` and `exclusiveMaximum` are passthrough keywords only when
+they are not boolean `true` companions to `minimum` and `maximum`.
 
 
 ## Current Scope and Open Design

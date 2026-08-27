@@ -158,11 +158,12 @@ test::
       for width in 10 11; do
         first=$(printf "%060d" 0 | tr 0 a)
         last=$(printf "%0${width}d" 0 | tr 0 b)
-        printf \
-          "{\"properties\":{\"x\":{\"description\":\"%s %s\"}}}\n" \
-          "$first" "$last" |
+        printf "%s%s\n" \
+          "{\"properties\":{\"x\":{\"title\":\"X\"," \
+          "\"description\":\"$first $last\"}}}" |
           bin/ysd -t ysd - |
-          awk -v width="$width" "/\\.desc:|^    b/ {print width, length(\$0)}"
+          perl -ne \
+            "chomp; print qq($width ), length, qq(\\n) if /\\.desc:|^    b/"
       done
     '
   want: |

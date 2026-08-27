@@ -463,10 +463,19 @@ Canonical ranges use the same structural convention, with `null` for a missing
 lower bound:
 
 ```text
-0..    -> [0]
-1..10  -> [1, 10]
-..-1   -> [null, -1]
+0..          -> [0]
+1..10        -> [1, 10]
+..-1         -> [null, -1]
+0...         -> [0] plus .xmin: true
+...10        -> [null, 10] plus .xmax: true
+0..10 :xmin  -> [0, 10] plus .xmin: true
+0..10 :xmax  -> [0, 10] plus .xmax: true
 ```
+
+Both modifiers may follow one bounded range.
+The explicit directives must be `true` and require their corresponding range
+bounds.
+The spelling `0...10` is ambiguous and is rejected.
 
 The old `"*"` bound is invalid.
 

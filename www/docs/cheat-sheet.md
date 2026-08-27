@@ -106,7 +106,7 @@ answer: [true, false, 42]
 names: +Str[]
 tags: +Str[1+]
 pair: +Int[2]
-unique: +Str[!,1+]
+unique: +Str[!1+]
 maybe_one: +Str[$]
 ```
 

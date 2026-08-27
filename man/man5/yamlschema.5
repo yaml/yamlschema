@@ -517,10 +517,20 @@ Canonical ranges use the same structural convention, with \fBnull\fR for a missi
 lower bound:
 
 .EX
-0..    -> [0]
-1..10  -> [1, 10]
-\&..-1   -> [null, -1]
+0..          -> [0]
+1..10        -> [1, 10]
+\&..-1         -> [null, -1]
+0...         -> [0] plus .xmin: true
+\&...10        -> [null, 10] plus .xmax: true
+0..10 :xmin  -> [0, 10] plus .xmin: true
+0..10 :xmax  -> [0, 10] plus .xmax: true
 .EE
+
+.PP
+Both modifiers may follow one bounded range.
+The explicit directives must be \fBtrue\fR and require their corresponding range
+bounds.
+The spelling \fB0...10\fR is ambiguous and is rejected.
 
 .PP
 The old \fB"*"\fR bound is invalid.

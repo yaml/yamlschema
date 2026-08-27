@@ -72,7 +72,7 @@ Definitions begin with `+` and can be referenced anywhere in the document.
 ## Lists and maps
 
 ```yaml
-tags?: +Str[1+,!]
+tags?: +Str[!1+]
 labels?: +Map{+Str}
 metadata?: +Map{+Any}
 ```
