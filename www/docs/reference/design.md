@@ -434,16 +434,19 @@ kind:
 
 ## Property Keys
 
-The property key syntax carries only pair-level optionality:
+The property key syntax carries pair-level optionality and JSON Schema
+property-name patterns:
 
 ```text
 name ? :
+/ pattern / :
 ```
 
 | Form | Meaning |
 | --- | --- |
 | `key:` | Required key |
 | `key?:` | Optional key |
+| `/pattern/:` | Pattern for zero or more keys |
 
 Lists, sizes, uniqueness, and scalar-or-list constraints belong to the value
 type:
@@ -459,10 +462,17 @@ unique_tags: +Str[!1+]
 The complete property-key grammar is:
 
 ```text
-key_expr = name "?"? ":"
+key_expr = (name "?"? | "/" pattern "/") ":"
 ```
 
 Key-side list syntax such as `key[]` and `key?[1+]` is rejected.
+The text between the first and last slash is copied exactly to JSON Schema
+`patternProperties`.
+YAMLSchema does not add anchors or unescape the pattern.
+Pattern keys are never required, cannot use `.need`, and cannot appear in
+`.keys` rules.
+An exact property name beginning and ending with `/` is reserved because it
+would be indistinguishable from a pattern key.
 
 
 ## Key/Value Pair Constraints
@@ -884,6 +894,7 @@ YAMLSchema.
 | `type: "null"` | `+Null` |
 | `type: "object"` | `+Map{+Any}` or a nested mapping shape |
 | `properties` | Bare mapping keys |
+| `patternProperties` | Slash-delimited regex keys |
 | `required` | Default required keys; omitted names get `?` |
 | `additionalProperties: true` | Inherited openness or `+Str: +Any` |
 | simple schema-valued `additionalProperties` | `+Map{+Type}` |
@@ -988,7 +999,7 @@ Current passthrough keywords include:
 
 ```text
 $dynamicRef $dynamicAnchor $vocabulary $comment
-prefixItems contains patternProperties dependentSchemas propertyNames
+prefixItems contains dependentSchemas propertyNames
 if then else unevaluatedItems unevaluatedProperties multipleOf
 exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
@@ -1006,6 +1017,7 @@ Implemented or directly represented by the design:
 - Scalar built-ins.
 - Draft 2020-12 string formats as `+JSONSchema/format` types.
 - Required and optional object properties.
+- Regex property names and pattern properties.
 - Property-local dependent required constraints.
 - Nested object properties.
 - Closed shaped mappings and typed wildcard keys.
@@ -1023,7 +1035,6 @@ Still open or incomplete:
 
 - `if` / `then` / `else`.
 - Dependency schemas and conditional constraints.
-- Regex property names and pattern properties.
 - Positional list schemas.
 - `contains`, `minContains`, and `maxContains`.
 - Unevaluated item/property handling.

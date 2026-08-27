@@ -807,6 +807,27 @@ labels:
 .EE
 
 .PP
+Map-valued \fBpatternProperties\fR entries use slash-delimited keys and may
+coexist with named properties and the wildcard:
+
+.EX
+name?: +Str
+/^x-/: +Any
++Str: +Str
+.EE
+
+.PP
+The text between the first and last slash is copied exactly, without added
+anchors or unescaping.
+Pattern keys are never required, cannot use \fB\&.need\fR, and cannot appear in
+\fB\&.keys\fR rules.
+An exact property name beginning and ending with \fB/\fR conflicts with this
+syntax and is rejected.
+The legacy \fB\&.patternProperties\fR passthrough form remains available for
+schemas with Boolean pattern values, which are not native YAMLSchema types.
+The native and legacy forms cannot be mixed in one mapping.
+
+.PP
 \fB+Map{+Type}\fR accepts one built-in, user-defined, or namespaced reference.
 It is shorthand for the future \fB+Map{+Str,+Type}\fR form.
 Two-reference maps are reserved for YAML key schemas but are not implemented.
@@ -940,7 +961,6 @@ l l .
 \fBJSON Schema\fP	\fBPossible YAMLSchema direction\fP
 \fBif\fR / \fBthen\fR / \fBelse\fR	\fB\&.when\fR
 \fBdependentSchemas\fR	Extended \fB\&.with\fR or conditional schema
-\fBpatternProperties\fR	Regex keys
 \fBpropertyNames\fR	Key constraints
 \fBprefixItems\fR	Positional list schemas
 \fBcontains\fR	List membership constraints

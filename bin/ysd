@@ -732,6 +732,7 @@ defn normalize-json-entry(result entry schema):
   drop =:
     (key.eq('additionalProperties') && unconstrained-additional) ||
     (key.eq('dependentRequired') && map?(value) && empty?(value)) ||
+    (key.eq('patternProperties') && map?(value) && empty?(value)) ||
     (key.eq('items') && map?(value) && empty?(value) &&
       contains?(schema 'unevaluatedItems').!) ||
     (key.eq('uniqueItems') && value.eq(false))
@@ -990,6 +991,7 @@ defn expand-ysdc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
   validate-regex-directives: doc source
+  validate-pattern-property-forms: doc
   expanded =: reduce(expand-doc-entry omap() doc)
   expanded =: canonicalize-document-ysid(expanded)
   validate-schema-names: expanded
@@ -1010,6 +1012,14 @@ defn validate-regex-directives(value source):
       each item value:
         validate-regex-directives: item source
 
+defn validate-pattern-property-forms(value):
+  native =:
+    map?(value) && value:keys.some(\(pattern-property-key?(_)))
+  legacy =: map?(value) && contains?(value '.patternProperties')
+  when native && legacy:
+    usage:
+      'yamlschema cannot mix regex keys with .patternProperties'
+
 defn expand-doc-entry(result entry):
   key value =: entry
   key =: key:S
@@ -1026,6 +1036,8 @@ defn expand-doc-entry(result entry):
       expand-top-directive: result key value
     key == WILDCARD-KEY:
       ordered-put: result key expand-type(value)
+    pattern-property-key?(key):
+      add-expanded-pattern-property: result key value
     key =~ /^\+/:
       ordered-put: result key expand-type(value)
     else:
@@ -1081,7 +1093,11 @@ defn expand-key-rule-branch(value):
 
 defn expand-key-rule-branch-entry(result entry):
   key =: entry.0:S
-  when key.starts?('.') || key.starts?('+'):
+  reserved =:
+    key.starts?('.') ||
+    key.starts?('+') ||
+    pattern-property-key?(key)
+  when reserved:
     usage: 'yamlschema .keys .any branch keys must be property names'
   add-expanded-field: result key entry.1
 
@@ -1090,6 +1106,12 @@ defn add-expanded-field(result key value):
   block =: expand-type(value)
   block =: canonicalize-type-reference(block)
   ordered-put: result info.key block
+
+defn add-expanded-pattern-property(result key value):
+  block =: expand-type(value)
+  when contains?(block '.need'):
+    usage: 'yamlschema regex keys cannot use .need'
+  ordered-put: result key canonicalize-type-reference(block)
 
 defn parse-expanded-key(key):
   when key-list-suffix?(key):
@@ -1119,6 +1141,7 @@ defn validate-complete-map-type(value):
     usage: 'incomplete +Map type requires key/value pairs'
 
 defn expand-type-map(value):
+  validate-pattern-property-forms: value
   explicit =: value:keys.some(\(_:S =~ /^\./))
   if explicit:
     expand-explicit-type: value
@@ -1131,6 +1154,8 @@ defn expand-shape-entry(result entry):
   key =: entry.0:S
   cond:
     key == WILDCARD-KEY: ordered-put(result key expand-type(entry.1))
+    pattern-property-key?(key):
+      add-expanded-pattern-property: result key entry.1
     else: add-expanded-field(result key entry.1)
 
 defn expand-explicit-type(value):
@@ -1161,6 +1186,8 @@ defn expand-explicit-entry(result entry):
       expand-explicit-directive: result key val
     key == WILDCARD-KEY:
       ordered-put: result key expand-type(val)
+    pattern-property-key?(key):
+      add-expanded-pattern-property: result key val
     else:
       add-expanded-field: result key val
 
@@ -2283,6 +2310,7 @@ defn ysdc-to-schema(doc):
   root-fields =:
     state.wildcard ||
     state.props:seq ||
+    state.patterns:seq ||
     doc.has?('.keys')
   when state.explicit-root && root-fields:
     usage: 'yamlschema .root cannot be combined with top-level fields'
@@ -2291,6 +2319,8 @@ defn ysdc-to-schema(doc):
   result :if has-root-mapping +=:: {type: object}
   result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
+    .map-put-if(empty?(state.patterns).!
+                'patternProperties' state.patterns)
     .map-put-if(empty?(reqs).! 'required' reqs)
     .map-put-if(empty?(state.dependent).!
                 'dependentRequired' state.dependent)
@@ -2313,6 +2343,7 @@ defn initial-ysdc-doc-state(doc):
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
     defs:: omap()
     props:: omap()
+    patterns:: omap()
     required: []
     dependent:: omap()
     open:: doc.get('.open' false)
@@ -2333,6 +2364,8 @@ defn ysdc-doc-step(state entry):
       state +::
         wildcard:: true
         additional:: wildcard-value-to-schema(value)
+    pattern-property-key?(key):
+      add-pattern-property-schema: state key value
     key =~ /^\+/:
       name =: key.replace(/^\+/)
       schema =: ysdc-value-to-schema(value state.open)
@@ -2364,6 +2397,13 @@ defn add-property-schema(state key value):
       then: update-state(state 'dependent' info.name needs)
       else: state
   =>: state
+
+defn add-pattern-property-schema(state key value):
+  when map?(value) && contains?(value '.need'):
+    usage: 'yamlschema regex keys cannot use .need'
+  pattern =: pattern-property-name(key)
+  schema =: ysdc-value-to-schema(value state.open)
+  update-state: state 'patterns' pattern schema
 
 defn without-property-need(value):
   reduce remove-property-need: omap() value
@@ -2498,10 +2538,25 @@ defn parse-property-key(key):
   optional-after-name =: key =~ /\?$/
   k =: key
   k =: k.replace(/\?$/)
+  when pattern-property-key?(k):
+    usage: "yamlschema exact property name $k conflicts with regex key syntax"
   required =: optional-after-name.!
   =>::
     name:: k
     required:: required
+
+defn pattern-property-key?(key):
+  text =: key:S
+  and:
+    text.# >= 2
+    text.starts?('/')
+    text.ends?('/')
+
+defn pattern-property-name(key):
+  key:S.replace(/^\//).replace(/\/$/)
+
+defn pattern-property-key(pattern):
+  "/$pattern/"
 
 defn ysdc-value-to-schema(value inherited-open=false):
   if map?(value):
@@ -2528,6 +2583,10 @@ defn ysdc-object-to-schema(value inherited-open=false):
   result =: +{'type' 'object'}
   result =: map-put-if(result empty?(reqs).! 'required' reqs)
   result =: map-put-if(result empty?(state.props).! 'properties' state.props)
+  result =:
+    map-put-if(
+      result empty?(state.patterns).!
+      'patternProperties' state.patterns)
   result =: map-put-if(
     result empty?(state.dependent).!
     'dependentRequired' state.dependent)
@@ -2543,6 +2602,7 @@ defn ysdc-object-to-schema(value inherited-open=false):
 
 defn initial-object-state(open=false)::
   props:: omap()
+  patterns:: omap()
   required: []
   dependent:: omap()
   open:: open
@@ -2556,6 +2616,8 @@ defn ysdc-object-step(state entry):
       state +::
         wildcard:: true
         additional:: wildcard-value-to-schema(entry.1 state.open)
+    pattern-property-key?(key):
+      add-pattern-property-schema: state key entry.1
     legacy-directive?(key):
       reject-legacy-directive: key
     else:
@@ -2706,6 +2768,10 @@ defn canonical-shape-schema(value inherited-open=false):
       reduce(ysdc-object-step initial-object-state(local-open) entries)
     result =: +{'type' 'object'}
     result =: map-put-if(result state.props:seq 'properties' state.props)
+    result =:
+      map-put-if:
+        result state.patterns:seq
+        'patternProperties' state.patterns
     result =:
       map-put-if(result state.required:seq 'required' state.required)
     result =:
@@ -2980,6 +3046,17 @@ defn unsupported-json-schema-keywords():
 defn unsupported-json-schema-keyword?(key):
   key:S.in?(unsupported-json-schema-keywords())
 
+defn native-pattern-properties?(schema):
+  value =: schema.patternProperties
+  and:
+    map?(value)
+    every?(map? value:vals)
+
+defn native-pattern-properties-keyword?(schema key):
+  and:
+    key == 'patternProperties'
+    native-pattern-properties?(schema)
+
 defn passthrough-directive?(key):
   text =: key:S
   (text =~ /^\./) &&:
@@ -3006,11 +3083,13 @@ defn warn-unsupported-json-schema(value path=''):
       child-path =: json-pointer-child(path key)
       native-format =: (key == 'format') && native-json-format?(value)
       native-range =: native-exclusive-range-keyword?(value key)
+      native-pattern =: native-pattern-properties-keyword?(value key)
       unsupported =:
         and:
           unsupported-json-schema-keyword?: key
           not: native-format
           not: native-range
+          not: native-pattern
       when unsupported:
         warn-unsupported-json-schema-keyword: key child-path
       warn-json-schema-children: key child child-path
@@ -3158,6 +3237,10 @@ defn yamlschema-schema-child-path(path key root):
   cond:
     key == WILDCARD-KEY:
       json-pointer-child: path 'additionalProperties'
+    pattern-property-key?(key):
+      pattern =: pattern-property-name(key)
+      json-pointer-child:
+        json-pointer-child(path 'patternProperties') pattern
     root && key.starts?('+'):
       name =: key.replace(/^\+/)
       =>: json-pointer-child(json-pointer-child(path '$defs') name)
@@ -3211,6 +3294,7 @@ defn build-doc(schema):
   result =: omap()
     .add-document-ysid(schema)
     .add-root-annotations(schema)
+    .add-root-pattern-properties-passthrough(schema)
     .add-import-open-default(root-open)
     .add-explicit-empty-root(schema defs)
     .add-defs(defs root-open)
@@ -3232,6 +3316,16 @@ defn add-root-annotations(result schema):
     .map-put-if(schema.title.? '.title' schema.title)
     .map-put-if(schema.description.? '.desc' schema.description)
 
+defn add-root-pattern-properties-passthrough(result schema):
+  preserve =:
+    contains?(schema 'patternProperties') &&
+    native-pattern-properties?(schema).!
+  if preserve:
+    then:
+      ordered-put:
+        result '.patternProperties' schema.patternProperties
+    else: result
+
 defn add-import-open-default(result root-open):
   if root-open:
     then: ordered-put(result '.open' true)
@@ -3246,7 +3340,7 @@ defn empty-closed-object-root?(schema):
   and:
     json-type(schema).eq('object')
     json-closed?(schema)
-    schema.has?('properties').!
+    object-with-fields?(schema).!
 
 defn add-defs(result defs inherited-open):
   reduce \(add-def-step(_1 _2 inherited-open)): result defs
@@ -3259,9 +3353,10 @@ defn add-def-step(result entry inherited-open):
 
 defn add-body(result schema inherited-open):
   validate-schema-dependent-required: schema
-  if object-with-props?(schema):
+  if object-with-fields?(schema):
     then:
       result =: add-properties(result schema inherited-open)
+      result =: add-pattern-properties(result schema inherited-open)
       add-root-wildcard-entry: result schema inherited-open
     else:
       if json-type(schema).eq('object') && typed-map-base(schema):
@@ -3281,7 +3376,7 @@ defn add-root-wildcard-entry(result schema inherited-open):
     else: result
 
 defn add-properties(result schema inherited-open):
-  props =: schema.properties
+  props =: schema.properties || omap()
   required =: set(schema.required)
   dependent =: validate-dependent-required(schema props)
   reduce:
@@ -3297,6 +3392,9 @@ defn add-property(result entry required dependent inherited-open):
   name sub =: entry
   when name:S == WILDCARD-KEY:
     usage: 'JSON Schema property name +Str is reserved for the wildcard'
+  when pattern-property-key?(name):
+    usage:
+      "JSON Schema property name $name conflicts with regex key syntax"
   is-req =: required.has?(name)
   key =: key-for(name is-req)
   array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
@@ -3309,6 +3407,19 @@ defn add-property(result entry required dependent inherited-open):
       then: add-property-need(value dependent.$name)
       else: value
   ordered-put: result key value
+
+defn add-pattern-properties(result schema inherited-open):
+  if native-pattern-properties?(schema):
+    then:
+      reduce:
+        \(add-pattern-property(_1 _2 inherited-open))
+        result schema.patternProperties
+    else: result
+
+defn add-pattern-property(result entry inherited-open):
+  pattern sub =: entry
+  key =: pattern-property-key(pattern)
+  ordered-put: result key build-value(sub inherited-open)
 
 defn validate-dependent-required(schema props):
   value =: schema.dependentRequired
@@ -3443,7 +3554,7 @@ defn build-ordinary-value(schema inherited-open=true):
       annotated-scalar: description-scalar schema.description
     description-scalar && not(schema-annotations?(schema)):
       description-scalar
-    object-with-props?(schema): build-properties-map(schema inherited-open)
+    object-with-fields?(schema): build-properties-map(schema inherited-open)
     else: build-block-map(schema inherited-open)
 
 defn build-solo-list-value(schema info inherited-open):
@@ -3544,6 +3655,7 @@ defn build-properties-map(schema inherited-open):
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: add-properties(result schema child-open)
+  result =: add-pattern-properties(result schema child-open)
   result =: add-wildcard-entry(result schema inherited-open)
   result =: add-imported-combinators(result schema child-open)
   result =: add-passthrough-directives(result schema)
@@ -3576,7 +3688,7 @@ defn add-block(result schema inherited-open=true):
   ts ||=: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
-  pure-map =: t.eq('object') && object-with-props?(schema).!
+  pure-map =: t.eq('object') && object-with-fields?(schema).!
   map-base =: pure-map.when(open-map-base(schema))
   map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
   child-open =: imported-child-open(schema inherited-open)
@@ -3644,9 +3756,10 @@ defn add-block(result schema inherited-open=true):
   result =:
     if t == 'object':
       then:
-        if object-with-props?(schema):
+        if object-with-fields?(schema):
           then:
             result =: result.add-properties(schema child-open)
+            result =: result.add-pattern-properties(schema child-open)
             add-wildcard-entry: result schema inherited-open
           else:
             map-base.if(result
@@ -3724,6 +3837,7 @@ defn json-object-schema?(schema):
     map?(schema).!: false
     json-type(schema) == 'object': true
     map?(schema.properties): true
+    map?(schema.patternProperties): true
     else: contains?(schema 'additionalProperties')
 
 defn json-unconstrained-open?(schema):
@@ -3768,7 +3882,7 @@ defn map-value-type-ref(schema):
 defn add-wildcard-entry(result schema inherited-open):
   typed =: json-typed-additional?(schema)
   local-open =: json-unconstrained-open?(schema)
-  pure-open =: local-open && object-with-props?(schema).!
+  pure-open =: local-open && object-with-fields?(schema).!
   if typed || (local-open && (inherited-open.! || pure-open)):
     then:
       ordered-put:
@@ -3802,11 +3916,13 @@ defn add-passthrough-directive-entry(result entry schema):
   key =: entry.0:S
   native-format =: (key == 'format') && native-json-format?(schema)
   native-range =: native-exclusive-range-keyword?(schema key)
+  native-pattern =: native-pattern-properties-keyword?(schema key)
   unsupported =:
     and:
       unsupported-json-schema-keyword?: key
       not: native-format
       not: native-range
+      not: native-pattern
   if unsupported:
     then: ordered-put(result ".$key" entry.1)
     else: result
@@ -4100,9 +4216,9 @@ defn size-scalar(lo hi):
     hi:nil?: "$lo+"
     else: "$lo-$hi"
 
-defn object-with-props?(schema):
+defn object-with-fields?(schema):
   map?(schema) &&
-  schema.has?('properties')
+  (schema.has?('properties') || schema.has?('patternProperties'))
 
 defn native-json-format?(schema):
   format =: schema.format

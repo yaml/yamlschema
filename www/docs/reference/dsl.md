@@ -61,6 +61,23 @@ nickname?: +Str
 
 Keys are required unless they end in `?`.
 The `?` remains on the key in canonical YAMLSchema.
+A key enclosed by `/` is a JSON Schema property-name pattern:
+
+```yaml
+/^x-/: +Any
+headers:
+  '/^[A-Za-z][A-Za-z0-9-]*$/': +Str
+```
+
+Pattern keys may match zero or more mapping keys, so they are never required.
+The text between the first and last slash is the exact
+`patternProperties` key.
+No anchors are added and no characters are unescaped.
+For example, `//foo//` represents the JSON Schema pattern `/foo/`.
+Pattern keys cannot use `.need` or appear in `.keys` rules.
+They may coexist with ordinary properties and the `+Str` wildcard.
+The slash-delimited form is reserved, so an exact property name such as
+`/name/` cannot be represented as an ordinary mapping key.
 A value may be a reference, an anonymous type, or a reference refined by more
 constraints:
 

@@ -745,6 +745,25 @@ labels:
   +Str: +Str
 ```
 
+Map-valued `patternProperties` entries use slash-delimited keys and may
+coexist with named properties and the wildcard:
+
+```yaml
+name?: +Str
+/^x-/: +Any
++Str: +Str
+```
+
+The text between the first and last slash is copied exactly, without added
+anchors or unescaping.
+Pattern keys are never required, cannot use `.need`, and cannot appear in
+`.keys` rules.
+An exact property name beginning and ending with `/` conflicts with this
+syntax and is rejected.
+The legacy `.patternProperties` passthrough form remains available for
+schemas with Boolean pattern values, which are not native YAMLSchema types.
+The native and legacy forms cannot be mixed in one mapping.
+
 `+Map{+Type}` accepts one built-in, user-defined, or namespaced reference.
 It is shorthand for the future `+Map{+Str,+Type}` form.
 Two-reference maps are reserved for YAML key schemas but are not implemented.
@@ -865,7 +884,6 @@ Open design areas include:
 | --- | --- |
 | `if` / `then` / `else` | `.when` |
 | `dependentSchemas` | Extended `.with` or conditional schema |
-| `patternProperties` | Regex keys |
 | `propertyNames` | Key constraints |
 | `prefixItems` | Positional list schemas |
 | `contains` | List membership constraints |

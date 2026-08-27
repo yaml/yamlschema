@@ -491,10 +491,12 @@ kind:
 \fBconst\fR and \fBdefault\fR\&.
 
 .SH Property Keys
-The property key syntax carries only pair-level optionality:
+The property key syntax carries pair-level optionality and JSON Schema
+property-name patterns:
 
 .EX
 name ? :
+/ pattern / :
 .EE
 
 .TS
@@ -504,6 +506,7 @@ l l .
 \fBForm\fP	\fBMeaning\fP
 \fBkey:\fR	Required key
 \fBkey?:\fR	Optional key
+\fB/pattern/:\fR	Pattern for zero or more keys
 .TE
 
 .PP
@@ -522,11 +525,18 @@ unique_tags: +Str[!1+]
 The complete property-key grammar is:
 
 .EX
-key_expr = name "?"? ":"
+key_expr = (name "?"? | "/" pattern "/") ":"
 .EE
 
 .PP
 Key-side list syntax such as \fBkey[]\fR and \fBkey?[1+]\fR is rejected.
+The text between the first and last slash is copied exactly to JSON Schema
+\fBpatternProperties\fR\&.
+YAMLSchema does not add anchors or unescape the pattern.
+Pattern keys are never required, cannot use \fB\&.need\fR, and cannot appear in
+\fB\&.keys\fR rules.
+An exact property name beginning and ending with \fB/\fR is reserved because it
+would be indistinguishable from a pattern key.
 
 .SH Key/Value Pair Constraints
 Optionality belongs to one key/value pair, but some mapping constraints relate
@@ -960,6 +970,7 @@ l l .
 \fBtype: "null"\fR	\fB+Null\fR
 \fBtype: "object"\fR	\fB+Map{+Any}\fR or a nested mapping shape
 \fBproperties\fR	Bare mapping keys
+\fBpatternProperties\fR	Slash-delimited regex keys
 \fBrequired\fR	T{
 Default required keys; omitted names get \fB?\fR
 T}
@@ -1081,7 +1092,7 @@ Current passthrough keywords include:
 
 .EX
 $dynamicRef $dynamicAnchor $vocabulary $comment
-prefixItems contains patternProperties dependentSchemas propertyNames
+prefixItems contains dependentSchemas propertyNames
 if then else unevaluatedItems unevaluatedProperties multipleOf
 exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
@@ -1100,6 +1111,8 @@ Scalar built-ins.
 Draft 2020-12 string formats as \fB+JSONSchema/format\fR types.
 .IP \(bu 2
 Required and optional object properties.
+.IP \(bu 2
+Regex property names and pattern properties.
 .IP \(bu 2
 Property-local dependent required constraints.
 .IP \(bu 2
@@ -1131,8 +1144,6 @@ Still open or incomplete:
 \fBif\fR / \fBthen\fR / \fBelse\fR\&.
 .IP \(bu 2
 Dependency schemas and conditional constraints.
-.IP \(bu 2
-Regex property names and pattern properties.
 .IP \(bu 2
 Positional list schemas.
 .IP \(bu 2

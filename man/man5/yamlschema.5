@@ -67,6 +67,24 @@ nickname?: +Str
 .PP
 Keys are required unless they end in \fB?\fR\&.
 The \fB?\fR remains on the key in canonical YAMLSchema.
+A key enclosed by \fB/\fR is a JSON Schema property-name pattern:
+
+.EX
+/^x-/: +Any
+headers:
+  '/^[A-Za-z][A-Za-z0-9-]*$/': +Str
+.EE
+
+.PP
+Pattern keys may match zero or more mapping keys, so they are never required.
+The text between the first and last slash is the exact
+\fBpatternProperties\fR key.
+No anchors are added and no characters are unescaped.
+For example, \fB//foo//\fR represents the JSON Schema pattern \fB/foo/\fR\&.
+Pattern keys cannot use \fB\&.need\fR or appear in \fB\&.keys\fR rules.
+They may coexist with ordinary properties and the \fB+Str\fR wildcard.
+The slash-delimited form is reserved, so an exact property name such as
+\fB/name/\fR cannot be represented as an ordinary mapping key.
 A value may be a reference, an anonymous type, or a reference refined by more
 constraints:
 
