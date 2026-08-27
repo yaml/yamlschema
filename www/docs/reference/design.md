@@ -620,6 +620,9 @@ tags:
   .uniq: true
 ```
 
+The document root may also use `.size` when its root value is the implicit
+mapping formed by top-level property and pattern keys.
+
 Optional fields retain `?` on the key:
 
 ```yaml

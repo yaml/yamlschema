@@ -183,6 +183,22 @@ Canonical .ysdc keeps `.open: true` only at the document top.
 It uses `.open: false` to close a shape under an open default and a final
 `+Str: +Any` wildcard to open a shape under a closed default.
 
+The `.size` directive constrains the number of properties in a mapping.
+It works on anonymous mapping shapes and at the document root:
+
+```yaml
+.size: 1+
+/^x-/: +Any
+
+bounded:
+  .size: 1-3
+  /^item-/: +Str
+```
+
+These forms map to `minProperties: 1`, and to `minProperties: 1` plus
+`maxProperties: 3`, respectively.
+Canonical .ysdc expands them to `.size: [1]` and `.size: [1, 3]`.
+
 
 ## Key/Value Pair Constraints
 

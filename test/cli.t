@@ -308,6 +308,7 @@ test::
           "type": "string"
         }
       },
+      "type": "object",
       "properties": {
         "name": {
           "$ref": "#/$defs/thing"
@@ -340,6 +341,31 @@ test::
     }
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"open":{"type":"object"},"empty":{"type":"object"},"closed":{"type":"object","additionalProperties":false},"typed":{"type":"object","additionalProperties":{"type":"string"}},"data":{"default":{"additionalProperties":true,"definitions":{"x":{"type":"string"}},"$ref":"#\/definitions\/x"}}}}
+
+- name: norm-adds-inferred-shape-and-enum-types
+  cmnd: bin/ysd -NC
+  stdi: |
+    {
+      "properties": {
+        "shape": {"properties": {"x": {}}},
+        "pattern": {"patternProperties": {"^x": {}}},
+        "string": {"enum": ["x"]},
+        "boolean": {"enum": [true]},
+        "integer": {"enum": [1]},
+        "number": {"enum": [1, 2.5]},
+        "null": {"enum": [null]},
+        "mixed": {"enum": ["x", true]},
+        "empty": {"enum": []},
+        "typed": {"type": "string", "enum": ["x"]},
+        "other": {"minLength": 1},
+        "conflict": {
+          "properties": {"x": {}},
+          "enum": ["x"]
+        }
+      }
+    }
+  want: |
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"shape":{"type":"object","properties":{"x":{}}},"pattern":{"type":"object","patternProperties":{"^x":{}}},"string":{"type":"string","enum":["x"]},"boolean":{"type":"boolean","enum":[true]},"integer":{"type":"integer","enum":[1]},"number":{"type":"number","enum":[1,2.5]},"null":{"type":"null","enum":[null]},"mixed":{"enum":["x",true]},"empty":{"enum":[]},"typed":{"type":"string","enum":["x"]},"other":{"minLength":1},"conflict":{"enum":["x"],"properties":{"x":{}}}}}
 
 - name: norm-canonicalizes-single-ref-allof
   cmnd: bin/ysd -NC

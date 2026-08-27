@@ -434,6 +434,8 @@ Roundtrip rule:
 - `.size` on `+Str` maps to `minLength` and `maxLength`.
 - `.size` on lists maps to `minItems` and `maxItems`.
 - `.size` on maps maps to `minProperties` and `maxProperties`.
+- `minProperties: 1` imports as `.size: 1+` on a mapping shape.
+- A root `.size` constrains the number of properties in the document map.
 - A one-number canonical sequence such as `.size: [3]` means that the upper
   bound is absent.
 
@@ -909,6 +911,12 @@ Semantic roundtrip does not preserve every textual detail:
 - Equivalent JSON Schema spellings may normalize to one spelling.
 - Explicit `additionalProperties: true` and an empty schema normalize to
   omission.
+- An omitted type normalizes to `object` for `properties` and
+  `patternProperties`, or to the inferred type of a non-empty homogeneous
+  enum.
+- Empty and heterogeneous enums, conflicting inferences, and other
+  type-specific keywords remain untyped.
+- `minProperties: 0` normalizes away because zero is the default.
 - `definitions` should export back as `$defs`.
 - Succinct YAMLSchema may expand to explicit YAMLSchema before JSON
   generation.

@@ -341,4 +341,33 @@ test::
   want: |
     true
 
+- name: inferred-shape-and-enum-types-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "$defs": {
+        "Parameter": {
+          "description": "parameter",
+          "properties": {
+            "in": {"enum": ["path"]},
+            "required": {"enum": [true]}
+          }
+        },
+        "Security": {
+          "oneOf": [
+            {
+              "description": "branch",
+              "properties": {
+                "scheme": {"enum": ["bearer"]}
+              }
+            }
+          ]
+        }
+      },
+      "type": "object",
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 done:

@@ -202,6 +202,24 @@ Canonical .ysdc keeps \fB\&.open: true\fR only at the document top.
 It uses \fB\&.open: false\fR to close a shape under an open default and a final
 \fB+Str: +Any\fR wildcard to open a shape under a closed default.
 
+.PP
+The \fB\&.size\fR directive constrains the number of properties in a mapping.
+It works on anonymous mapping shapes and at the document root:
+
+.EX
+\&.size: 1+
+/^x-/: +Any
+
+bounded:
+  .size: 1-3
+  /^item-/: +Str
+.EE
+
+.PP
+These forms map to \fBminProperties: 1\fR, and to \fBminProperties: 1\fR plus
+\fBmaxProperties: 3\fR, respectively.
+Canonical .ysdc expands them to \fB\&.size: [1]\fR and \fB\&.size: [1, 3]\fR\&.
+
 .SH Key/Value Pair Constraints
 Use a top-level \fB\&.keys\fR sequence when a constraint relates multiple mapping
 pairs:

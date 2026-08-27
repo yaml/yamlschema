@@ -679,11 +679,44 @@ defn normalize-json-map(value root?):
   result =: normalize-single-anyof-allof(result)
   result =: canonicalize-single-required-oneof(result)
   result =: normalize-solo-list-anyof(result)
+  result =: normalize-inferred-json-type(result)
   if root?:
     then:
       result =: normalize-root-json-id(result)
       ordered-put: result '$schema' JSON-SCHEMA-DIALECT
     else: result
+
+defn normalize-inferred-json-type(result):
+  if result.has?('type'):
+    then: result
+    else:
+      candidates =:
+        set:
+          remove nil?:
+            +[
+              inferred-object-json-type(result)
+              inferred-enum-json-type(result)]
+      if candidates.# == 1:
+        then: ordered-put(result 'type' candidates:first)
+        else: result
+
+defn inferred-object-json-type(schema):
+  when map?(schema.properties) || map?(schema.patternProperties):
+    =>: 'object'
+
+defn inferred-enum-json-type(schema):
+  values =: schema.enum
+  when sequential?(values) && values:seq:
+    types =::
+      +Str: string
+      +Int: integer
+      +Num: number
+      +Bool: boolean
+      +Null: 'null'
+      +Map: object
+    base =: json-infer-base(values)
+    type =: types.$base
+    =>: type
 
 defn normalize-root-json-id(result):
   if result.has?('$id'):
@@ -732,6 +765,7 @@ defn normalize-json-entry(result entry schema):
   drop =:
     (key.eq('additionalProperties') && unconstrained-additional) ||
     (key.eq('dependentRequired') && map?(value) && empty?(value)) ||
+    (key.eq('minProperties') && value.eq(0)) ||
     (key.eq('patternProperties') && map?(value) && empty?(value)) ||
     (key.eq('items') && map?(value) && empty?(value) &&
       contains?(schema 'unevaluatedItems').!) ||
@@ -1046,7 +1080,7 @@ defn expand-doc-entry(result entry):
 defn top-directive?(key):
   key.in?([
     '.ysid', '.from', '.name', '.root', '.title',
-    '.desc', '.open', '.one', '.keys'])
+    '.desc', '.open', '.one', '.keys', '.size'])
 
 defn expand-top-directive(result key value):
   when-not top-directive?(key):
@@ -1059,6 +1093,7 @@ defn expand-top-directive(result key value):
       '.open': validate-open-value(value)
       '.one': expand-combinator-sequence(key value)
       '.keys': expand-key-rules(value)
+      '.size': normalize-size(value)
       else: value
   ordered-put: result key normalized
 
@@ -2311,7 +2346,8 @@ defn ysdc-to-schema(doc):
     state.wildcard ||
     state.props:seq ||
     state.patterns:seq ||
-    doc.has?('.keys')
+    doc.has?('.keys') ||
+    doc.has?('.size')
   when state.explicit-root && root-fields:
     usage: 'yamlschema .root cannot be combined with top-level fields'
   has-root-mapping =:
@@ -2423,12 +2459,19 @@ defn add-schema-meta(result key value inherited-open=false):
     '.open': result
     '.one': add-root-one-schema(result value)
     '.keys': add-key-rules-schema(result value inherited-open)
+    '.size': add-root-size-schema(result value)
     '.additionalProperties':
       reject-additional-properties: key
     else:
       if passthrough-directive?(key):
         then: add-passthrough-schema-keyword(result key value)
         else: result
+
+defn add-root-size-schema(result size):
+  lo =: size.0
+  hi =: size.#.eq(2).when(size.1)
+  add-canonical-bounds:
+    result lo hi 'minProperties' 'maxProperties'
 
 defn add-root-one-schema(result branches):
   when result.has?('oneOf'):
@@ -3296,6 +3339,7 @@ defn build-doc(schema):
     .add-root-annotations(schema)
     .add-root-pattern-properties-passthrough(schema)
     .add-import-open-default(root-open)
+    .add-root-map-size(schema)
     .add-explicit-empty-root(schema defs)
     .add-defs(defs root-open)
     .add-body(schema root-open)
@@ -3329,6 +3373,13 @@ defn add-root-pattern-properties-passthrough(result schema):
 defn add-import-open-default(result root-open):
   if root-open:
     then: ordered-put(result '.open' true)
+    else: result
+
+defn add-root-map-size(result schema):
+  if object-with-fields?(schema):
+    then:
+      result.add-size-directive(
+        schema.minProperties schema.maxProperties)
     else: result
 
 defn add-explicit-empty-root(result schema defs):
@@ -3654,6 +3705,9 @@ defn build-properties-map(schema inherited-open):
   result =: add-open-override(result schema inherited-open)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
+  result =:
+    result.add-size-directive(
+      schema.minProperties schema.maxProperties)
   result =: add-properties(result schema child-open)
   result =: add-pattern-properties(result schema child-open)
   result =: add-wildcard-entry(result schema inherited-open)
@@ -3769,7 +3823,7 @@ defn add-block(result schema inherited-open=true):
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
-    then: ordered-put(result '.size' size-pair(lo hi))
+    then: ordered-put(result '.size' size-scalar(lo hi))
     else: result
 
 defn add-numeric-range-directive(result schema):

@@ -90,6 +90,74 @@ test::
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"root":{"type":"string"},"closed":{"type":"object","properties":{"known":{"type":"integer"}},"additionalProperties":false,"patternProperties":{"^p-":{"type":"boolean"}}},"local":{"type":"object","patternProperties":{"^q-":{"type":"number"}}}},"required":["closed","local"],"patternProperties":{"^x-":{}}}
 
+- name: pattern-mapping-sizes
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "$defs": {
+        "bounded": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 2,
+          "patternProperties": {"^b": {}},
+          "additionalProperties": false
+        }
+      },
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "nested": {
+          "type": "object",
+          "maxProperties": 3,
+          "patternProperties": {"^x": {}}
+        }
+      },
+      "patternProperties": {"^r": {}},
+      "additionalProperties": false
+    }
+  want: |
+    # Converted from JSON Schema
+    .size: 1+
+
+    +bounded:
+      .size: 1-2
+      /^b/: +Any
+
+    nested?:
+      .size: 0-3
+      /^x/: +Any
+      +Str: +Any
+    /^r/: +Any
+
+- name: pattern-mapping-sizes-roundtrip
+  cmnd: bin/ysd -R -f jsc -
+  stdi: |
+    {
+      "$defs": {
+        "bounded": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 2,
+          "patternProperties": {"^b": {}},
+          "additionalProperties": false
+        }
+      },
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "nested": {
+          "type": "object",
+          "maxProperties": 3,
+          "patternProperties": {"^x": {}},
+          "additionalProperties": false
+        }
+      },
+      "patternProperties": {"^r": {}},
+      "additionalProperties": false
+    }
+  want: |
+    OK
+
 - name: boolean-pattern-schema-stays-passthrough
   cmnd: sh -c 'bin/ysd -f jsc -t ysd - 2>&1'
   stdi: |

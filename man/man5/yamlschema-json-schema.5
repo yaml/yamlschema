@@ -468,6 +468,10 @@ passthrough directives.
 .IP \(bu 2
 \fB\&.size\fR on maps maps to \fBminProperties\fR and \fBmaxProperties\fR\&.
 .IP \(bu 2
+\fBminProperties: 1\fR imports as \fB\&.size: 1+\fR on a mapping shape.
+.IP \(bu 2
+A root \fB\&.size\fR constrains the number of properties in the document map.
+.IP \(bu 2
 A one-number canonical sequence such as \fB\&.size: [3]\fR means that the upper
 bound is absent.
 
@@ -993,6 +997,15 @@ Equivalent JSON Schema spellings may normalize to one spelling.
 .IP \(bu 2
 Explicit \fBadditionalProperties: true\fR and an empty schema normalize to
 omission.
+.IP \(bu 2
+An omitted type normalizes to \fBobject\fR for \fBproperties\fR and
+\fBpatternProperties\fR, or to the inferred type of a non-empty homogeneous
+enum.
+.IP \(bu 2
+Empty and heterogeneous enums, conflicting inferences, and other
+type-specific keywords remain untyped.
+.IP \(bu 2
+\fBminProperties: 0\fR normalizes away because zero is the default.
 .IP \(bu 2
 \fBdefinitions\fR should export back as \fB$defs\fR\&.
 .IP \(bu 2
