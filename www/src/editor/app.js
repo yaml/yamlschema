@@ -61,7 +61,6 @@ const sampleSources = {
   ysd: {
     person: {url: assetURL('examples/person.ysd.yaml')},
     yamlschema: {url: assetURL('examples/yamlschema.ysd.yaml')},
-    'harbor-next': {url: assetURL('values.ysd.yaml')},
   },
   json: {
     address: {url: assetURL('examples/address.schema.json')},
@@ -80,6 +79,9 @@ const sampleSources = {
     'user-profile': {url: assetURL('examples/user-profile.schema.json')},
     'ansible-builder': {
       url: assetURL('examples/ansible-builder.schema.json'),
+    },
+    'harbor-next': {
+      url: assetURL('examples/harbor-next.schema.json'),
     },
     'openapi-3-schema': {
       url: assetURL('examples/openapi-3-schema.schema.json'),

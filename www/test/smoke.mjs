@@ -588,7 +588,9 @@ if (
   !appSource.includes(
     "yamlschema: {url: assetURL('examples/yamlschema.ysd.yaml')}",
   ) ||
-  !appSource.includes("'harbor-next': {url: assetURL('values.ysd.yaml')}") ||
+  !appSource.includes(
+    "url: assetURL('examples/harbor-next.schema.json')",
+  ) ||
   !appSource.includes(
     "if (side === 'json') await showJsonSample(content, normal)",
   ) ||
@@ -767,6 +769,7 @@ const exampleFiles = [
   'movie',
   'user-profile',
   'ansible-builder',
+  'harbor-next',
   'openapi-3-schema',
   'petstore',
   'netbox-generated',
@@ -774,7 +777,6 @@ const exampleFiles = [
 const routedExamples = [
   ['person', 'ysd'],
   ['yamlschema', 'ysd'],
-  ['harbor-next', 'ysd'],
   ...exampleFiles.map((name) => [name, 'json']),
 ];
 const indexHTML = await readFile('site/demo/index.html', 'utf8');
@@ -930,7 +932,7 @@ for (const selectHTML of [yamlSelectHTML, jsonSelectHTML]) {
     throw new Error('example selector placeholder is missing');
   }
 }
-for (const name of ['person', 'yamlschema', 'harbor-next']) {
+for (const name of ['person', 'yamlschema']) {
   if (!yamlSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is missing from the YAMLSchema selector`);
   }
@@ -939,9 +941,7 @@ for (const name of ['person', 'yamlschema', 'harbor-next']) {
   }
 }
 if (yamlSelectHTML.indexOf('value="person"') >
-      yamlSelectHTML.indexOf('value="yamlschema"') ||
-    yamlSelectHTML.indexOf('value="yamlschema"') >
-      yamlSelectHTML.indexOf('value="harbor-next"')) {
+    yamlSelectHTML.indexOf('value="yamlschema"')) {
   throw new Error('YAMLSchema example order is wrong');
 }
 if (jsonSelectHTML.indexOf('value="netbox-generated"') <
@@ -1172,6 +1172,20 @@ for (const name of exampleFiles) {
       throw new Error('OpenAPI PetStore schema is incorrect');
     }
   }
+  if (name === 'harbor-next') {
+    const ysdc = globalThis.gloat.exports['json-schema-to-ysdc'](text);
+    if (
+      schema.title !== 'Harbor Next Helm Chart Values' ||
+      roundtrip.value !== true ||
+      !ysdc.ok ||
+      !ysdc.value.includes('.range: [1, 100]')
+    ) {
+      throw new Error(`Harbor Next schema is incorrect: ${JSON.stringify({
+        roundtrip,
+        ysdc,
+      })}`);
+    }
+  }
   if (name === 'openapi-3-schema') {
     if (
       schema.id !==
@@ -1302,55 +1316,6 @@ if (
   throw new Error(`qualified format conversion failed: ${JSON.stringify(
     formatResult,
   )}`);
-}
-
-const harborYSD = await readFile(
-  'docs/assets/editor/values.ysd.yaml',
-  'utf8',
-);
-const harborResult = globalThis.gloat.exports['ysd-to-json-schema'](
-  harborYSD,
-);
-if (!harborResult.ok) {
-  throw new Error(`Harbor Next sample failed: ${JSON.stringify(
-    harborResult,
-  )}`);
-}
-const harborJSON = JSON.parse(harborResult.value);
-if (harborJSON.title !== 'Harbor Next Helm Chart Values') {
-  throw new Error(`unexpected Harbor Next title: ${harborJSON.title}`);
-}
-const harborYSDC = globalThis.gloat.exports['json-schema-to-ysdc'](
-  harborResult.value,
-);
-if (
-  !harborYSDC.ok ||
-  !harborYSDC.value.includes('.range: [1, 100]')
-) {
-  throw new Error(`Harbor Next .ysdc ranges are not compact: ${JSON.stringify(
-    harborYSDC,
-  )}`);
-}
-const harborKeys = Object.keys(harborJSON).slice(0, 6).join(',');
-const expectedHarborKeys = '$id,$schema,title,description,$defs,type';
-if (harborKeys !== expectedHarborKeys) {
-  throw new Error(`unexpected Harbor Next key order: ${harborKeys}`);
-}
-const harborRoundtrip = globalThis.gloat.exports[
-  'ysd-roundtrip-works'
-](harborYSD);
-if (!harborRoundtrip.ok || harborRoundtrip.value !== true) {
-  const reportResult = globalThis.gloat.exports[
-    'ysd-roundtrip-report'
-  ](harborYSD);
-  const report = reportResult.ok ? JSON.parse(reportResult.value) : {};
-  const diff = unifiedDiff(report.original || '', report.roundtripped || '')
-    .split('\n').slice(0, 50).join('\n');
-  throw new Error(`unexpected Harbor Next roundtrip: ${JSON.stringify({
-    harborRoundtrip,
-    propertyKeys: Object.keys(harborJSON.properties || {}).slice(0, 20),
-    diff,
-  })}`);
 }
 
 const json = JSON.stringify({
