@@ -118,7 +118,7 @@ test::
     ysd: warning: unsupported JSON Schema keyword "contains" at /properties/emails/contains
     ysd: warning: unsupported JSON Schema keyword "minContains" at /properties/emails/minContains
     emails?:
-      .type: +JSONSchema/email[]
+      .type: +JSON-Schema/email[]
       .contains:
         type: string
       .minContains: 1

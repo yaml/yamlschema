@@ -1234,7 +1234,7 @@ const initialYSD = await readFile(
 );
 const expectedInitialYSD = `name: +Str
 age?: +Int 0..120
-email?: +JSONSchema/email
+email?: +JSON-Schema/email
 tags?: +Str[] [=good, bad, ugly]
 `;
 if (initialYSD !== expectedInitialYSD) {
@@ -1291,7 +1291,7 @@ if (!initialRoundtrip.ok || initialRoundtrip.value !== true) {
 }
 
 const formatResult = globalThis.gloat.exports['ysd-to-json-schema'](
-  'dateOfBirth: +JSONSchema/date',
+  'dateOfBirth: +JSON-Schema/date',
 );
 const formatJSON = formatResult.ok ? JSON.parse(formatResult.value) : {};
 if (

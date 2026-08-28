@@ -557,7 +557,7 @@ schema metadata.
 | `$anchor` | `.name` |
 | `title` | `.title` |
 | `description` | Trailing `"description"` or `.desc` |
-| Known string `format` | `+JSONSchema/format` |
+| Known string `format` | `+JSON-Schema/format` |
 
 `.ysid` is the first mapping entry in generated YAMLSchema.
 `$anchor` becomes `.name` on the same schema node and exports back unchanged.
@@ -565,7 +565,7 @@ The definition key and anchor name remain independent, so `$defs.product`
 with `$anchor: ProductSchema` becomes `+product` with
 `.name: ProductSchema`.
 The recognized Draft 2020-12 formats become qualified YAMLSchema types, such
-as `+JSONSchema/date`, `+JSONSchema/email`, and `+JSONSchema/uuid`.
+as `+JSON-Schema/date`, `+JSON-Schema/email`, and `+JSON-Schema/uuid`.
 A known format is converted this way only when its JSON Schema type is string,
 which avoids adding a string constraint to an annotation-only schema.
 Unknown formats and formats without a string type remain lossless passthrough

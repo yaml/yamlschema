@@ -918,7 +918,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | `title` | `.title` |
 | `$id` or Draft 4 root `id` | `.ysid` |
 | `$anchor` | `.name` |
-| known string `format` | `+JSONSchema/format` |
+| known string `format` | `+JSON-Schema/format` |
 | `$defs` / `definitions` | Top-level `+name` definitions |
 | local `$ref` | `+name` symbol reference |
 | other `$ref` | `+Ref(reference)` or `.xref` |
@@ -1019,7 +1019,7 @@ they are not boolean `true` companions to `minimum` and `maximum`.
 Implemented or directly represented by the design:
 
 - Scalar built-ins.
-- Draft 2020-12 string formats as `+JSONSchema/format` types.
+- Draft 2020-12 string formats as `+JSON-Schema/format` types.
 - Required and optional object properties.
 - Regex property names and pattern properties.
 - Property-local dependent required constraints.

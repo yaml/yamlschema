@@ -37,55 +37,55 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    date-time?: +JSONSchema/date-time
-    date?: +JSONSchema/date
-    time?: +JSONSchema/time
-    duration?: +JSONSchema/duration
-    email?: +JSONSchema/email
-    idn-email?: +JSONSchema/idn-email
-    hostname?: +JSONSchema/hostname
-    idn-hostname?: +JSONSchema/idn-hostname
-    ipv4?: +JSONSchema/ipv4
-    ipv6?: +JSONSchema/ipv6
-    uri?: +JSONSchema/uri
-    uri-reference?: +JSONSchema/uri-reference
-    iri?: +JSONSchema/iri
-    iri-reference?: +JSONSchema/iri-reference
-    uuid?: +JSONSchema/uuid
-    uri-template?: +JSONSchema/uri-template
-    json-pointer?: +JSONSchema/json-pointer
-    relative-json-pointer?: +JSONSchema/relative-json-pointer
-    regex?: +JSONSchema/regex
+    date-time?: +JSON-Schema/date-time
+    date?: +JSON-Schema/date
+    time?: +JSON-Schema/time
+    duration?: +JSON-Schema/duration
+    email?: +JSON-Schema/email
+    idn-email?: +JSON-Schema/idn-email
+    hostname?: +JSON-Schema/hostname
+    idn-hostname?: +JSON-Schema/idn-hostname
+    ipv4?: +JSON-Schema/ipv4
+    ipv6?: +JSON-Schema/ipv6
+    uri?: +JSON-Schema/uri
+    uri-reference?: +JSON-Schema/uri-reference
+    iri?: +JSON-Schema/iri
+    iri-reference?: +JSON-Schema/iri-reference
+    uuid?: +JSON-Schema/uuid
+    uri-template?: +JSON-Schema/uri-template
+    json-pointer?: +JSON-Schema/json-pointer
+    relative-json-pointer?: +JSON-Schema/relative-json-pointer
+    regex?: +JSON-Schema/regex
 
 - name: all-qualified-format-types-roundtrip
   cmnd: sh -c 'bin/ysd -f ysd -Rq - && echo OK'
   stdi: |
-    date-time?: +JSONSchema/date-time
-    date?: +JSONSchema/date
-    time?: +JSONSchema/time
-    duration?: +JSONSchema/duration
-    email?: +JSONSchema/email
-    idn-email?: +JSONSchema/idn-email
-    hostname?: +JSONSchema/hostname
-    idn-hostname?: +JSONSchema/idn-hostname
-    ipv4?: +JSONSchema/ipv4
-    ipv6?: +JSONSchema/ipv6
-    uri?: +JSONSchema/uri
-    uri-reference?: +JSONSchema/uri-reference
-    iri?: +JSONSchema/iri
-    iri-reference?: +JSONSchema/iri-reference
-    uuid?: +JSONSchema/uuid
-    uri-template?: +JSONSchema/uri-template
-    json-pointer?: +JSONSchema/json-pointer
-    relative-json-pointer?: +JSONSchema/relative-json-pointer
-    regex?: +JSONSchema/regex
+    date-time?: +JSON-Schema/date-time
+    date?: +JSON-Schema/date
+    time?: +JSON-Schema/time
+    duration?: +JSON-Schema/duration
+    email?: +JSON-Schema/email
+    idn-email?: +JSON-Schema/idn-email
+    hostname?: +JSON-Schema/hostname
+    idn-hostname?: +JSON-Schema/idn-hostname
+    ipv4?: +JSON-Schema/ipv4
+    ipv6?: +JSON-Schema/ipv6
+    uri?: +JSON-Schema/uri
+    uri-reference?: +JSON-Schema/uri-reference
+    iri?: +JSON-Schema/iri
+    iri-reference?: +JSON-Schema/iri-reference
+    uuid?: +JSON-Schema/uuid
+    uri-template?: +JSON-Schema/uri-template
+    json-pointer?: +JSON-Schema/json-pointer
+    relative-json-pointer?: +JSON-Schema/relative-json-pointer
+    regex?: +JSON-Schema/regex
   want: |
     OK
 
 - name: qualified-format-type-to-json-schema
   cmnd: bin/ysd -f ysd -t jsc -
   stdi: |
-    dateOfBirth: +JSONSchema/date
+    dateOfBirth: +JSON-Schema/date
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -105,7 +105,7 @@ test::
 - name: nullable-qualified-format-type
   cmnd: bin/ysd -f ysd -t jsc -
   stdi: |
-    completedAt?: +JSONSchema/date-time~
+    completedAt?: +JSON-Schema/date-time~
   want: |
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -131,9 +131,9 @@ test::
       printf "%s\n" "$output" | head -n 1
     '
   stdi: |
-    value: +JSONSchema/not-a-format
+    value: +JSON-Schema/not-a-format
   want: |
-    ysd: unknown JSON Schema format type: +JSONSchema/not-a-format
+    ysd: unknown JSON Schema format type: +JSON-Schema/not-a-format
 
 - name: custom-json-format-stays-passthrough
   cmnd: sh -c 'bin/ysd -f jsc -t ysd - 2>/dev/null'

@@ -31,7 +31,7 @@ hide:
     <span class="proof-label">A complete object schema</span>
     <pre><code>name: +Str
 age?: +Int 0..120
-email?: +JSONSchema/email
+email?: +JSON-Schema/email
 tags?: +Str[] [=good, bad, ugly]</code></pre>
   </div>
 </section>
@@ -99,7 +99,7 @@ Choose an example, or click the comparison to continue in the editor.
           <h4>YAMLSchema</h4>
           <pre><code>name: +Str
 age?: +Int 0..120
-email?: +JSONSchema/email
+email?: +JSON-Schema/email
 tags?: +Str[] [=good, bad, ugly]</code></pre>
         </div>
         <div>

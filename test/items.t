@@ -145,7 +145,7 @@ test::
 
     python?: +Str[$]
     ids?: +Int[$!1+]
-    dates?: +JSONSchema/date[$] "One date or several dates"
+    dates?: +JSON-Schema/date[$] "One date or several dates"
     things?: +thing[$]
     mismatch?:
       .any:

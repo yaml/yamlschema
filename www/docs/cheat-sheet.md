@@ -49,11 +49,11 @@ nothing: +Null
 ## JSON Schema formats
 
 ```yaml
-birthday: +JSONSchema/date
-created: +JSONSchema/date-time
-email: +JSONSchema/email
-host: +JSONSchema/hostname
-id: +JSONSchema/uuid
+birthday: +JSON-Schema/date
+created: +JSON-Schema/date-time
+email: +JSON-Schema/email
+host: +JSON-Schema/hostname
+id: +JSON-Schema/uuid
 ```
 
 </section>
@@ -152,7 +152,7 @@ typed:
 ## Definitions
 
 ```yaml
-+email: +JSONSchema/email
++email: +JSON-Schema/email
 +address:
   street: +Str
   city: +Str

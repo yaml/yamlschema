@@ -15,7 +15,7 @@ Create `person.ysd.yaml`:
 ```yaml
 name: +Str
 age?: +Int 0..120
-email?: +JSONSchema/email
+email?: +JSON-Schema/email
 tags?: +Str[] [=good, bad, ugly]
 ```
 

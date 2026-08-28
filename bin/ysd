@@ -1970,7 +1970,7 @@ defn slash-delimited-token?(token):
 defn type-symbol?(token):
   valid =: token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*$/
   when valid:
-    if token.starts?('+JSONSchema/'):
+    if token.starts?('+JSON-Schema/'):
       then: validate-json-schema-format-type(token)
       else:
         when token =~ /^\+[A-Z]/:
@@ -1980,18 +1980,18 @@ defn type-symbol?(token):
   =>: valid
 
 defn validate-json-schema-format-type(type):
-  format =: type.replace(/^\+JSONSchema\//)
+  format =: type.replace(/^\+JSON-Schema\//)
   when-not JSON-SCHEMA-FORMATS.has?(format):
     usage: "unknown JSON Schema format type: $type"
   =>: type
 
 defn json-schema-format-type?(type):
   string?(type) &&
-    type.starts?('+JSONSchema/') &&
-    JSON-SCHEMA-FORMATS.has?(type.replace(/^\+JSONSchema\//))
+    type.starts?('+JSON-Schema/') &&
+    JSON-SCHEMA-FORMATS.has?(type.replace(/^\+JSON-Schema\//))
 
 defn json-schema-format-name(type):
-  validate-json-schema-format-type(type).replace(/^\+JSONSchema\//)
+  validate-json-schema-format-type(type).replace(/^\+JSON-Schema\//)
 
 defn direct-type-symbol?(token):
   list-pattern =:
@@ -4314,7 +4314,7 @@ defn native-json-format-only?(schema):
 
 defn native-json-format-type(schema):
   when native-json-format?(schema):
-    =>: "+JSONSchema/$(schema.format)"
+    =>: "+JSON-Schema/$(schema.format)"
 
 defn schema-annotations?(schema):
   schema.has?('description') ||

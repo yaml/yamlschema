@@ -282,9 +282,9 @@ loss of precision.
 Draft 2020-12 string formats use qualified YAMLSchema types:
 
 ```yaml
-dateOfBirth: +JSONSchema/date
-createdAt: +JSONSchema/date-time
-contact?: +JSONSchema/email
+dateOfBirth: +JSON-Schema/date
+createdAt: +JSON-Schema/date-time
+contact?: +JSON-Schema/email
 ```
 
 The complete supported set is:
@@ -295,10 +295,10 @@ ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
 json-pointer relative-json-pointer regex
 ```
 
-Each `+JSONSchema/name` type exports as JSON Schema `type: string` with
+Each `+JSON-Schema/name` type exports as JSON Schema `type: string` with
 `format: name`.
 Normal nullable and list suffixes apply, for example
-`+JSONSchema/date-time~` and `+JSONSchema/email[]`.
+`+JSON-Schema/date-time~` and `+JSON-Schema/email[]`.
 Unknown qualified format names are rejected.
 
 Bare `+Map` is intentionally incomplete.

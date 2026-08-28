@@ -315,9 +315,9 @@ loss of precision.
 Draft 2020-12 string formats use qualified YAMLSchema types:
 
 .EX
-dateOfBirth: +JSONSchema/date
-createdAt: +JSONSchema/date-time
-contact?: +JSONSchema/email
+dateOfBirth: +JSON-Schema/date
+createdAt: +JSON-Schema/date-time
+contact?: +JSON-Schema/email
 .EE
 
 .PP
@@ -330,10 +330,10 @@ json-pointer relative-json-pointer regex
 .EE
 
 .PP
-Each \fB+JSONSchema/name\fR type exports as JSON Schema \fBtype: string\fR with
+Each \fB+JSON-Schema/name\fR type exports as JSON Schema \fBtype: string\fR with
 \fBformat: name\fR\&.
 Normal nullable and list suffixes apply, for example
-\fB+JSONSchema/date-time~\fR and \fB+JSONSchema/email[]\fR\&.
+\fB+JSON-Schema/date-time~\fR and \fB+JSON-Schema/email[]\fR\&.
 Unknown qualified format names are rejected.
 
 .PP

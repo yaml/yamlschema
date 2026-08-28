@@ -601,7 +601,7 @@ l l .
 \fB$anchor\fR	\fB\&.name\fR
 \fBtitle\fR	\fB\&.title\fR
 \fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR
-Known string \fBformat\fR	\fB+JSONSchema/format\fR
+Known string \fBformat\fR	\fB+JSON-Schema/format\fR
 .TE
 
 .PP
@@ -611,7 +611,7 @@ The definition key and anchor name remain independent, so \fB$defs.product\fR
 with \fB$anchor: ProductSchema\fR becomes \fB+product\fR with
 \fB\&.name: ProductSchema\fR\&.
 The recognized Draft 2020-12 formats become qualified YAMLSchema types, such
-as \fB+JSONSchema/date\fR, \fB+JSONSchema/email\fR, and \fB+JSONSchema/uuid\fR\&.
+as \fB+JSON-Schema/date\fR, \fB+JSON-Schema/email\fR, and \fB+JSON-Schema/uuid\fR\&.
 A known format is converted this way only when its JSON Schema type is string,
 which avoids adding a string constraint to an annotation-only schema.
 Unknown formats and formats without a string type remain lossless passthrough
