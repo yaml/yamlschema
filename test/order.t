@@ -189,6 +189,26 @@ test::
     root $schema $defs type properties additionalProperties
     defs before after
 
+- name: ysd-root-after-many-definitions-goes-last
+  cmnd: |
+    sh -c '
+      bin/ysd -t jsc - |
+        jq -r "keys_unsorted | join(\" \")"
+    '
+  stdi: |
+    +one: +Str
+    +two: +Str
+    +three: +Str
+    +four: +Str
+    +five: +Str
+    +six: +Str
+    +seven: +Str
+    +eight: +Str
+    +nine: +Str
+    root?: +Bool
+  want: |
+    $schema $defs type properties additionalProperties
+
 - name: ysd-root-before-definitions-goes-first
   cmnd: |
     sh -c '

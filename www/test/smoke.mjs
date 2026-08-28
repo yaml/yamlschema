@@ -1190,7 +1190,8 @@ for (const name of exampleFiles) {
     if (
       schema.id !==
         'https://spec.openapis.org/oas/3.0/schema/2024-10-18' ||
-      Object.keys(schema.definitions).length !== 42
+      Object.keys(schema.definitions).length !== 42 ||
+      roundtrip.value !== true
     ) {
       throw new Error('OpenAPI 3.0 schema is incorrect');
     }

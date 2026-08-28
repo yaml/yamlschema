@@ -348,10 +348,33 @@ defn yamlschema-input-schema(text source report=true):
   data =: ys::yaml/load(text)
   when report:
     warn-yamlschema-passthrough: data
-  expanded =: data.expand-ysdc(expansion-source-format(source))
+  format =: expansion-source-format(source)
+  expanded =: data.expand-ysdc(format)
   when report:
     warn-yamlschema-float-export: expanded
-  ysdc-to-schema: expanded
+  root-before =:
+    if format == 'ysd':
+      ysd-text-root-before-named-types?: text
+      ysd-root-before-named-types?: expanded
+  ysdc-to-schema: expanded root-before
+
+defn ysd-text-root-before-named-types?(text):
+  lines =: filter(ysd-top-level-order-line? text:lines)
+  first =: first(remove(ysd-order-ignored-line? lines))
+  and:
+    first.?
+    named-type-line?(first).!
+
+defn ysd-top-level-order-line?(line):
+  top =: line =~ /^\S/
+  marker =: line =~ /^(?:#|---(?:\s|$)|\.\.\.(?:\s|$))/
+  top &&: marker.!
+
+defn ysd-order-ignored-line?(line):
+  line.starts?('.') &&: line !~ /^\.root\s*:/
+
+defn named-type-line?(line):
+  line.starts?('+') &&: line !~ /^\+Str\s*:/
 
 defn input-format(opts):
   normalize-format(opts.from) ||
@@ -590,7 +613,8 @@ defn roundtrip-result(text source report):
 
 defn json-schema-roundtrip-result(text report):
   schema =: load-json-schema(text report)
-  original =: normalized-json-schema-text(schema {})
+  schema =: normalize-json-schema(schema true)
+  original =: json-output(schema {})
   ysd =: convert(schema)
   roundtripped =:
     yamlschema-input-schema(ysd 'ysd.yaml' false)
@@ -2366,7 +2390,7 @@ defn normalize-size(value):
 # Convert yamlschema DSL data back to JSON Schema.
 # --------------------------------------------------------------------
 
-defn ysdc-to-schema(doc):
+defn ysdc-to-schema(doc root-before):
   state =: reduce(ysdc-doc-step initial-ysdc-doc-state(doc) doc)
   parts =: split-document-schema(state.result)
   metadata =: parts.metadata
@@ -2384,7 +2408,7 @@ defn ysdc-to-schema(doc):
     state.explicit-root.! && (root-fields || defs-val:empty?)
   defs =: map-put-if(omap() empty?(defs-val).! '$defs' defs-val)
   root =: add-root-schema(root state has-root-mapping)
-  if ysd-root-before-named-types?(doc):
+  if root-before:
     merge-ordered-maps: metadata root defs
     merge-ordered-maps: metadata defs root
 

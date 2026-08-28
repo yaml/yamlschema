@@ -85,6 +85,8 @@ test-unit: $(YS) $(PERL)
 test-native-order: build
 	./ysd -Rq -f jsc \
 	  www/docs/assets/editor/examples/health-record.schema.json
+	./ysd -Rq -f jsc \
+	  www/docs/assets/editor/examples/openapi-3-schema.schema.json
 
 test-version: $(YS)
 	test "$$(bin/ysd --version)" = 'ysd $(YSD-VERSION)'
