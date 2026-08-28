@@ -1477,7 +1477,13 @@ if (
   )}`);
 }
 
-for (const invalidYSD of ['bad: [', '.unknown: true', 'name: +Stx']) {
+for (const invalidYSD of [
+  'bad: [',
+  '.unknown: true',
+  'name: +Stx',
+  'name: +Map(',
+  'name: +Map(+Any)',
+]) {
   const result = globalThis.gloat.exports['ysd-to-json-schema'](invalidYSD);
   if (result.ok || !result.error) {
     throw new Error(`invalid .ysd did not return an error: ${invalidYSD}`);

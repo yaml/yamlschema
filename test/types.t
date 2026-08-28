@@ -124,4 +124,14 @@ test::
     ysd: unknown yamlschema built-in type: +Stx
     ysd: unknown yamlschema built-in type: +Stx
 
+- name: reject-malformed-plus-prefixed-type
+  cmnd: |
+    sh -c '
+      printf "value: +Stx(\n" |
+        bin/ysd -f ysd -t jsc - 2>&1 |
+        perl -ne "print if \$. == 1"
+    '
+  want: |
+    ysd: invalid yamlschema type expression: +Stx(
+
 done:

@@ -145,6 +145,8 @@ flags: +Map{+flag}
 
 `+Map{+Type}` expands to `+Str: +Type`.
 The value type must be one built-in, user-defined, or namespaced reference.
+Map parameters use braces; parenthesized forms such as `+Map(+Any)` are
+invalid.
 An incomplete `+Map` must be completed by sibling key/value pairs.
 
 Lists of maps append the list suffix to the value type:
@@ -409,6 +411,8 @@ to JSON Schema `const`.
 alternative.
 A bare literal remains an accepted inferred-type shorthand.
 It also means a constant, while `=value` means only a default.
+The `+` prefix is reserved for type expressions, so an unrecognized
+plus-prefixed value is an error instead of an inferred string constant.
 
 
 ## Lists and Sizes

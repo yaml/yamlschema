@@ -1932,6 +1932,10 @@ defn primary-block(token):
     ambiguous-exclusive-range?(token):
       reject-ambiguous-exclusive-range: token
     range-literal?(token): range-block(token nil)
+    token.starts?('+Map('):
+      usage: "unsupported map parameter syntax: $token; use +Map{+Type}"
+    token.starts?('+'):
+      usage: "invalid yamlschema type expression: $token"
     else: literal-block(parse-yaml-scalar(token))
 
 defn expand-tight-token(result token):

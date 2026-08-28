@@ -510,12 +510,13 @@ test::
   stdi: |
     short: +Str ==User
     quoted: +Str =="foo bar"
+    plus: +Str =="+Map("
     labeled: const:"foo bar" type:+Str
     default: +Str =User
     enum-marked: +Str [=User]
     enum-default: +Str [User] =User
   want: |
-    {"short":{".type":"+Str",".const":"User"},"quoted":{".type":"+Str",".const":"foo bar"},"labeled":{".type":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".type":"+Str",".enum":["User"],".init":"User"},"enum-default":{".type":"+Str",".enum":["User"],".init":"User"}}
+    {"short":{".type":"+Str",".const":"User"},"quoted":{".type":"+Str",".const":"foo bar"},"plus":{".type":"+Str",".const":"+Map("},"labeled":{".type":"+Str",".const":"foo bar"},"default":{".type":"+Str",".init":"User"},"enum-marked":{".type":"+Str",".enum":["User"],".init":"User"},"enum-default":{".type":"+Str",".enum":["User"],".init":"User"}}
 
 - name: labeled-clauses-in-arbitrary-order
   cmnd: bin/ysd -t ysdc -J -C -

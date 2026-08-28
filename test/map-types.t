@@ -100,6 +100,19 @@ test::
   want: |
     ysd: +Map requires exactly one value type reference
 
+- name: reject-parenthesized-map-parameters
+  cmnd: |
+    sh -c '
+      for value in "+Map(" "+Map(+Any)"; do
+        printf "bad: %s\n" "$value" |
+          bin/ysd -t ysdc -J -C - 2>&1 |
+          perl -ne "print if \$. == 1"
+      done
+    '
+  want: |
+    ysd: unsupported map parameter syntax: +Map(; use +Map{+Type}
+    ysd: unsupported map parameter syntax: +Map(+Any); use +Map{+Type}
+
 - name: map-parameter-errors
   cmnd: |
     sh -c '
