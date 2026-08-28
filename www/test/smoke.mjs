@@ -758,11 +758,17 @@ if (
   !appSource.includes("? 'json-schema-to-ysd-strict'") ||
   !appSource.includes('json-schema-to-ysdc-json${strict}') ||
   !appSource.includes('documentSource !== \'json\'') ||
-  !appSource.includes('!ysdStrictReady || ysdStrict') ||
+  !appSource.includes('!ysdStrictReady;') ||
+  !appSource.includes("'aria-disabled'") ||
+  !appSource.includes('String(ysdStrictControl.disabled || ysdStrict)') ||
   !appSource.includes('setYSDStrictReady(false);') ||
   !appSource.includes('setYSDStrictReady(true);') ||
   !appSource.includes('async function makeJsonSchemaStrict()') ||
   !appSource.includes("const operation = 'ysd-to-json-schema';") ||
+  !appSource.includes(
+    'showGeneratingJSONSchema();\n' +
+    '  const result = cached || await callWorker(operation, conversion.ysd);',
+  ) ||
   !appSource.includes('jsonValue = result.value;') ||
   !appSource.includes("ysdStrictControl.addEventListener('click'") ||
   !appSource.includes('if (ysdStrict) {') ||
@@ -791,9 +797,12 @@ if (
 if (
   !styleSource.includes('.strict-control:has(input:disabled)') ||
   !styleSource.includes('.normal-control:has(input:disabled)') ||
-  !styleSource.includes('color: var(--editor-muted);')
+  !styleSource.includes('color: var(--editor-muted);') ||
+  !styleSource.includes('.strict-control:has(input:checked)') ||
+  !styleSource.includes('.normal-control:has(input:checked)') ||
+  !styleSource.includes('accent-color: var(--editor-string);')
 ) {
-  throw new Error('disabled Strict and Normal labels are not muted');
+  throw new Error('Strict and Normal control states are not styled');
 }
 if (
   !styleSource.includes('.roundtrip-status:not(.source-active)') ||

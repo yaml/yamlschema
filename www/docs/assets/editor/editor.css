@@ -147,6 +147,17 @@ body:has(.schema-editor) .md-main__inner {
   opacity: 0.55;
 }
 
+.schema-editor .strict-control:has(input:checked),
+.schema-editor .normal-control:has(input:checked) {
+  color: var(--editor-string);
+  opacity: 1;
+}
+
+.schema-editor .strict-control input:checked,
+.schema-editor .normal-control input:checked {
+  accent-color: var(--editor-string);
+}
+
 .schema-editor .sample-select {
   min-width: 9.5rem;
   max-width: 48%;

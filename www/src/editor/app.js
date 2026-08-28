@@ -280,7 +280,11 @@ function updateYSDStrictControl() {
   ysdStrictControl.checked = ysdStrict;
   ysdStrictControl.disabled =
     !schemaWorkerReady || documentSource !== 'json' ||
-    !ysdStrictReady || ysdStrict;
+    !ysdStrictReady;
+  ysdStrictControl.setAttribute(
+    'aria-disabled',
+    String(ysdStrictControl.disabled || ysdStrict),
+  );
 }
 
 function setYSDStrict(strict) {
@@ -813,6 +817,7 @@ async function makeJsonSchemaStrict() {
   const id = conversionRequest;
   const operation = 'ysd-to-json-schema';
   const cached = cachedWorkerResult(operation, conversion.ysd);
+  showGeneratingJSONSchema();
   const result = cached || await callWorker(operation, conversion.ysd);
   if (id !== conversionRequest || jsonValue !== sourceValue) return result;
   if (!result.ok) {
