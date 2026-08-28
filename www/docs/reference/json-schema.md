@@ -102,6 +102,27 @@ Once succinct YAMLSchema has been expanded, JSON Schema generation is mostly a
 directive-to-keyword mapping.
 
 
+## Strict Editor Conversion
+
+The browser editor enables its **Strict** checkbox after editable JSON Schema
+successfully generates `.ysd` or `.ysdc`.
+Selecting it closes every unconstrained mapping by removing `.open` directives
+and `+Str: +Any` wildcard pairs.
+Typed additional-property rules such as `+Str: +Str` and `+Map{+Str}` remain
+unchanged.
+
+Strict is available only while JSON Schema is the editable source.
+It intentionally narrows schemas that rely on JSON Schema's open-object
+default.
+The editor immediately regenerates JSON Schema from the strict YAMLSchema,
+emitting `additionalProperties: false` for the affected mapping shapes.
+Once applied, Strict remains checked and disabled, so the narrowing cannot be
+undone in the UI.
+Editing the JSON Schema clears Strict and disables it during conversion.
+It becomes available again after the edited schema successfully generates
+YAMLSchema.
+
+
 ## Required and Optional Properties
 
 JSON Schema marks required keys in a sibling `required` array:

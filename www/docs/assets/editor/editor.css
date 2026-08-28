@@ -127,7 +127,8 @@ body:has(.schema-editor) .md-main__inner {
   gap: 0.6rem;
 }
 
-.schema-editor .format-selector label {
+.schema-editor .format-selector label,
+.schema-editor .strict-control {
   display: flex;
   align-items: center;
   gap: 0.2rem;
@@ -135,8 +136,15 @@ body:has(.schema-editor) .md-main__inner {
   font-weight: 500;
 }
 
-.schema-editor .format-selector input {
+.schema-editor .format-selector input,
+.schema-editor .strict-control input {
   margin: 0;
+}
+
+.schema-editor .strict-control:has(input:disabled),
+.schema-editor .normal-control:has(input:disabled) {
+  color: var(--editor-muted);
+  opacity: 0.55;
 }
 
 .schema-editor .sample-select {

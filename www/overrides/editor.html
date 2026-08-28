@@ -55,6 +55,11 @@
             .ysdc
           </label>
         </div>
+        <label class="strict-control"
+               title="Close unconstrained JSON Schema mappings">
+          <input type="checkbox" id="ysd-strict" disabled>
+          Strict
+        </label>
         <select id="yaml-sample-select" class="sample-select"
                 aria-label="YAML Schema example" disabled>
           <option value="" disabled selected>Choose a schema</option>
@@ -86,7 +91,8 @@
                 disabled>…</button>
         <span id="json-schema-title" class="editor-title">JSON Schema</span>
         <div class="format-selector">
-          <label title="Normalized/Canonical Form">
+          <label class="normal-control"
+                 title="Normalized/Canonical Form">
             <input type="checkbox" id="json-normal" disabled>
             Normal
           </label>
@@ -228,6 +234,19 @@
           YAMLSchema source.
         </p>
         <p>
+          Strict becomes available after editable JSON Schema successfully
+          generates YAMLSchema.
+          Select it to close every unconstrained mapping in the YAMLSchema and
+          regenerate the JSON Schema with `additionalProperties: false` where
+          needed.
+          Strict removes `.open` directives and `+Str: +Any` wildcard pairs,
+          while preserving typed wildcard rules such as `+Str: +Str`.
+          Once applied, Strict remains checked and cannot be undone in the UI.
+          Editing the JSON Schema clears Strict; it becomes available again
+          after the edited schema successfully generates YAMLSchema.
+          The control is disabled when YAMLSchema is the source.
+        </p>
+        <p>
           Generated JSON Schema is marked Normal.
           Editing the JSON Schema clears that mark.
           Select Normal to replace edited JSON Schema with its normalized,
@@ -286,5 +305,6 @@
   </dialog>
 </div>
 
-<script type="module" src="{{ base_url }}/assets/editor/app.js"></script>
+<script type="module"
+        src="{{ base_url }}/assets/editor/app.js?v=20"></script>
 {% endblock %}

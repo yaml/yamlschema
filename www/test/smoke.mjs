@@ -151,6 +151,17 @@ if (!parsedNormal.ok || parsedNormal.state.normal !== true) {
 if (serializeEditorState({normal: false}) !== '') {
   throw new Error('unchecked JSON normal state produced a fragment');
 }
+const strictHash = serializeEditorState({strict: true});
+if (strictHash !== '#v=1&t=1') {
+  throw new Error(`YAMLSchema strict URL is unstable: ${strictHash}`);
+}
+const parsedStrict = parseEditorState(strictHash);
+if (!parsedStrict.ok || parsedStrict.state.strict !== true) {
+  throw new Error(`YAMLSchema strict URL did not parse: ${strictHash}`);
+}
+if (serializeEditorState({strict: false}) !== '') {
+  throw new Error('unchecked YAMLSchema strict state produced a fragment');
+}
 if (serializeEditorState({source: 'ysd'}) !== '') {
   throw new Error('canonical editor state produced a fragment');
 }
@@ -159,6 +170,7 @@ for (const invalidHash of [
   '#v=1&s=ysd',
   '#v=1&s=ysd&z=not-gzip',
   '#v=1&n=0',
+  '#v=1&t=0',
 ]) {
   if (parseEditorState(invalidHash).ok) {
     throw new Error(`invalid editor URL was accepted: ${invalidHash}`);
@@ -299,6 +311,108 @@ if (
   throw new Error(`unexpected normalized JSON: ${normalizedResult.value}`);
 }
 
+const strictInput = JSON.stringify({
+  type: 'object',
+  properties: {
+    implicit: {
+      type: 'object',
+      properties: {name: {type: 'string'}},
+    },
+    explicitAny: {
+      type: 'object',
+      additionalProperties: true,
+    },
+    explicitEmpty: {
+      type: 'object',
+      additionalProperties: {},
+    },
+    typed: {
+      type: 'object',
+      additionalProperties: {type: 'string'},
+    },
+    closed: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        reopened: {
+          type: 'object',
+          properties: {flag: {type: 'boolean'}},
+        },
+      },
+    },
+  },
+});
+const normalOpenYSD = globalThis.gloat.exports[
+  'json-schema-to-ysd'
+](strictInput);
+if (
+  !normalOpenYSD.ok ||
+  !normalOpenYSD.value.includes('.open: true') ||
+  !normalOpenYSD.value.includes('+Str: +Any')
+) {
+  throw new Error(`normal open conversion changed: ${JSON.stringify(
+    normalOpenYSD,
+  )}`);
+}
+for (const operation of [
+  'json-schema-to-ysd-strict',
+  'json-schema-to-ysdc-strict',
+]) {
+  const result = globalThis.gloat.exports[operation](strictInput);
+  const typedRule = operation === 'json-schema-to-ysd-strict'
+    ? '+Map{+Str}'
+    : '+Str: +Str';
+  if (
+    !result.ok ||
+    result.value.includes('.open:') ||
+    result.value.includes('+Str: +Any') ||
+    !result.value.includes(typedRule)
+  ) {
+    throw new Error(`invalid strict conversion: ${JSON.stringify({
+      operation,
+      result,
+    })}`);
+  }
+}
+const strictYSDCJSON = globalThis.gloat.exports[
+  'json-schema-to-ysdc-json-strict'
+](strictInput);
+if (!strictYSDCJSON.ok) {
+  throw new Error(`strict JSON .ysdc failed: ${JSON.stringify(
+    strictYSDCJSON,
+  )}`);
+}
+const strictYSDCData = JSON.parse(strictYSDCJSON.value);
+const strictYSDCText = JSON.stringify(strictYSDCData);
+if (
+  strictYSDCText.includes('".open"') ||
+  strictYSDCText.includes('"+Str":"+Any"') ||
+  strictYSDCData['typed?']?.['+Str'] !== '+Str'
+) {
+  throw new Error(`invalid strict JSON .ysdc: ${strictYSDCJSON.value}`);
+}
+const strictYSD = globalThis.gloat.exports[
+  'json-schema-to-ysd-strict'
+](strictInput);
+const strictJSON = strictYSD.ok
+  ? globalThis.gloat.exports['ysd-to-json-schema'](strictYSD.value)
+  : strictYSD;
+const strictSchema = strictJSON.ok ? JSON.parse(strictJSON.value) : {};
+if (
+  !strictJSON.ok ||
+  strictSchema.additionalProperties !== false ||
+  strictSchema.properties?.implicit?.additionalProperties !== false ||
+  strictSchema.properties?.explicitAny?.additionalProperties !== false ||
+  strictSchema.properties?.explicitEmpty?.additionalProperties !== false ||
+  strictSchema.properties?.closed?.properties?.reopened
+    ?.additionalProperties !== false ||
+  strictSchema.properties?.typed?.additionalProperties?.type !== 'string'
+) {
+  throw new Error(`strict JSON regeneration failed: ${JSON.stringify(
+    strictJSON,
+  )}`);
+}
+
 const blogText = await readFile(
   'docs/assets/editor/examples/blog-post.schema.json',
   'utf8',
@@ -405,7 +519,9 @@ if (appSource.includes('globalThis.gloat')) {
   throw new Error('the browser app calls Wasm on the UI thread');
 }
 for (const worker of ['schema-worker.js', 'roundtrip-worker.js']) {
-  if (!appSource.includes(`new URL('./${worker}', import.meta.url)`)) {
+  if (!appSource.includes(
+    `new URL('./${worker}?v=20', import.meta.url)`,
+  )) {
     throw new Error(`${worker} is not used by the browser app`);
   }
 }
@@ -548,7 +664,7 @@ if (
   !appSource.includes('editorSettingsDialog.showModal()') ||
   !appSource.includes('yamlschema.scroll-sync') ||
   !appSource.includes('yamlschema.ysdc-json') ||
-  !appSource.includes("? 'json-schema-to-ysdc-json'") ||
+  !appSource.includes('`json-schema-to-ysdc-json${strict}`') ||
   !appSource.includes("yamlPaneFormat() === 'ysdc-json' ? json() : yaml()") ||
   !appSource.includes('yamlEditor.setLanguage(language)') ||
   !appSource.includes('editor !== scrollSyncSourceEditor()') ||
@@ -636,6 +752,50 @@ if (
   throw new Error('JSON Schema Normal checkbox behavior is incomplete');
 }
 if (
+  !appSource.includes('let ysdStrict = false;') ||
+  !appSource.includes('let ysdStrictReady = false;') ||
+  !appSource.includes("document.querySelector('#ysd-strict')") ||
+  !appSource.includes("? 'json-schema-to-ysd-strict'") ||
+  !appSource.includes('json-schema-to-ysdc-json${strict}') ||
+  !appSource.includes('documentSource !== \'json\'') ||
+  !appSource.includes('!ysdStrictReady || ysdStrict') ||
+  !appSource.includes('setYSDStrictReady(false);') ||
+  !appSource.includes('setYSDStrictReady(true);') ||
+  !appSource.includes('async function makeJsonSchemaStrict()') ||
+  !appSource.includes("const operation = 'ysd-to-json-schema';") ||
+  !appSource.includes('jsonValue = result.value;') ||
+  !appSource.includes("ysdStrictControl.addEventListener('click'") ||
+  !appSource.includes('if (ysdStrict) {') ||
+  !appSource.includes("strict: documentSource === 'json' && ysdStrict") ||
+  !appSource.includes('sharedState.strict === true')
+) {
+  throw new Error('YAMLSchema Strict checkbox behavior is incomplete');
+}
+const editorFocusedSource = appSource.slice(
+  appSource.indexOf('function editorFocused(editor)'),
+  appSource.indexOf('function scrollSyncSourceEditor()'),
+);
+if (
+  editorFocusedSource.includes('setYSDStrict(false)') ||
+  !appSource.includes(
+    'setJsonNormal(false);\n  setYSDStrict(false);\n' +
+    '  setYSDStrictReady(false);',
+  ) ||
+  !appSource.includes(
+    'documentSource = source;\n    setYSDStrict(false);\n' +
+    '    setYSDStrictReady(false);',
+  )
+) {
+  throw new Error('Strict state is not reset only by JSON content changes');
+}
+if (
+  !styleSource.includes('.strict-control:has(input:disabled)') ||
+  !styleSource.includes('.normal-control:has(input:disabled)') ||
+  !styleSource.includes('color: var(--editor-muted);')
+) {
+  throw new Error('disabled Strict and Normal labels are not muted');
+}
+if (
   !styleSource.includes('.roundtrip-status:not(.source-active)') ||
   !styleSource.includes('visibility: hidden')
 ) {
@@ -660,6 +820,7 @@ const roundtripWorkerSource = await readFile(
 );
 if (
   !roundtripWorkerSource.includes("importScripts('unified-diff.js?v=2')") ||
+  !roundtripWorkerSource.includes("fetch('ysd.wasm?v=20')") ||
   !roundtripWorkerSource.includes("'json-schema-roundtrip-report'") ||
   !roundtripWorkerSource.includes("'ysd-roundtrip-report'") ||
   !roundtripWorkerSource.includes(
@@ -668,6 +829,22 @@ if (
   !roundtripWorkerSource.includes('filename,\n    });')
 ) {
   throw new Error('roundtrip worker does not generate browser diffs');
+}
+const schemaWorkerSource = await readFile(
+  'docs/assets/editor/schema-worker.js',
+  'utf8',
+);
+if (!schemaWorkerSource.includes("fetch('ysd.wasm?v=20')")) {
+  throw new Error('schema worker does not load the current Wasm asset');
+}
+for (const operation of [
+  'json-schema-to-ysd-strict',
+  'json-schema-to-ysdc-strict',
+  'json-schema-to-ysdc-json-strict',
+]) {
+  if (!schemaWorkerSource.includes(`'${operation}'`)) {
+    throw new Error(`schema worker is missing ${operation}`);
+  }
 }
 
 const pastedYSD = await readFile('test/ansible-builder.ysd.yaml', 'utf8');
@@ -781,7 +958,12 @@ const routedExamples = [
 ];
 const indexHTML = await readFile('site/demo/index.html', 'utf8');
 const mkdocsConfig = await readFile('mkdocs.yaml', 'utf8');
+const jsonSchemaReference = await readFile(
+  'docs/reference/json-schema.md',
+  'utf8',
+);
 if (
+  !indexHTML.includes('/assets/editor/app.js?v=20') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -804,9 +986,15 @@ if (
   !indexHTML.includes('<label title="YAMLSchema Definition Canonical">\n' +
     '            <input type="radio" name="yaml-format" value="ysdc">' +
     '\n            .ysdc') ||
-  !indexHTML.includes('<label title="Normalized/Canonical Form">\n' +
+  !indexHTML.includes('<label class="normal-control"\n' +
+    '                 title="Normalized/Canonical Form">\n' +
     '            <input type="checkbox" id="json-normal" disabled>\n' +
     '            Normal') ||
+  !indexHTML.includes('class="strict-control"') ||
+  !indexHTML.includes(
+    'title="Close unconstrained JSON Schema mappings"',
+  ) ||
+  !indexHTML.includes('<input type="checkbox" id="ysd-strict" disabled>') ||
   indexHTML.includes('name="json-view"') ||
   indexHTML.includes('id="normalize-json"') ||
   !indexHTML.includes('id="editor-settings-open"') ||
@@ -855,9 +1043,24 @@ if (
   !indexHTML.includes('Generated JSON Schema is marked Normal') ||
   !indexHTML.includes('Editing the JSON Schema clears that mark') ||
   !indexHTML.includes('Select Normal to replace edited JSON Schema') ||
+  !indexHTML.includes('Strict becomes available after editable JSON Schema') ||
+  !indexHTML.includes('Strict removes `.open` directives and ' +
+    '`+Str: +Any` wildcard pairs') ||
+  !indexHTML.includes('Once applied, Strict remains checked') ||
+  !indexHTML.includes('Editing the JSON Schema clears Strict') ||
   !indexHTML.includes('Share content and lines')
 ) {
   throw new Error('editor help instructions are incomplete');
+}
+if (
+  !jsonSchemaReference.includes('## Strict Editor Conversion') ||
+  !jsonSchemaReference.includes('removing `.open` directives') ||
+  !jsonSchemaReference.includes('`+Str: +Any` wildcard pairs') ||
+  !jsonSchemaReference.includes('`additionalProperties: false`') ||
+  !jsonSchemaReference.includes('Strict remains checked and disabled') ||
+  !jsonSchemaReference.includes('Editing the JSON Schema clears Strict')
+) {
+  throw new Error('Strict interoperability documentation is incomplete');
 }
 if (!indexHTML.includes(
   'Opening the shared link scrolls the selected range to the top of',

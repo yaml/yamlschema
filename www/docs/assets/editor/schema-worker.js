@@ -5,8 +5,11 @@ const pending = [];
 const operations = new Set([
   'json-schema-normalize',
   'json-schema-to-ysdc-json',
+  'json-schema-to-ysdc-json-strict',
   'json-schema-to-ysdc',
+  'json-schema-to-ysdc-strict',
   'json-schema-to-ysd',
+  'json-schema-to-ysd-strict',
   'ysd-to-json-schema',
 ]);
 
@@ -48,7 +51,7 @@ globalThis.addEventListener('gloat-ready', () => {
 });
 
 const go = new Go();
-WebAssembly.instantiateStreaming(fetch('ysd.wasm?v=19'), go.importObject)
+WebAssembly.instantiateStreaming(fetch('ysd.wasm?v=20'), go.importObject)
   .then(({instance}) => go.run(instance))
   .catch((error) => {
     postMessage({type: 'error', error: String(error)});

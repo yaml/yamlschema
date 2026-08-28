@@ -86,11 +86,13 @@ export function serializeEditorState({
   pane,
   lines,
   normal,
+  strict,
 } = {}) {
   const hasContent = content !== undefined;
   const hasLines = Boolean(pane && lines);
   const hasNormal = normal === true;
-  if (!hasContent && !hasLines && !hasNormal) return '';
+  const hasStrict = strict === true;
+  if (!hasContent && !hasLines && !hasNormal && !hasStrict) return '';
 
   if (hasContent && !sourceNames.has(source)) {
     throw new Error(`invalid editor source: ${source}`);
@@ -101,6 +103,9 @@ export function serializeEditorState({
   if (normal !== undefined && typeof normal !== 'boolean') {
     throw new Error(`invalid JSON Schema normal state: ${normal}`);
   }
+  if (strict !== undefined && typeof strict !== 'boolean') {
+    throw new Error(`invalid YAMLSchema strict state: ${strict}`);
+  }
 
   const parameters = new URLSearchParams();
   parameters.set('v', stateVersion);
@@ -109,6 +114,7 @@ export function serializeEditorState({
     parameters.set('z', encodeContent(content));
   }
   if (hasNormal) parameters.set('n', '1');
+  if (hasStrict) parameters.set('t', '1');
   if (hasLines) {
     parameters.set('p', pane);
     parameters.set('l', formatLineRange(lines));
@@ -127,6 +133,7 @@ export function parseEditorState(hash) {
     const source = parameters.get('s');
     const encoded = parameters.get('z');
     const normal = parameters.get('n');
+    const strict = parameters.get('t');
     const state = {};
     if (source !== null || encoded !== null) {
       if (!sourceNames.has(source) || encoded === null) {
@@ -140,6 +147,12 @@ export function parseEditorState(hash) {
         throw new Error(`invalid JSON Schema normal state: ${normal}`);
       }
       state.normal = true;
+    }
+    if (strict !== null) {
+      if (strict !== '1') {
+        throw new Error(`invalid YAMLSchema strict state: ${strict}`);
+      }
+      state.strict = true;
     }
 
     const pane = parameters.get('p');

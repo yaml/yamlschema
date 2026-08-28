@@ -51,7 +51,7 @@ globalThis.addEventListener('gloat-ready', () => {
 });
 
 const go = new Go();
-WebAssembly.instantiateStreaming(fetch('ysd.wasm?v=18'), go.importObject)
+WebAssembly.instantiateStreaming(fetch('ysd.wasm?v=20'), go.importObject)
   .then(({instance}) => go.run(instance))
   .catch((error) => {
     postMessage({type: 'error', error: String(error)});

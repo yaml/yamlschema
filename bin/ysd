@@ -60,8 +60,11 @@ defn main(*args):
 EXPORT =::
   json-schema-normalize: [str, str]
   json-schema-to-ysd: [str, str]
+  json-schema-to-ysd-strict: [str, str]
   json-schema-to-ysdc-json: [str, str]
+  json-schema-to-ysdc-json-strict: [str, str]
   json-schema-to-ysdc: [str, str]
+  json-schema-to-ysdc-strict: [str, str]
   json-schema-roundtrip-report: [str, str]
   json-schema-roundtrip-works: [str, bool]
   ysd-roundtrip-report: [str, str]
@@ -100,13 +103,25 @@ defn json-schema-normalize(text):
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
 
+defn json-schema-to-ysd-strict(text):
+  convert: load-json-schema(text false) true
+
 defn json-schema-to-ysdc-json(text):
   schema =: load-json-schema(text false)
   data =: canonical-ysdc-data(build-doc(schema) 'ysdc')
   canonical-json-output: data {}
 
+defn json-schema-to-ysdc-json-strict(text):
+  schema =: load-json-schema(text false)
+  data =: canonical-ysdc-data(build-doc(schema true) 'ysdc')
+  canonical-json-output: data {}
+
 defn json-schema-to-ysdc(text):
   json-schema-to-ysdc-text: text
+
+defn json-schema-to-ysdc-strict(text):
+  schema =: load-json-schema(text false)
+  canonical-ysdc-text: build-doc(schema true) 'ysdc'
 
 defn json-schema-roundtrip-works(text):
   boolean: json-schema-roundtrip-result(text false).works
@@ -3398,8 +3413,8 @@ defn json-pointer-child(path key):
   token =: key:S.replace(/~/ '~0').replace(/\// '~1')
   =>: "$path/$token"
 
-defn convert(schema):
-  doc =: build-doc(schema)
+defn convert(schema strict=false):
+  doc =: build-doc(schema strict)
   text =: ys::yaml/dump(doc)
   text =: format-ysd-tight-scalars(text)
   text =: format-ysd-document(text)
@@ -3433,7 +3448,7 @@ defn draft4-json-schema?(schema):
     'https://json-schema.org/draft-04/schema'])
 
 # Build the top-level data structure for the whole document.
-defn build-doc(schema):
+defn build-doc(schema strict=false):
   schema =: canonicalize-single-required-oneof(schema)
   defs =: schema.'$defs' ||
           schema.definitions ||
@@ -3443,11 +3458,11 @@ defn build-doc(schema):
     .add-document-ysid(schema)
     .add-root-annotations(schema)
     .add-root-pattern-properties-passthrough(schema)
-    .add-import-open-default(root-open)
+    .add-import-open-default(root-open strict)
     .add-root-map-size(schema)
-    .add-defs-and-body(schema defs root-open)
-    .add-root-one(schema)
-    .add-root-key-rules(schema root-open)
+    .add-defs-and-body(schema defs root-open strict)
+    .add-root-one(schema strict)
+    .add-root-key-rules(schema root-open strict)
   validate-schema-names: result
 
 defn add-document-ysid(result schema):
@@ -3476,8 +3491,8 @@ defn add-root-pattern-properties-passthrough(result schema):
         result '.patternProperties' schema.patternProperties
     else: result
 
-defn add-import-open-default(result root-open):
-  if root-open:
+defn add-import-open-default(result root-open strict=false):
+  if root-open && strict.!:
     then: ordered-put(result '.open' true)
     else: result
 
@@ -3499,16 +3514,16 @@ defn empty-closed-object-root?(schema):
     json-closed?(schema)
     object-with-fields?(schema).!
 
-defn add-defs-and-body(result schema defs inherited-open):
+defn add-defs-and-body(result schema defs inherited-open strict=false):
   if defs-follow-body?(schema):
     result:
       .add-explicit-empty-root(schema defs)
-      .add-body(schema inherited-open)
-      .add-defs(defs inherited-open)
+      .add-body(schema inherited-open strict)
+      .add-defs(defs inherited-open strict)
     result:
-      .add-defs(defs inherited-open)
+      .add-defs(defs inherited-open strict)
       .add-explicit-empty-root(schema defs)
-      .add-body(schema inherited-open)
+      .add-body(schema inherited-open strict)
 
 defn defs-follow-body?(schema):
   defs-key =: schema.'$defs'.if('$defs' 'definitions')
@@ -3518,45 +3533,45 @@ defn defs-follow-body?(schema):
     .take-while(\(_ != defs-key))
     .some(\(body-keys.has?(_)))
 
-defn add-defs(result defs inherited-open):
-  reduce \(add-def-step(_1 _2 inherited-open)): result defs
+defn add-defs(result defs inherited-open strict=false):
+  reduce \(add-def-step(_1 _2 inherited-open strict)): result defs
 
-defn add-def-step(result entry inherited-open):
+defn add-def-step(result entry inherited-open strict=false):
   name sub =: entry
   when name:S == 'Str':
     usage: 'JSON Schema definition name Str conflicts with the +Str wildcard'
-  ordered-put: result "+$name" build-value(sub inherited-open)
+  ordered-put: result "+$name" build-value(sub inherited-open strict)
 
-defn add-body(result schema inherited-open):
+defn add-body(result schema inherited-open strict=false):
   validate-schema-dependent-required: schema
   if object-with-fields?(schema):
     then:
-      result =: add-properties(result schema inherited-open)
-      result =: add-pattern-properties(result schema inherited-open)
-      add-root-wildcard-entry: result schema inherited-open
+      result =: add-properties(result schema inherited-open strict)
+      result =: add-pattern-properties(result schema inherited-open strict)
+      add-root-wildcard-entry: result schema inherited-open strict
     else:
       if json-type(schema).eq('object') && typed-map-base(schema):
-        then: add-root-wildcard-entry(result schema inherited-open)
+        then: add-root-wildcard-entry(result schema inherited-open strict)
         else: result
 
-defn add-root-one(result schema):
+defn add-root-one(result schema strict=false):
   if schema.oneOf.?:
     then:
-      branches =: schema.oneOf.map(\(build-value(_ true))):vec
+      branches =: schema.oneOf.map(\(build-value(_ true strict))):vec
       ordered-put: result '.one' branches
     else: result
 
-defn add-root-wildcard-entry(result schema inherited-open):
+defn add-root-wildcard-entry(result schema inherited-open strict=false):
   if json-typed-additional?(schema):
-    then: add-wildcard-entry(result schema inherited-open)
+    then: add-wildcard-entry(result schema inherited-open strict)
     else: result
 
-defn add-properties(result schema inherited-open):
+defn add-properties(result schema inherited-open strict=false):
   props =: schema.properties || omap()
   required =: set(schema.required)
   dependent =: validate-dependent-required(schema props)
   reduce:
-    \(add-property(_1 _2 required dependent inherited-open))
+    \(add-property(_1 _2 required dependent inherited-open strict))
     result
     props
 
@@ -3564,7 +3579,7 @@ defn validate-schema-dependent-required(schema):
   when contains?(schema 'dependentRequired'):
     validate-dependent-required: schema (schema.properties || {})
 
-defn add-property(result entry required dependent inherited-open):
+defn add-property(result entry required dependent inherited-open strict=false):
   name sub =: entry
   when name:S == WILDCARD-KEY:
     usage: 'JSON Schema property name +Str is reserved for the wildcard'
@@ -3576,26 +3591,26 @@ defn add-property(result entry required dependent inherited-open):
   array? =: json-type(sub).eq('array') && array-as-suffix?(sub)
   value =:
     if array?:
-      build-list-value(sub inherited-open)
-      build-value(sub inherited-open)
+      build-list-value(sub inherited-open false strict)
+      build-value(sub inherited-open strict)
   value =:
     if contains?(dependent name):
       then: add-property-need(value dependent.$name)
       else: value
   ordered-put: result key value
 
-defn add-pattern-properties(result schema inherited-open):
+defn add-pattern-properties(result schema inherited-open strict=false):
   if native-pattern-properties?(schema):
     then:
       reduce:
-        \(add-pattern-property(_1 _2 inherited-open))
+        \(add-pattern-property(_1 _2 inherited-open strict))
         result schema.patternProperties
     else: result
 
-defn add-pattern-property(result entry inherited-open):
+defn add-pattern-property(result entry inherited-open strict=false):
   pattern sub =: entry
   key =: pattern-property-key(pattern)
-  ordered-put: result key build-value(sub inherited-open)
+  ordered-put: result key build-value(sub inherited-open strict)
 
 defn validate-dependent-required(schema props):
   value =: schema.dependentRequired
@@ -3629,7 +3644,7 @@ defn add-property-need(value names):
 defn compact-need-names?(names):
   names.every?(\(_ =~ /^[A-Za-z_$][A-Za-z0-9_.$\/-]*$/))
 
-defn add-root-key-rules(result schema inherited-open):
+defn add-root-key-rules(result schema inherited-open strict=false):
   alternatives =: root-key-anyof(schema)
   supported =:
     and:
@@ -3639,7 +3654,7 @@ defn add-root-key-rules(result schema inherited-open):
   if supported:
     then:
       branches =: alternatives.map(
-        \(build-root-key-branch(_ inherited-open))):vec
+        \(build-root-key-branch(_ inherited-open strict))):vec
       rule =: +{'.any' branches}
       rules =: +[rule]
       ordered-put: result '.keys' rules
@@ -3665,20 +3680,21 @@ defn root-key-branch-schema?(schema):
     sequential?(required)
     required.every?(\(schema.properties.has?(_)))
 
-defn build-root-key-branch(schema inherited-open):
+defn build-root-key-branch(schema inherited-open strict=false):
   required =: set(schema.get('required' []))
   reduce:
-    \(build-root-key-branch-entry(_1 _2 required inherited-open))
+    \(build-root-key-branch-entry(
+      _1 _2 required inherited-open strict))
     omap()
     schema.properties
 
-defn build-root-key-branch-entry(result entry required inherited-open):
+defn build-root-key-branch-entry(result entry required open strict=false):
   name sub =: entry
   key =: key-for(name required.has?(name))
-  value =: build-value(sub inherited-open)
+  value =: build-value(sub open strict)
   ordered-put: result key value
 
-defn build-list-value(schema inherited-open solo=false):
+defn build-list-value(schema inherited-open solo=false strict=false):
   item =: array-item-schema(schema)
   item-scalar =: empty?(item).if('+Any' succinct-scalar(item))
   suffix =: list-suffix(schema solo)
@@ -3686,7 +3702,7 @@ defn build-list-value(schema inherited-open solo=false):
     if item-scalar:
       then: append-list-suffix(item-scalar suffix)
       else:
-        item-value =: build-value(item inherited-open)
+        item-value =: build-value(item inherited-open strict)
         list-value =: list-directives(suffix)
         merged =:
           merge-directives: item-value list-value 'array item type'
@@ -3713,14 +3729,14 @@ defn append-list-suffix(type suffix):
 # Return the value side of a property (or def), either a scalar in
 # succinct form, or a nested map (object with properties / expanded
 # directive block).
-defn build-value(schema inherited-open=true):
+defn build-value(schema inherited-open=true strict=false):
   schema =: canonicalize-single-required-oneof(schema)
   info =: importable-solo-list-info(schema)
   if info:
-    build-solo-list-value: schema info inherited-open
-    build-ordinary-value: schema inherited-open
+    build-solo-list-value: schema info inherited-open strict
+    build-ordinary-value: schema inherited-open strict
 
-defn build-ordinary-value(schema inherited-open=true):
+defn build-ordinary-value(schema inherited-open=true strict=false):
   validate-schema-dependent-required: schema
   scalar-schema =: schema-without-description(schema)
   scalar =: succinct-default-scalar(scalar-schema)
@@ -3730,11 +3746,12 @@ defn build-ordinary-value(schema inherited-open=true):
       annotated-scalar: description-scalar schema.description
     description-scalar && not(schema-annotations?(schema)):
       description-scalar
-    object-with-fields?(schema): build-properties-map(schema inherited-open)
-    else: build-block-map(schema inherited-open)
+    object-with-fields?(schema):
+      build-properties-map(schema inherited-open strict)
+    else: build-block-map(schema inherited-open strict)
 
-defn build-solo-list-value(schema info inherited-open):
-  value =: build-list-value(info.array inherited-open true)
+defn build-solo-list-value(schema info inherited-open strict=false):
+  value =: build-list-value(info.array inherited-open true strict)
   add-solo-list-annotations: value schema
 
 defn add-solo-list-annotations(value schema):
@@ -3821,47 +3838,49 @@ defn succinct-array-scalar(schema):
     when item:
       append-list-suffix: item list-suffix(schema)
 
-defn build-properties-map(schema inherited-open):
+defn build-properties-map(schema inherited-open strict=false):
   child-open =: imported-child-open(schema inherited-open)
   base =: schema-base-ref(schema)
   result =: map-put-if(omap() base.? '.type' base)
   result =: add-schema-name-directive(result schema)
   result =: add-external-ref-directive(result schema)
-  result =: add-open-override(result schema inherited-open)
+  result =: add-open-override(result schema inherited-open strict)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =:
     result.add-size-directive(
       schema.minProperties schema.maxProperties)
-  result =: add-properties(result schema child-open)
-  result =: add-pattern-properties(result schema child-open)
-  result =: add-wildcard-entry(result schema inherited-open)
-  result =: add-imported-combinators(result schema child-open)
+  result =: add-properties(result schema child-open strict)
+  result =: add-pattern-properties(result schema child-open strict)
+  result =: add-wildcard-entry(result schema inherited-open strict)
+  result =: add-imported-combinators(result schema child-open strict)
   result =: add-passthrough-directives(result schema)
   ordered-directives: result
 
-defn add-imported-combinators(result schema inherited-open):
+defn add-imported-combinators(result schema inherited-open strict=false):
   result =: result.add-combinator-directive(
-    schema 'oneOf' '.one' inherited-open)
+    schema 'oneOf' '.one' inherited-open strict)
   result =: result.add-combinator-directive(
-    schema 'anyOf' '.any' inherited-open)
+    schema 'anyOf' '.any' inherited-open strict)
   result =:
     if singleton-ref-allof?(schema):
       then: result
       else:
         result.add-combinator-directive(
-          schema 'allOf' '.all' inherited-open)
+          schema 'allOf' '.all' inherited-open strict)
   if schema.not.?:
-    then: ordered-put(result '.not' build-value(schema.not inherited-open))
+    then:
+      ordered-put:
+        result '.not' build-value(schema.not inherited-open strict)
     else: result
 
-defn build-block-map(schema inherited-open=true):
-  add-block(omap() schema inherited-open)
+defn build-block-map(schema inherited-open=true strict=false):
+  add-block: omap() schema inherited-open strict
 
 # Add the directive entries for an expanded schema-block (.type, .size,
 # .enum, .init, etc.) into the result map. Also walks nested items /
 # properties when present.
-defn add-block(result schema inherited-open=true):
+defn add-block(result schema inherited-open=true strict=false):
   t =: json-type(schema)
   ts =: native-json-format-type(schema)
   ts ||=: type-sym(t)
@@ -3872,7 +3891,7 @@ defn add-block(result schema inherited-open=true):
   map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
   child-open =: imported-child-open(schema inherited-open)
   result =: add-schema-name-directive(result schema)
-  result =: add-open-override(result schema inherited-open)
+  result =: add-open-override(result schema inherited-open strict)
   result =: map-put-if(result map-base '.type' map-base)
   result =:
     if contains?(schema '$ref'):
@@ -3916,14 +3935,15 @@ defn add-block(result schema inherited-open=true):
   result =: map-put-if(result schema.title.? '.title' schema.title)
   result =: map-put-if(result schema.description.? '.desc' schema.description)
   result =: result.add-combinator-directive(
-    schema 'oneOf' '.one' child-open)
+    schema 'oneOf' '.one' child-open strict)
   result =: result.add-combinator-directive(
-    schema 'anyOf' '.any' child-open)
+    schema 'anyOf' '.any' child-open strict)
   result =: result.add-combinator-directive(
-    schema 'allOf' '.all' child-open)
+    schema 'allOf' '.all' child-open strict)
   result =:
     if schema.not.?:
-      then: ordered-put(result '.not' build-value(schema.not child-open))
+      then:
+        ordered-put: result '.not' build-value(schema.not child-open strict)
       else: result
   result =: result
     .add-numeric-range-directive(schema)
@@ -3931,18 +3951,18 @@ defn add-block(result schema inherited-open=true):
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
-    .add-array-items(is-array schema child-open)
+    .add-array-items(is-array schema child-open strict)
   result =:
     if t == 'object':
       then:
         if object-with-fields?(schema):
           then:
-            result =: result.add-properties(schema child-open)
-            result =: result.add-pattern-properties(schema child-open)
-            add-wildcard-entry: result schema inherited-open
+            result =: result.add-properties(schema child-open strict)
+            result =: result.add-pattern-properties(schema child-open strict)
+            add-wildcard-entry: result schema inherited-open strict
           else:
             map-base.if(result
-              add-wildcard-entry(result schema inherited-open))
+              add-wildcard-entry(result schema inherited-open strict))
       else: result
   add-passthrough-directives: result schema
 
@@ -3977,7 +3997,7 @@ defn native-exclusive-range-keyword?(schema key):
     key == 'exclusiveMaximum': native-exclusive-maximum?(schema)
     else: false
 
-defn add-array-items(result is-array schema inherited-open):
+defn add-array-items(result is-array schema inherited-open strict=false):
   if is-array && schema.items.?:
     then:
       items =: schema.items
@@ -3985,14 +4005,15 @@ defn add-array-items(result is-array schema inherited-open):
       if item-scalar:
         then: ordered-put(result '.type' "$item-scalar[]")
         else:
-          ordered-put: result '.item' build-block-map(items inherited-open)
+          ordered-put:
+            result '.item' build-block-map(items inherited-open strict)
     else: result
 
-defn additional-properties-value(schema inherited-open):
+defn additional-properties-value(schema inherited-open strict=false):
   value =: schema.get('additionalProperties')
   if value == true:
     then: '+Any'
-    else: build-value(value inherited-open)
+    else: build-value(value inherited-open strict)
 
 defn typed-map-base(schema):
   value-type =: map-value-type-ref(schema)
@@ -4006,8 +4027,8 @@ defn imported-child-open(schema inherited-open):
   close =: json-closed?(schema) && inherited-open
   close: .if(false inherited-open)
 
-defn add-open-override(result schema inherited-open):
-  if json-closed?(schema) && inherited-open:
+defn add-open-override(result schema inherited-open strict=false):
+  if json-closed?(schema) && inherited-open && strict.!:
     then: ordered-put(result '.open' false)
     else: result
 
@@ -4058,24 +4079,27 @@ defn map-value-type-ref(schema):
             when value.type != 'array':
               type-sym: value.type
 
-defn add-wildcard-entry(result schema inherited-open):
+defn add-wildcard-entry(result schema inherited-open strict=false):
   typed =: json-typed-additional?(schema)
   local-open =: json-unconstrained-open?(schema)
   pure-open =: local-open && object-with-fields?(schema).!
-  if typed || (local-open && (inherited-open.! || pure-open)):
+  open-any =:
+    strict.! && local-open && (inherited-open.! || pure-open)
+  if typed || open-any:
     then:
       ordered-put:
         result
         WILDCARD-KEY
         typed.if(
-          additional-properties-value(schema inherited-open)
+          additional-properties-value(schema inherited-open strict)
           '+Any')
     else: result
 
-defn add-combinator-directive(result schema keyword directive inherited-open):
-  if schema.has?(keyword):
+defn add-combinator-directive(result schema key directive open strict=false):
+  if schema.has?(key):
     then:
-      values =: schema.$keyword.map(\(build-value(_ inherited-open)))
+      values =:
+        schema.$key.map(\(build-value(_ open strict)))
       ordered-put: result directive vec(values)
     else: result
 
