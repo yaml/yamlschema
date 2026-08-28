@@ -162,6 +162,21 @@ if (!parsedStrict.ok || parsedStrict.state.strict !== true) {
 if (serializeEditorState({strict: false}) !== '') {
   throw new Error('unchecked YAMLSchema strict state produced a fragment');
 }
+const normalizedStrictHash = serializeEditorState({
+  normal: true,
+  strict: true,
+});
+if (normalizedStrictHash !== '#v=1&t=1') {
+  throw new Error(`normalized Strict URL is unstable: ${normalizedStrictHash}`);
+}
+const legacyNormalizedStrict = parseEditorState('#v=1&n=1&t=1');
+if (
+  !legacyNormalizedStrict.ok ||
+  legacyNormalizedStrict.state.normal !== true ||
+  legacyNormalizedStrict.state.strict !== true
+) {
+  throw new Error('legacy normalized Strict URL did not parse');
+}
 if (serializeEditorState({source: 'ysd'}) !== '') {
   throw new Error('canonical editor state produced a fragment');
 }
@@ -764,6 +779,12 @@ if (
   !appSource.includes('setYSDStrictReady(false);') ||
   !appSource.includes('setYSDStrictReady(true);') ||
   !appSource.includes('async function makeJsonSchemaStrict()') ||
+  !appSource.includes(
+    'const canonicalSource = sourceValue === canonicalSourceValues.json;',
+  ) ||
+  !appSource.includes(
+    'if (canonicalSource) canonicalSourceValues.json = jsonValue;',
+  ) ||
   !appSource.includes("const operation = 'ysd-to-json-schema';") ||
   !appSource.includes(
     'showGeneratingJSONSchema();\n' +
@@ -773,7 +794,11 @@ if (
   !appSource.includes("ysdStrictControl.addEventListener('click'") ||
   !appSource.includes('if (ysdStrict) {') ||
   !appSource.includes("strict: documentSource === 'json' && ysdStrict") ||
-  !appSource.includes('sharedState.strict === true')
+  !appSource.includes('sharedState.strict === true') ||
+  !appSource.includes(
+    'initialStrict && sharedState.content !== undefined',
+  ) ||
+  !appSource.includes('if (initialStrict) await makeJsonSchemaStrict();')
 ) {
   throw new Error('YAMLSchema Strict checkbox behavior is incomplete');
 }

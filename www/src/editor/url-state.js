@@ -90,7 +90,7 @@ export function serializeEditorState({
 } = {}) {
   const hasContent = content !== undefined;
   const hasLines = Boolean(pane && lines);
-  const hasNormal = normal === true;
+  const hasNormal = normal === true && strict !== true;
   const hasStrict = strict === true;
   if (!hasContent && !hasLines && !hasNormal && !hasStrict) return '';
 

@@ -795,6 +795,7 @@ async function makeJsonSchemaStrict() {
     return;
   }
   const sourceValue = jsonValue;
+  const canonicalSource = sourceValue === canonicalSourceValues.json;
   jsonNormalRequest++;
   setJsonNormal(false);
   setYSDStrictReady(false);
@@ -833,6 +834,7 @@ async function makeJsonSchemaStrict() {
   jsonError.textContent = '';
   jsonValue = result.value;
   setEditorValue(jsonEditor, jsonValue);
+  if (canonicalSource) canonicalSourceValues.json = jsonValue;
   setJsonNormal(true);
   jsonNormalControl.disabled = !schemaWorkerReady;
   updateRoundtripStatus('json', normalizeJson(jsonValue));
@@ -1262,8 +1264,10 @@ async function initializeEditor() {
   const initialSource = sharedState.content !== undefined
     ? sharedState.source
     : initialSampleSource;
+  const initialStrict =
+    initialSource === 'json' && sharedState.strict === true;
   setYSDStrict(
-    initialSource === 'json' && sharedState.strict === true,
+    initialStrict && sharedState.content !== undefined,
   );
   if (sharedState.content !== undefined) {
     documentSource = sharedState.source;
@@ -1278,6 +1282,7 @@ async function initializeEditor() {
       initialSampleSource,
       initialSampleSource === 'json' && sharedState.normal === true,
     );
+    if (initialStrict) await makeJsonSchemaStrict();
     canonicalSourceValues = {
       ysd: ysdValue,
       json: jsonValue,
