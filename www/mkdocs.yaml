@@ -86,6 +86,9 @@ plugins:
     separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
 
 extra:
+  analytics:
+    provider: custom
+    property: G-EFBDLGET7X
   social:
   - icon: fontawesome/brands/github
     link: https://github.com/yaml/yamlschema

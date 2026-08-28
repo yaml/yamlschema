@@ -997,6 +997,13 @@ const jsonSchemaReference = await readFile(
   'utf8',
 );
 if (
+  !mkdocsConfig.includes(
+    'analytics:\n    provider: custom\n    property: G-EFBDLGET7X',
+  ) ||
+  !indexHTML.includes('G-EFBDLGET7X') ||
+  !indexHTML.includes('id="gdpr-cookie-banner"') ||
+  !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
+  indexHTML.includes('<script id="__analytics">') ||
   !indexHTML.includes('/assets/editor/app.js?v=20') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
