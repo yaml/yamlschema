@@ -813,9 +813,17 @@ defn normalize-definitions(result):
       defs =: merge-ordered-maps(
         old-defs
         result.get('definitions'))
-      result =: dissoc(result 'definitions')
-      ordered-put: result '$defs' defs
+      target =: result.has?('$defs').if('$defs' 'definitions')
+      reduce \(normalize-definition-entry(_1 _2 target defs)):
+        omap() result
     else: result
+
+defn normalize-definition-entry(result entry target defs):
+  key =: entry.0:S
+  cond:
+    key == target: ordered-put(result '$defs' defs)
+    key.in?(['$defs' 'definitions']): result
+    else: ordered-put(result entry.0 entry.1)
 
 defn normalize-ref(result):
   if contains?(result '$ref'):
@@ -926,11 +934,28 @@ defn canonical-json-schema(value):
 
 defn canonical-json-map(value):
   result =: omap()
+  preferred =: ordered-preferred-json-schema-keys(value)
   result =: reduce(\(add-canonical-key(_1 _2 value))
-                   result preferred-json-schema-keys())
+                   result preferred)
   extra-keys =:
     sort(remove(\(preferred-json-schema-key?(_)) value:keys))
   reduce \(add-canonical-key(_1 _2 value)): result extra-keys
+
+defn ordered-preferred-json-schema-keys(value):
+  keys =: preferred-json-schema-keys()
+  if json-defs-follow-root?(value):
+    then:
+      ordered =: vec(keys.remove(\(_ == '$defs')))
+      ordered: .conj('$defs')
+    else: keys
+
+defn json-defs-follow-root?(value):
+  when contains?(value '$defs'):
+    root-keys =: set(drop(7 preferred-json-schema-keys()))
+    keys =: value:keys
+    keys:
+      .take-while(\(_ != '$defs'))
+      .some(\(root-keys.has?(_)))
 
 defn add-canonical-key(result key value):
   if contains?(value key):
@@ -2343,9 +2368,10 @@ defn normalize-size(value):
 
 defn ysdc-to-schema(doc):
   state =: reduce(ysdc-doc-step initial-ysdc-doc-state(doc) doc)
-  result =: state.result
+  parts =: split-document-schema(state.result)
+  metadata =: parts.metadata
+  root =: parts.root
   defs-val =: state.defs
-  reqs =: state.required
   root-fields =:
     state.wildcard ||
     state.props:seq ||
@@ -2356,6 +2382,30 @@ defn ysdc-to-schema(doc):
     usage: 'yamlschema .root cannot be combined with top-level fields'
   has-root-mapping =:
     state.explicit-root.! && (root-fields || defs-val:empty?)
+  defs =: map-put-if(omap() empty?(defs-val).! '$defs' defs-val)
+  root =: add-root-schema(root state has-root-mapping)
+  if ysd-root-before-named-types?(doc):
+    merge-ordered-maps: metadata root defs
+    merge-ordered-maps: metadata defs root
+
+defn split-document-schema(result):
+  reduce split-document-schema-entry: document-schema-parts() result
+
+defn document-schema-parts()::
+  metadata:: omap()
+  root:: omap()
+
+defn split-document-schema-entry(parts entry):
+  slot =: json-document-metadata-key?(entry.0).if('metadata' 'root')
+  value =: ordered-put(parts.$slot entry.0 entry.1)
+  parts +: +{slot value}
+
+defn json-document-metadata-key?(key):
+  key:S.in?([
+    '$comment' '$id' '$schema' '$anchor' 'title' 'description'])
+
+defn add-root-schema(result state has-root-mapping):
+  reqs =: state.required
   result :if has-root-mapping +=:: {type: object}
   result =: result
     .map-put-if(empty?(state.props).! 'properties' state.props)
@@ -2364,7 +2414,6 @@ defn ysdc-to-schema(doc):
     .map-put-if(empty?(reqs).! 'required' reqs)
     .map-put-if(empty?(state.dependent).!
                 'dependentRequired' state.dependent)
-    .map-put-if(empty?(defs-val).! '$defs' defs-val)
   if has-root-mapping:
     if state.wildcard:
       then:
@@ -2376,6 +2425,25 @@ defn ysdc-to-schema(doc):
           then: result
           else: result + {'additionalProperties' false}
     else: result
+
+defn ysd-root-before-named-types?(doc):
+  keys =: doc:keys.remove(\(ysd-order-ignored-key?(_)))
+  first =: keys:first
+  and:
+    first.?
+    named-type-key?(first).!
+
+defn ysd-order-ignored-key?(key):
+  text =: key:S
+  and:
+    text.starts?('.')
+    (text != '.root')
+
+defn named-type-key?(key):
+  text =: key:S
+  and:
+    text.starts?('+')
+    (text != WILDCARD-KEY)
 
 defn initial-ysdc-doc-state(doc):
   result =: add-ysid-meta(omap() doc.'.ysid')
@@ -3349,9 +3417,7 @@ defn build-doc(schema):
     .add-root-pattern-properties-passthrough(schema)
     .add-import-open-default(root-open)
     .add-root-map-size(schema)
-    .add-explicit-empty-root(schema defs)
-    .add-defs(defs root-open)
-    .add-body(schema root-open)
+    .add-defs-and-body(schema defs root-open)
     .add-root-one(schema)
     .add-root-key-rules(schema root-open)
   validate-schema-names: result
@@ -3404,6 +3470,25 @@ defn empty-closed-object-root?(schema):
     json-type(schema).eq('object')
     json-closed?(schema)
     object-with-fields?(schema).!
+
+defn add-defs-and-body(result schema defs inherited-open):
+  if defs-follow-body?(schema):
+    result:
+      .add-explicit-empty-root(schema defs)
+      .add-body(schema inherited-open)
+      .add-defs(defs inherited-open)
+    result:
+      .add-defs(defs inherited-open)
+      .add-explicit-empty-root(schema defs)
+      .add-body(schema inherited-open)
+
+defn defs-follow-body?(schema):
+  defs-key =: schema.'$defs'.if('$defs' 'definitions')
+  body-keys =: set(qw(properties patternProperties additionalProperties))
+  keys =: schema:keys
+  keys:
+    .take-while(\(_ != defs-key))
+    .some(\(body-keys.has?(_)))
 
 defn add-defs(result defs inherited-open):
   reduce \(add-def-step(_1 _2 inherited-open)): result defs

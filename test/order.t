@@ -147,6 +147,61 @@ test::
     p9?
     p10?
 
+- name: json-schema-properties-before-definitions
+  cmnd: |
+    sh -c '
+      bin/ysd -f jsc -t ysdc - |
+        ys -e "say: IN:read:yaml/load:keys:joins" |
+        tr " " "\n"
+    '
+  stdi: |
+    {
+      "properties": {
+        "first": {"type": "string"},
+        "second": {"type": "integer"}
+      },
+      "$defs": {
+        "alpha": {"type": "string"},
+        "beta": {"type": "integer"}
+      }
+    }
+  want: |
+    .open
+    first?
+    second?
+    +alpha
+    +beta
+
+- name: ysd-root-between-definitions-goes-last
+  cmnd: |
+    sh -c '
+      bin/ysd -t jsc - |
+        jq -r "
+          \"root \" + (keys_unsorted | join(\" \")),
+          \"defs \" + (.\"\$defs\" | keys_unsorted | join(\" \"))
+        "
+    '
+  stdi: |
+    +before: +Str
+    root?: +Bool
+    +after: +Int
+  want: |
+    root $schema $defs type properties additionalProperties
+    defs before after
+
+- name: ysd-root-before-definitions-goes-first
+  cmnd: |
+    sh -c '
+      bin/ysd -t jsc - |
+        jq -r "keys_unsorted | join(\" \")"
+    '
+  stdi: |
+    root?: +Bool
+    +before: +Str
+    +after: +Int
+  want: |
+    $schema type properties additionalProperties $defs
+
 - name: normalization-preserves-json-object-key-order
   cmnd: |
     sh -c '
