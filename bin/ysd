@@ -4586,7 +4586,7 @@ defn format-ysd-tight-scalars(text):
 
 defn format-ysd-document(text):
   lines =: insert-blank-before-defs(text:lines)
-  join "\n": +['# Converted from JSON Schema'] + lines
+  join "\n": +['# Converted from JSON Schema'].into(lines)
 
 defn insert-blank-before-defs(lines):
   =>: reduce(insert-before-def-step [] lines)
@@ -4598,15 +4598,12 @@ defn insert-before-def-step(result line):
       then: true
       else: result:last != ''
   should-insert =: is-def && needs-separator
-  result =:
-    if should-insert:
-      then: result + ''
-      else: result
-  =>: result + line
+  result :if should-insert .=: conj('')
+  result: .conj(line)
 
 defn format-ysd-tight-line(result line):
   formatted =: wrapped-ysd-tight-line(line)
-  =>: result + formatted
+  result: .into(formatted)
 
 defn wrapped-ysd-tight-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
@@ -4645,7 +4642,7 @@ defn append-ysd-desc-token(state token):
   if (candidate.# <= 80) || state.has-token.!:
     then: state + {'line' candidate, 'has-token' true}
     else: state + {
-      'lines' (state.lines + state.line),
+      'lines' state.lines.conj(state.line),
       'line' "$(state.continuation)$token", 'has-token' true}
 
 defn ysd-tight-line-clauses(value):
@@ -4666,14 +4663,11 @@ defn ysd-tight-line-clauses(value):
 defn ysd-tight-clause-lines(prefix clauses):
   indent =: "$(line-indent(prefix))  "
   lines =: +["$prefix$(clauses.head)"]
-  lines =:
-    if clauses.enum:
-      then: lines + ysd-enum-clause-lines(indent clauses.enum)
-      else: lines
-  if clauses.description:
-    then: lines + ysd-description-clause-lines(
-      indent clauses.description)
-    else: lines
+  lines :if clauses.enum .=:
+    into(ysd-enum-clause-lines(indent clauses.enum))
+  lines :if clauses.description .=:
+    into(ysd-description-clause-lines(indent clauses.description))
+  =>: lines
 
 defn ysd-enum-clause-lines(indent clause):
   body =: clause.replace(/^\[/).replace(/\]$/)
@@ -4741,14 +4735,14 @@ defn wrap-ysd-clause-tokens(indent opening tokens):
   state =: +{'lines' [], 'line' "$indent$opening",
             'indent' indent, 'has-token' false}
   state =: reduce(append-ysd-clause-token state tokens)
-  =>: state.lines + state.line
+  state.lines: .conj(state.line)
 
 defn append-ysd-clause-token(state token):
   separator =: state.has-token.if(' ' '')
   candidate =: "$(state.line)$separator$token"
   if (candidate.# <= 80) || state.has-token.!:
     then: state + {'line' candidate, 'has-token' true}
-    else: state + {'lines' (state.lines + state.line),
+    else: state + {'lines' state.lines.conj(state.line),
       'line' "$(state.indent)$token", 'has-token' true}
 
 defn post-process(text format-flow=false):
@@ -4788,7 +4782,7 @@ defn start-flow-candidate(state line need-only):
     then: state + {
       'indent' line-indent(line), 'directive' directive,
       'items' [], 'original' [line]}
-    else: state + {'result' (state.result + line)}
+    else: state + {'result' state.result.conj(line)}
 
 defn continue-flow-candidate(state line need-only):
   prefix =: "$(state.indent)- "
@@ -4799,8 +4793,8 @@ defn continue-flow-candidate(state line need-only):
       else: line.starts?(indented-prefix).if(indented-prefix nil)
   if item-prefix:
     then: state + {
-      'items' (state.items + join(drop(item-prefix.# line))),
-      'original' (state.original + line)}
+      'items' state.items.conj(join(drop(item-prefix.# line))),
+      'original' state.original.conj(line)}
     else:
       if line-indent(line).# > state.indent.#:
         then:
@@ -4814,7 +4808,7 @@ defn line-indent(line):
 
 defn flush-flow-original(state):
   reset-flow-candidate:
-    state + {'result' (state.result + state.original)}
+    state + {'result' state.result.into(state.original)}
 
 defn finish-flow-candidate(state):
   cond:
@@ -4822,7 +4816,7 @@ defn finish-flow-candidate(state):
     inline-scalar-sequence?(state.items):
       reset-flow-candidate:
         state + {'result'
-          (state.result + flow-sequence-lines(
+          state.result.into(flow-sequence-lines(
             state.indent state.directive
             state.items.map(flow-sequence-item)))}
     else: flush-flow-original(state)
@@ -4868,7 +4862,7 @@ defn flow-sequence-lines(indent directive items):
   state =: +{'lines' [], 'line' prefix,
     'continuation' continuation, 'has-item' false}
   state =: reduce(append-flow-sequence-token state tokens)
-  =>: state.lines + state.line
+  state.lines: .conj(state.line)
 
 defn flow-sequence-token(index item count):
   if index == (count - 1):
@@ -4880,7 +4874,7 @@ defn append-flow-sequence-token(state token):
   candidate =: "$(state.line)$separator$token"
   if (candidate.# <= 80) || state.has-item.!:
     then: state + {'line' candidate, 'has-item' true}
-    else: state + {'lines' (state.lines + state.line),
+    else: state + {'lines' state.lines.conj(state.line),
       'line' "$(state.continuation)$token", 'has-item' true}
 
 # Insert one blank line between the trailing `+...` $defs entries and
@@ -4898,10 +4892,7 @@ defn insert-blank-step(state line):
   saw-plus ||=: line =~ /^\+/
   is-body =: line =~ /^[A-Za-z]/
   should-insert =: saw-plus && not(inserted) && is-body
-  result =:
-    if should-insert:
-      then: result + ''
-      else: result
-  result =: result + line
+  result :if should-insert .=: conj('')
+  result =: result.conj(line)
   inserted =: inserted || should-insert
   vector: result saw-plus inserted

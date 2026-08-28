@@ -76,11 +76,15 @@ install: build
 	@printf '  source %s/.rc\n' '$(YAMLSCHEMA-INSTALL)'
 
 test: \
-  test-unit test-version test-release test-installer test-install \
-  test-upgrade test-man test-scripts
+  test-unit test-native-order test-version test-release test-installer \
+  test-install test-upgrade test-man test-scripts
 
 test-unit: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
+
+test-native-order: build
+	./ysd -Rq -f jsc \
+	  www/docs/assets/editor/examples/health-record.schema.json
 
 test-version: $(YS)
 	test "$$(bin/ysd --version)" = 'ysd $(YSD-VERSION)'
