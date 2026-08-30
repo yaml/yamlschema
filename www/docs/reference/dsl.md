@@ -84,8 +84,8 @@ constraints:
 
 ```yaml
 email: +email
-code: +Str /[A-Z][0-9]+/
-work_email: +email /@example\.com$/
+code: +Str ~"{upper}{digit}+"
+work_email: +email ~~"@example\.com$"
 ```
 
 Definitions use a `+slug` key.
@@ -333,7 +333,7 @@ order:
 The core is normally a `+Type` reference, which later clauses refine:
 
 ```yaml
-foo: +Str /a.*b/
+foo: +Str ~~"a.*b"
 port: +Int 1..65535
 mode: +Str [debug, info, error]
 ```
@@ -357,17 +357,21 @@ mode:
   .enum: [debug, info, error]
 ```
 
-`=~"pattern"` matches the complete string; leading `^` and trailing `$`
+`~"pattern"` matches the complete string; leading `^` and trailing `$`
 anchors are implied.
 `match:"pattern"` is an accepted alias.
-`find:"pattern"` searches within the string.
-The `/pattern/` form is shorthand for `find:"pattern"` and is available only
-when the pattern contains neither whitespace nor `/`.
+`~~"pattern"` searches within the string.
+`find:"pattern"` is an accepted alias.
 The quoted bodies cannot contain `"`.
 In .ysd, use explicit `.match` or `.find` when no tight form can represent the
 pattern.
 Both imply `+Str`.
-Generated .ysd uses the canonical `=~"pattern"` spelling.
+Generated .ysd uses the canonical `~"pattern"` and `~~"pattern"` spellings.
+
+Inside either form, `{digit}`, `{upper}`, `{lower}`, and `{plus}` are shorthand
+for `[0-9]`, `[A-Z]`, `[a-z]`, and `\+` respectively.
+Both `\d` and `[0-9]` import as `{digit}`.
+Generated .ysd uses these named forms.
 
 Canonical .ysdc stores both forms as `.like`, containing the exact JSON Schema
 pattern.
@@ -565,7 +569,7 @@ tight expression and sibling directives add the exceptional parts:
 
 ```yaml
 foo:
-  .type: +Str[] /a.*b/ 10-20
+  .type: +Str[] ~~"a.*b" 10-20
   .title: The "Good" Parts
 ```
 

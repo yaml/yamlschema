@@ -45,7 +45,7 @@ A mapping in a schema describes a mapping in the data:
 
 .EX
 name: +Str
-email?: +Str =~"\\S+@\\S+"
+email?: +Str ~"\\S+@\\S+"
 address:
   street: +Str
   city: +Str
@@ -95,7 +95,7 @@ not implied.
 The succinct syntax puts a base type before the constraints that refine it:
 
 .EX
-email: +Str =~"\\S+@\\S+"  # whole-string regex match
+email: +Str ~"\\S+@\\S+"  # whole-string regex match
 role: +Str [admin, user, guest]  # enum with explicit type
 port: +Int 1..65535      # numeric range
 tags: +Str[1+]           # list of one or more strings
@@ -113,7 +113,7 @@ The corresponding canonical form uses type references and directives such as
 Symbols begin with \fB+\fR\&.
 
 .EX
-+email: +Str =~"\\S+@\\S+"
++email: +Str ~"\\S+@\\S+"
 +port: +Int 1..65535
 
 admin_email: +email
@@ -130,7 +130,7 @@ built-in-types reference
 User-defined symbols are normally lowercase:
 
 .EX
-+email: +Str =~"\\S+@\\S+"
++email: +Str ~"\\S+@\\S+"
 +address:
   street: +Str
   city: +Str
@@ -147,8 +147,8 @@ Private definitions use \fB:+name\fR as the key and are still referenced as
 \fB+name\fR inside the same schema:
 
 .EX
-:+local-part: +Str /[a-zA-Z0-9._%+-]+/
-+email: +Str /{+local-part}@example\\.com/
+:+local-part: +Str ~"[a-zA-Z0-9._%+-]+"
++email: +Str ~"{+local-part}@example\\.com"
 .EE
 
 .PP
@@ -272,7 +272,7 @@ Structural \fB\&.one\fR, \fB\&.any\fR, \fB\&.all\fR, \fB\&.not\fR, \fB\&.with\fR
 explicit.
 
 .EX
-foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
+foo: desc:"Words" size:1-3 ~"a b" title:"Title" type:+Str
 .EE
 
 .PP
@@ -348,12 +348,12 @@ Descriptions that cannot be safely represented in a YAML plain scalar use the
 explicit \fB\&.desc\fR form.
 
 .SS Regex
-Use \fB=~"..."\fR for a whole-string match.
+Use \fB~"..."\fR for a whole-string match.
 \fBmatch:"..."\fR is also accepted:
 
 .EX
-email: +Str =~"\\S+@\\S+"
-zip: +Str =~"\\d{5}(-\\d{4})?"
+email: +Str ~"\\S+@\\S+"
+zip: +Str ~"{digit}{5}(-{digit}{4})?"
 .EE
 
 .PP
@@ -369,14 +369,18 @@ zip:
 .EE
 
 .PP
-Use \fBfind:"..."\fR for an unanchored search.
-\fB/pattern/\fR is its compact form when \fBpattern\fR contains neither whitespace nor
-\fB/\fR:
+Use \fB~~"..."\fR for an unanchored search.
+\fBfind:"..."\fR is also accepted:
 
 .EX
-word: +Str /good/
-path: +Str find:"usr/local"
+word: +Str ~~"good"
+path: +Str ~~"usr/local"
 .EE
+
+.PP
+\fB{digit}\fR, \fB{upper}\fR, \fB{lower}\fR, and \fB{plus}\fR represent \fB[0-9]\fR, \fB[A-Z]\fR,
+\fB[a-z]\fR, and \fB\\+\fR\&.
+Both \fB\\d\fR and \fB[0-9]\fR import as \fB{digit}\fR, which exports as \fB[0-9]\fR\&.
 
 .SS Enums
 Simple enum values use an explicit type and a compact list:
@@ -772,24 +776,22 @@ The first becomes \fB\&.type\fR and the remaining references become \fB\&.all\fR
 Regex-valued definitions can be composed by reference:
 
 .EX
-:+user: +Str /[a-zA-Z0-9._%+-]+/
-:+host: +Str /[a-zA-Z0-9.-]+/
-:+tld: +Str /[a-zA-Z]{2,}/
+:+user: +Str ~"[a-zA-Z0-9._%+-]+"
+:+host: +Str ~"[a-zA-Z0-9.-]+"
+:+tld: +Str ~"[a-zA-Z]{2,}"
 
-+email: +Str /^{+user}@{+host}\\.{+tld}$/
++email: +Str ~"{+user}@{+host}\\.{+tld}"
 .EE
 
 .PP
 The composed result expands to:
 
 .EX
-+email: +Str /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/
++email: +Str ~"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
 .EE
 
 .PP
 Rules:
-.IP \(bu 2
-Referenced regexes have their \fB/\fR delimiters removed.
 .IP \(bu 2
 Leading \fB^\fR and trailing \fB$\fR anchors are stripped before inlining.
 .IP \(bu 2
@@ -807,14 +809,14 @@ Top-level \fB+symbols\fR are private by default.
 \&.from: https://yaml.org/schema/base/v1
 \&.name: contact
 
-+email: +Str =~"\\S+@\\S+"
++email: +Str ~"\\S+@\\S+"
 
 name: +Str
 email?: +email
 address:
   street: +Str
   city: +Str
-  zip: +Str =~"\\d{5}"
+  zip: +Str ~"{digit}{5}"
 .EE
 
 .SS Type Library
@@ -828,8 +830,8 @@ Public symbols use \fB+name\fR; private symbols use \fB:+name\fR\&.
 \&.from: https://yaml.org/schema/base/v1
 
 +port: +Int 1..65535
-+email: +Str =~"\\S+@\\S+"
-+hostname: +Str =~"[a-z0-9.-]+"
++email: +Str ~"\\S+@\\S+"
++hostname: +Str ~"[a-z0-9.-]+"
 .EE
 
 .SH Imports
@@ -900,7 +902,7 @@ Inline schema is also possible:
 schema:
   name: +Str
   age?: +Int 0..
-  email?: +Str =~"\\S+@\\S+"
+  email?: +Str ~"\\S+@\\S+"
 ---
 name: Alice
 age: 30
@@ -984,7 +986,7 @@ simple schema-valued \fBadditionalProperties\fR	\fB+Map{+Type}\fR
 constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
 \fBadditionalProperties: false\fR	Closed mapping; no wildcard
 \fBenum\fR	Compact enum or \fB\&.enum\fR list
-\fBpattern\fR	\fB\&.match\fR for outer \fB^...$\fR; otherwise \fB\&.find\fR or \fB/.../\fR
+\fBpattern\fR	\fB\&.match\fR for outer \fB^...$\fR; otherwise \fB\&.find\fR
 \fBminimum\fR / \fBmaximum\fR	Range scalar or structural \fB\&.range\fR sequence
 \fBminLength\fR / \fBmaxLength\fR	\fB\&.size\fR on strings
 \fBminItems\fR / \fBmaxItems\fR	List suffix or \fB\&.size\fR
@@ -1039,7 +1041,7 @@ Example:
 Converts to:
 
 .EX
-+email: +Str =~"\\S+@\\S+"
++email: +Str ~"\\S+@\\S+"
 
 name: +Str
 email?: +email

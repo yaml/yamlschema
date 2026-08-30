@@ -38,17 +38,17 @@ test::
     # Converted from JSON Schema
     .open: true
 
-    +phone: +Str =~"\+?[0-9\s\-()]{7,20}"
+    +phone: +Str ~"{plus}?[0-9\s\-()]{7,20}"
 
     name: +Str
-    email?: +Str =~"\S+@\S+"
+    email?: +Str ~"\S+@\S+"
     phone: +phone
     phone2?: +phone
     address:
       street: +Str
       city: +Str
-      state: +Str =~"[A-Z]{2}"
-      zip: +Str =~"\d{5}(-\d{4})?"
+      state: +Str ~"{upper}{2}"
+      zip: +Str ~"{digit}{5}(-{digit}{4})?"
       country?: +Str
 
 done:

@@ -91,8 +91,8 @@ constraints:
 
 .EX
 email: +email
-code: +Str /[A-Z][0-9]+/
-work_email: +email /@example\\.com$/
+code: +Str ~"{upper}{digit}+"
+work_email: +email ~~"@example\\.com$"
 .EE
 
 .PP
@@ -369,7 +369,7 @@ order:
 The core is normally a \fB+Type\fR reference, which later clauses refine:
 
 .EX
-foo: +Str /a.*b/
+foo: +Str ~~"a.*b"
 port: +Int 1..65535
 mode: +Str [debug, info, error]
 .EE
@@ -396,17 +396,22 @@ mode:
 .EE
 
 .PP
-\fB=~"pattern"\fR matches the complete string; leading \fB^\fR and trailing \fB$\fR
+\fB~"pattern"\fR matches the complete string; leading \fB^\fR and trailing \fB$\fR
 anchors are implied.
 \fBmatch:"pattern"\fR is an accepted alias.
-\fBfind:"pattern"\fR searches within the string.
-The \fB/pattern/\fR form is shorthand for \fBfind:"pattern"\fR and is available only
-when the pattern contains neither whitespace nor \fB/\fR\&.
+\fB~~"pattern"\fR searches within the string.
+\fBfind:"pattern"\fR is an accepted alias.
 The quoted bodies cannot contain \fB"\fR\&.
 In .ysd, use explicit \fB\&.match\fR or \fB\&.find\fR when no tight form can represent the
 pattern.
 Both imply \fB+Str\fR\&.
-Generated .ysd uses the canonical \fB=~"pattern"\fR spelling.
+Generated .ysd uses the canonical \fB~"pattern"\fR and \fB~~"pattern"\fR spellings.
+
+.PP
+Inside either form, \fB{digit}\fR, \fB{upper}\fR, \fB{lower}\fR, and \fB{plus}\fR are shorthand
+for \fB[0-9]\fR, \fB[A-Z]\fR, \fB[a-z]\fR, and \fB\\+\fR respectively.
+Both \fB\\d\fR and \fB[0-9]\fR import as \fB{digit}\fR\&.
+Generated .ysd uses these named forms.
 
 .PP
 Canonical .ysdc stores both forms as \fB\&.like\fR, containing the exact JSON Schema
@@ -629,7 +634,7 @@ tight expression and sibling directives add the exceptional parts:
 
 .EX
 foo:
-  .type: +Str[] /a.*b/ 10-20
+  .type: +Str[] ~~"a.*b" 10-20
   .title: The "Good" Parts
 .EE
 

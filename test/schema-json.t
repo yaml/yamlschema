@@ -30,7 +30,7 @@ test::
 - name: refs-and-regex-to-schema.json
   cmnd: bin/ysd -t jsc -C -
   stdi: |
-    +email: +Str =~"\S+@\S+"
+    +email: +Str ~"\S+@\S+"
 
     host: +Str
     admin?: +email
@@ -40,12 +40,12 @@ test::
 - name: match-find-and-regex-to-schema.json
   cmnd: bin/ysd -t jsc -C -
   stdi: |
-    full: =~"abc"
+    full: ~"{plus}{digit}+"
     alias: match:"xyz"
-    found: find:"abc"
-    short: /abc/
+    found: ~~"{upper}{lower}+"
+    short: find:"abc"
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"full":{"type":"string","pattern":"^abc$"},"alias":{"type":"string","pattern":"^xyz$"},"found":{"type":"string","pattern":"abc"},"short":{"type":"string","pattern":"abc"}},"required":["full","alias","found","short"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"full":{"type":"string","pattern":"^\\+[0-9]+$"},"alias":{"type":"string","pattern":"^xyz$"},"found":{"type":"string","pattern":"[A-Z][a-z]+"},"short":{"type":"string","pattern":"abc"}},"required":["full","alias","found","short"],"additionalProperties":false}
 
 - name: defs-only-to-schema.json
   cmnd: bin/ysd -t jsc -C -

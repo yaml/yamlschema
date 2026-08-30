@@ -35,7 +35,7 @@ The `.ysd.yaml` succinct form is optimized for humans:
 
 ```yaml
 name: +Str
-email?: +Str =~"\S+@\S+"
+email?: +Str ~"\S+@\S+"
 tags: +Str[!1+]
 ```
 
@@ -224,8 +224,8 @@ JSON Schema:
 YAMLSchema:
 
 ```yaml
-email: +Str =~"\S+@\S+"
-zip: +Str =~"\d{5}"
+email: +Str ~"\S+@\S+"
+zip: +Str ~"{digit}{5}"
 ```
 
 Roundtrip notes:
@@ -237,11 +237,14 @@ Roundtrip notes:
   value.
 - Canonical .ysdc uses `.like` for both and exports its value unchanged as the
   JSON Schema `pattern`.
-- `/pattern/` is shorthand for `find:"pattern"` only when the body contains
-  neither whitespace nor `/`.
-- `=~"..."`, its accepted `match:"..."` alias, and `find:"..."` cannot contain
-  `"`; use an explicit .ysd `.match` or `.find` property when needed.
-  Generated .ysd uses `=~"..."` for `.match`.
+- `~"..."`, `~~"..."`, and their `match:"..."` and `find:"..."` aliases
+  cannot contain `"`; use an explicit .ysd `.match` or `.find` property when
+  needed.
+  Generated .ysd uses `~"..."` for `.match` and `~~"..."` for `.find`.
+- Generated .ysd renders both `\d` and `[0-9]` as `{digit}`.
+  It renders `[A-Z]` and `[a-z]` as `{upper}` and `{lower}`.
+  It renders `\+` as `{plus}`.
+  `{digit}` exports as `[0-9]`.
 - In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
   represents space-hash.
   Other backslash sequences remain literal.
@@ -620,7 +623,7 @@ JSON Schema definitions become top-level symbols:
 
 ```yaml
 +port: +Int 1..65535
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 
 host: +Str
 port: +port

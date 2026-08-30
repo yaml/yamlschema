@@ -25,7 +25,7 @@ test::
 
     +port: +Int 1..65535
 
-    +email: +Str =~"\S+@\S+"
+    +email: +Str ~"\S+@\S+"
 
     host: +Str
     port: +port
@@ -53,7 +53,7 @@ test::
 
     +port: +Int 1..65535
 
-    +email: +Str =~"\S+@\S+"
+    +email: +Str ~"\S+@\S+"
 
     host: +Str
     port: +port

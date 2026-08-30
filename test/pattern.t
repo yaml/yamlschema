@@ -10,7 +10,7 @@ test::
     {
       "properties": {
         "email": {"type": "string", "pattern": "^\\S+@\\S+$"},
-        "zip":   {"pattern": "^\\d{5}$"},
+        "zip":   {"pattern": "^[0-9]{5}$"},
         "externalURL": {
           "type": "string",
           "description": "External URL for Harbor",
@@ -19,7 +19,7 @@ test::
         },
         "spaced": {"type": "string", "pattern": "^a b$"},
         "quoted": {"type": "string", "pattern": "^a \"b$"},
-        "simpleFind": {"type": "string", "pattern": "foo.*bar"},
+        "simpleFind": {"type": "string", "pattern": "[A-Z][a-z]+"},
         "slashFind": {"type": "string", "pattern": "foo/bar"},
         "spacedFind": {"type": "string", "pattern": "foo bar"},
         "quotedFind": {"type": "string", "pattern": "foo \"bar"}
@@ -32,18 +32,35 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    email: +Str =~"\S+@\S+"
-    zip: +Str =~"\d{5}"
-    externalURL: +Str =~"https?://.*" 1+ "External URL for Harbor"
-    spaced: +Str =~"a b"
+    email: +Str ~"\S+@\S+"
+    zip: +Str ~"{digit}{5}"
+    externalURL: +Str ~"https?://.*" 1+ "External URL for Harbor"
+    spaced: +Str ~"a b"
     quoted:
       .type: +Str
       .match: a "b
-    simpleFind: +Str /foo.*bar/
-    slashFind: +Str find:"foo/bar"
-    spacedFind: +Str find:"foo bar"
+    simpleFind: +Str ~~"{upper}{lower}+"
+    slashFind: +Str ~~"foo/bar"
+    spacedFind: +Str ~~"foo bar"
     quotedFind:
       .type: +Str
       .find: foo "bar
+
+- name: digit-pattern-normalization-roundtrip
+  cmnd: sh -c 'bin/ysd -Rq -f jsc - && echo OK'
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^\\d+[0-9]$"
+        }
+      },
+      "required": ["code"],
+      "additionalProperties": false
+    }
+  want: |
+    OK
 
 done:

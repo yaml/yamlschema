@@ -15,7 +15,7 @@ arbitrary-value, and mapping types.
 ## Example
 
 ```yaml
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 +port: +Int 1..65535
 
 name: +Str
@@ -25,7 +25,7 @@ tags: +Str[1+,!]
 address:
   street: +Str
   city: +Str
-  zip: +Str =~"\d{5}(-\d{4})?"
+  zip: +Str ~"{digit}{5}(-{digit}{4})?"
 ```
 
 This schema describes a mapping where:
@@ -225,7 +225,7 @@ Expected `.ysd.yaml` output:
 # Converted from JSON Schema
 .open: true
 name: +Str
-email?: +Str =~"\S+@\S+"
+email?: +Str ~"\S+@\S+"
 tags: +Str[1+,!]
 ```
 

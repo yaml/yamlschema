@@ -43,7 +43,7 @@ A mapping in a schema describes a mapping in the data:
 
 ```yaml
 name: +Str
-email?: +Str =~"\S+@\S+"
+email?: +Str ~"\S+@\S+"
 address:
   street: +Str
   city: +Str
@@ -92,7 +92,7 @@ not implied.
 The succinct syntax puts a base type before the constraints that refine it:
 
 ```yaml
-email: +Str =~"\S+@\S+"  # whole-string regex match
+email: +Str ~"\S+@\S+"  # whole-string regex match
 role: +Str [admin, user, guest]  # enum with explicit type
 port: +Int 1..65535      # numeric range
 tags: +Str[1+]           # list of one or more strings
@@ -110,7 +110,7 @@ The corresponding canonical form uses type references and directives such as
 Symbols begin with `+`.
 
 ```yaml
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 +port: +Int 1..65535
 
 admin_email: +email
@@ -124,7 +124,7 @@ built-in-types reference](dsl.md#built-in-types).
 User-defined symbols are normally lowercase:
 
 ```yaml
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 +address:
   street: +Str
   city: +Str
@@ -139,8 +139,8 @@ Private definitions use `:+name` as the key and are still referenced as
 `+name` inside the same schema:
 
 ```yaml
-:+local-part: +Str /[a-zA-Z0-9._%+-]+/
-+email: +Str /{+local-part}@example\.com/
+:+local-part: +Str ~"[a-zA-Z0-9._%+-]+"
++email: +Str ~"{+local-part}@example\.com"
 ```
 
 Namespaced references are written with `/`:
@@ -219,7 +219,7 @@ Structural `.one`, `.any`, `.all`, `.not`, `.with`, and `.when` values remain
 explicit.
 
 ```yaml
-foo: desc:"Words" size:1-3 =~"a b" title:"Title" type:+Str
+foo: desc:"Words" size:1-3 ~"a b" title:"Title" type:+Str
 ```
 
 The canonical explicit form uses the period-prefixed directive names.
@@ -292,12 +292,12 @@ explicit `.desc` form.
 
 ### Regex
 
-Use `=~"..."` for a whole-string match.
+Use `~"..."` for a whole-string match.
 `match:"..."` is also accepted:
 
 ```yaml
-email: +Str =~"\S+@\S+"
-zip: +Str =~"\d{5}(-\d{4})?"
+email: +Str ~"\S+@\S+"
+zip: +Str ~"{digit}{5}(-{digit}{4})?"
 ```
 
 Equivalent canonical .ysdc form:
@@ -311,14 +311,17 @@ zip:
   .like: ^\d{5}(-\d{4})?$
 ```
 
-Use `find:"..."` for an unanchored search.
-`/pattern/` is its compact form when `pattern` contains neither whitespace nor
-`/`:
+Use `~~"..."` for an unanchored search.
+`find:"..."` is also accepted:
 
 ```yaml
-word: +Str /good/
-path: +Str find:"usr/local"
+word: +Str ~~"good"
+path: +Str ~~"usr/local"
 ```
+
+`{digit}`, `{upper}`, `{lower}`, and `{plus}` represent `[0-9]`, `[A-Z]`,
+`[a-z]`, and `\+`.
+Both `\d` and `[0-9]` import as `{digit}`, which exports as `[0-9]`.
 
 
 ### Enums
@@ -699,22 +702,21 @@ The first becomes `.type` and the remaining references become `.all` branches.
 Regex-valued definitions can be composed by reference:
 
 ```yaml
-:+user: +Str /[a-zA-Z0-9._%+-]+/
-:+host: +Str /[a-zA-Z0-9.-]+/
-:+tld: +Str /[a-zA-Z]{2,}/
+:+user: +Str ~"[a-zA-Z0-9._%+-]+"
+:+host: +Str ~"[a-zA-Z0-9.-]+"
+:+tld: +Str ~"[a-zA-Z]{2,}"
 
-+email: +Str /^{+user}@{+host}\.{+tld}$/
++email: +Str ~"{+user}@{+host}\.{+tld}"
 ```
 
 The composed result expands to:
 
 ```yaml
-+email: +Str /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
++email: +Str ~"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
 ```
 
 Rules:
 
-- Referenced regexes have their `/` delimiters removed.
 - Leading `^` and trailing `$` anchors are stripped before inlining.
 - References must resolve to regex-valued definitions.
 - Circular references are errors.
@@ -732,14 +734,14 @@ Top-level `+symbols` are private by default.
 .from: https://yaml.org/schema/base/v1
 .name: contact
 
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 
 name: +Str
 email?: +email
 address:
   street: +Str
   city: +Str
-  zip: +Str =~"\d{5}"
+  zip: +Str ~"{digit}{5}"
 ```
 
 
@@ -755,8 +757,8 @@ Public symbols use `+name`; private symbols use `:+name`.
 .from: https://yaml.org/schema/base/v1
 
 +port: +Int 1..65535
-+email: +Str =~"\S+@\S+"
-+hostname: +Str =~"[a-z0-9.-]+"
++email: +Str ~"\S+@\S+"
++hostname: +Str ~"[a-z0-9.-]+"
 ```
 
 
@@ -825,7 +827,7 @@ Inline schema is also possible:
 schema:
   name: +Str
   age?: +Int 0..
-  email?: +Str =~"\S+@\S+"
+  email?: +Str ~"\S+@\S+"
 ---
 name: Alice
 age: 30
@@ -905,7 +907,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | constrained `additionalProperties` | `+Str: schema` |
 | `additionalProperties: false` | Closed mapping; no wildcard |
 | `enum` | Compact enum or `.enum` list |
-| `pattern` | `.match` for outer `^...$`; otherwise `.find` or `/.../` |
+| `pattern` | `.match` for outer `^...$`; otherwise `.find` |
 | `minimum` / `maximum` | Range scalar or structural `.range` sequence |
 | `minLength` / `maxLength` | `.size` on strings |
 | `minItems` / `maxItems` | List suffix or `.size` |
@@ -956,7 +958,7 @@ Example:
 Converts to:
 
 ```yaml
-+email: +Str =~"\S+@\S+"
++email: +Str ~"\S+@\S+"
 
 name: +Str
 email?: +email

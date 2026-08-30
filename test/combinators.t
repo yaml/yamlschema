@@ -265,7 +265,7 @@ test::
       - +Str 1+
       - name: +Str
     negative?:
-      .not: +Str /x/
+      .not: +Str ~~"x"
 
 - name: explicit-combinators-to-json-schema
   cmnd: sh -c 'bin/ysd -t jsc -C - | fold -w 72'
@@ -275,7 +275,7 @@ test::
       - +Str 1+
       - name: +Str
     negative:
-      .not: +Str =~"x"
+      .not: +Str ~"x"
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
     bject","properties":{"choice":{"oneOf":[{"type":"string","minLength":1},

@@ -821,6 +821,8 @@ defn normalize-json-keyword-value(key value):
   cond:
     key.eq('required') && sequential?(value):
       vec: value
+    key.eq('pattern') && string?(value):
+      normalize-digit-pattern: value
     key.eq('dependentRequired') && map?(value):
       normalize-dependent-required: value
     single-schema-json-keyword?(key):
@@ -830,6 +832,10 @@ defn normalize-json-keyword-value(key value):
     mapping-schema-json-keyword?(key) && map?(value):
       normalize-json-schema-mapping: value
     else: value
+
+defn normalize-digit-pattern(pattern):
+  digit =: str(C(92) 'd')
+  pattern: .replace(digit '[0-9]')
 
 defn normalize-dependent-required(value):
   reduce normalize-dependent-required-entry: omap() value
@@ -1329,8 +1335,8 @@ defn normalize-directive(key value):
     '.name': +{key validate-schema-name(value)}
     '.xref': +{key validate-external-reference(value)}
     '.like': +{key value:S}
-    '.match': +{'.like' anchored-pattern(regex-pattern(value))}
-    '.find': +{'.like' regex-pattern(value)}
+    '.match': +{'.like' anchored-pattern(expand-regex-names(value:S))}
+    '.find': +{'.like' expand-regex-names(value:S)}
     '.xmin': +{key validate-exclusive-range-value(key value)}
     '.xmax': +{key validate-exclusive-range-value(key value)}
     '.size': +{key normalize-size(value)}
@@ -1681,7 +1687,7 @@ defn expand-tight-string(value):
   when value =~ /\s+'[^']*'$/:
     usage: 'single-quoted descriptions are unsupported; use "description"'
   when value =~ /^\/.*[ \t].*\/(?:\s|$)/:
-    usage: 'regex literals cannot contain whitespace; use find:"..."'
+    usage: 'slash regex syntax is unsupported; use ~~"pattern"'
   tokens =: tight-tokens(value)
   when tokens:empty?:
     usage: 'empty yamlschema type expression'
@@ -1920,8 +1926,18 @@ defn primary-block(token):
       usage: 'invalid external reference; use +Ref(reference) or .xref'
     token.starts?('type:'): labeled-type-block(token)
     token.starts?('=~'):
+      usage: 'unsupported whole-string match syntax; use ~"pattern"'
+    token.starts?('~~"'):
       +{'.type' '+Str', '.like'
-        anchored-pattern(tight-string-value(token.replace(/^=~/)))}
+        expand-regex-names(tight-string-value(token.replace(/^~~/)))}
+    token.starts?('~~'):
+      usage: 'invalid regex search syntax; use ~~"pattern"'
+    token.starts?('~"'):
+      +{'.type' '+Str', '.like'
+        anchored-pattern(
+          expand-regex-names(tight-string-value(token.replace(/^~/))))}
+    token.starts?('~'):
+      usage: 'invalid whole-string match syntax; use ~"pattern"'
     token.starts?('match:'):
       +{'.type' '+Str', '.like'
         anchored-pattern(tight-label-string(token))}
@@ -1936,10 +1952,8 @@ defn primary-block(token):
     old-tight-keyword?(token): reject-old-tight-keyword(token)
     token == '+Map': +{'.type' '+Map'}
     type-symbol?(token): +{'.type' token}
-    regex-literal-token?(token):
-      +{'.type' '+Str', '.like' regex-pattern(token)}
     slash-delimited-token?(token):
-      usage: 'regex literals cannot contain /; use find:"..."'
+      usage: 'slash regex syntax is unsupported; use ~~"pattern"'
     compact-enum-token?(token):
       usage: 'compact enum requires a preceding type reference'
     token =~ /\|/:
@@ -1966,16 +1980,25 @@ defn expand-tight-token(result token):
       merge-directives:
         result {directive true} "range modifier $token"
     token.starts?('=~'):
+      usage: 'unsupported whole-string match syntax; use ~"pattern"'
+    token.starts?('~~"'):
+      merge-directives:
+        result
+        {'.like'
+          expand-regex-names(tight-string-value(token.replace(/^~~/)))}
+        'find clause'
+    token.starts?('~~'):
+      usage: 'invalid regex search syntax; use ~~"pattern"'
+    token.starts?('~"'):
       merge-directives:
         result
         {'.like' anchored-pattern(
-          tight-string-value(token.replace(/^=~/)))}
+          expand-regex-names(tight-string-value(token.replace(/^~/))))}
         'match clause'
-    regex-literal-token?(token):
-      merge-directives:
-        result {'.like' regex-pattern(token)} 'pattern clause'
+    token.starts?('~'):
+      usage: 'invalid whole-string match syntax; use ~"pattern"'
     slash-delimited-token?(token):
-      usage: 'regex literals cannot contain /; use find:"..."'
+      usage: 'slash regex syntax is unsupported; use ~~"pattern"'
     ambiguous-exclusive-range?(token):
       reject-ambiguous-exclusive-range: token
     range-literal?(token):
@@ -2028,9 +2051,6 @@ defn append-all-reference(result token):
   branches =: result.'.all' || []
   ordered-directives:
     result + {'.all' vec(branches + expand-type(token))}
-
-defn regex-literal-token?(token):
-  token =~ /^\/[^\/\s]*\/$/
 
 defn slash-delimited-token?(token):
   token.starts?('/') && token.ends?('/')
@@ -2101,6 +2121,8 @@ defn tight-token-quoted?(token):
   raw =:
     cond:
       token.starts?('=~'): token.replace(/^=~/)
+      token.starts?('~~'): token.replace(/^~~/)
+      token.starts?('~'): token.replace(/^~/)
       token.starts?('=='): token.replace(/^=/).replace(/^=/)
       token.starts?('='): token.replace(/^=/)
       labeled-tight-token?(token): tight-label-raw(token)
@@ -2141,8 +2163,10 @@ defn labeled-tight-block(token result):
   key =: ".$name"
   case name:
     'type': labeled-type-block(token)
-    'match': +{'.like' anchored-pattern(tight-string-value(raw))}
-    'find': +{'.like' tight-string-value(raw)}
+    'match':
+      +{'.like' anchored-pattern(
+        expand-regex-names(tight-string-value(raw)))}
+    'find': +{'.like' expand-regex-names(tight-string-value(raw))}
     'const': const-block(raw result.'.type')
     'enum': usage('enum requires a bracketed value list')
     'range': range-block(raw result.'.type')
@@ -3109,8 +3133,8 @@ defn ysdc-bare-scalar-to-schema(value):
     s == '+Any': +{}
     s =~ /^\+[A-Za-z_][A-Za-z0-9_-]*$/:
       ref-schema(s)
-    regex-literal-token?(s):
-      +{'type' 'string', 'pattern' regex-pattern(s)}
+    slash-delimited-token?(s):
+      usage: 'slash regex syntax is unsupported; use ~~"pattern"'
     s =~ /^[^|]+\|[^|]+/:
       +{'type' 'string', 'enum' split(s /\|/)}
     ambiguous-exclusive-range?(s):
@@ -3152,13 +3176,26 @@ defn ambiguous-exclusive-range?(s):
 defn reject-ambiguous-exclusive-range(value):
   usage: "ambiguous yamlschema range: $value; use .. with :xmin or :xmax"
 
-defn regex-pattern(value):
-  value:S
-    .replace(/^\//)
-    .replace(/\/$/)
-
 defn anchored-pattern(pattern):
   str('^' pattern '$')
+
+defn expand-regex-names(pattern):
+  plus =: str(C(92) '+')
+  pattern:
+    .replace('{digit}' '[0-9]')
+    .replace('{upper}' '[A-Z]')
+    .replace('{lower}' '[a-z]')
+    .replace('{plus}' plus)
+
+defn compact-regex-names(pattern):
+  digit =: str(C(92) 'd')
+  plus =: str(C(92) '+')
+  pattern:
+    .replace(digit '{digit}')
+    .replace('[0-9]' '{digit}')
+    .replace('[A-Z]' '{upper}')
+    .replace('[a-z]' '{lower}')
+    .replace(plus '{plus}')
 
 defn ref-schema(s):
   name =: s.replace(/^\+/)
@@ -4372,15 +4409,13 @@ defn tight-pattern-token(pattern):
 
 defn tight-match-token(pattern):
   when tight-string-body?(pattern):
-    body =: encode-tight-string(pattern)
-    =>: "=~\"$body\""
+    body =: encode-tight-string(compact-regex-names(pattern))
+    =>: "~\"$body\""
 
 defn tight-find-token(pattern):
-  cond:
-    pattern !~ /[\s\/]/: "/$pattern/"
-    tight-string-body?(pattern):
-      body =: encode-tight-string(pattern)
-      =>: "find:\"$body\""
+  when tight-string-body?(pattern):
+    body =: encode-tight-string(compact-regex-names(pattern))
+    =>: "~~\"$body\""
 
 defn tight-string-body?(value):
   colon-escape =: str(':' C(92) ' ')
@@ -4410,8 +4445,9 @@ defn decode-tight-string(value):
 
 defn pattern-directive(pattern):
   if anchored-pattern?(pattern):
-    then: +{'.match' strip-pattern-anchors(pattern)}
-    else: +{'.find' pattern}
+    then:
+      +{'.match' compact-regex-names(strip-pattern-anchors(pattern))}
+    else: +{'.find' compact-regex-names(pattern)}
 
 defn anchored-pattern?(pattern):
   pattern.starts?('^') && pattern.ends?('$')

@@ -77,12 +77,12 @@ upper_bound?: +Num ..10
 
 ```yaml
 code: +Str 3..12
-whole: +Str =~"[A-Z]+"
-contains: +Str /[0-9]+/
+whole: +Str ~"{upper}+"
+contains: +Str ~~"{digit}+"
 ```
 
-`=~` matches the complete string.
-`/.../` searches within it.
+`~"..."` matches the complete string.
+`~~"..."` searches within it.
 
 </section>
 

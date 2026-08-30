@@ -316,11 +316,11 @@ trying to say about the data.
 Let's make our schema more specific:
 
 ```yaml
-name: +Str 3-30 =~"[A-Z][a-z]+ [A-Z][a-z]+"
+name: +Str 3-30 ~"{upper}{lower}+ {upper}{lower}+"
 age: +Int 0..120
 married?: +Bool =false
 address: +address
-phone: +Str[$1-3] /^\+1-\d{3}-\d{3}-\d{4}$/
+phone: +Str[$1-3] ~"{plus}1-{digit}{3}-{digit}{3}-{digit}{4}"
 attributes?:
   strength: +Num 0..10
   dexterity: +Num 0..10
@@ -328,11 +328,11 @@ attributes?:
 
 +address:
   street: +Str
-    =~"^(\d+ )?[A-Z][a-z]+( [A-Z][a-z]+)*
-        (St|Ave|Blvd|Rd|Ln|Dr)\.?$"
-  city: +Str =~"[A-Z][a-z]+( [A-Z][a-z]+)*"
-  state: +Str /^[A-Z]{2}$/
-  postal code: +Str /^\d{5}(-\d{4})?$/
+    ~"({digit}+ )?{upper}{lower}+( {upper}{lower}+)*
+      (St|Ave|Blvd|Rd|Ln|Dr)\.?"
+  city: +Str ~"{upper}{lower}+( {upper}{lower}+)*"
+  state: +Str ~"{upper}{2}"
+  postal code: +Str ~"{digit}{5}(-{digit}{4})?"
 ```
 
 <details>
@@ -451,9 +451,9 @@ Here we added come new constraints:
 * `?` means the field is optional
 * `=` means the field has a default value
 * Regular expressions can be used to constrain strings
-* `[]` means the field is an array
-  * `1-3` means the array must have between 1 and 3 items
-  * `$` means the value can also be a single item instead of an array
+* `[]` means the field is an array (added a "phone" field for this)
+    * `1-3` means the array must have between 1 and 3 items
+    * `$` means the value can also be a single item instead of an array
 * Strings can have sizes `min-max`
 * Numbers can have ranges `min..max`
 

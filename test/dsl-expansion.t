@@ -7,9 +7,9 @@ test::
 - name: composed-and-hybrid-equivalence
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
-    succinct: +Str[] /a.*b/ 10-20
+    succinct: +Str[] ~~"a.*b" 10-20
     hybrid:
-      .type: +Str[] /a.*b/ 10-20
+      .type: +Str[] ~~"a.*b" 10-20
       .title: The "Good" Parts
   want: |
     {
@@ -35,7 +35,7 @@ test::
 - name: inferred-types-and-const
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
-    pattern: /a.*b/
+    pattern: ~~"a.*b"
     numbers: +Int [1,2,3]
     forced: +Str [1,2]
     ratio: 0.5..1
@@ -82,12 +82,12 @@ test::
 - name: pattern-forms-and-size
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
-    url: =~"https?://.*" 1+
-    spaced: =~"a b" 2-4
+    url: ~"https?://.*" 1+
+    spaced: ~"a b" 2-4
     alias: match:"still accepted"
     anchored: match:"^already$"
     found: find:"a/b c"
-    simple: /a.*b/
+    simple: ~~"a.*b"
     explicit:
       .find: raw value
   want: |
@@ -375,7 +375,7 @@ test::
     sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
     foo:
-      .type: +Str /a/
+      .type: +Str ~~"a"
       .find: a
   want: |
     ysd: duplicate yamlschema directive: .like in directive .find
@@ -423,13 +423,13 @@ test::
   want: |
     ysd: single-quoted descriptions are unsupported; use "description"
 
-- name: reject-whitespace-in-regex-literal
+- name: reject-slash-regex-syntax
   cmnd: |
     sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
-    foo: /a b/
+    foo: /a/
   want: |
-    ysd: regex literals cannot contain whitespace; use find:"..."
+    ysd: slash regex syntax is unsupported; use ~~"pattern"
 
 - name: reject-slash-in-regex-literal
   cmnd: |
@@ -437,7 +437,7 @@ test::
   stdi: |
     foo: /a/b/
   want: |
-    ysd: regex literals cannot contain /; use find:"..."
+    ysd: slash regex syntax is unsupported; use ~~"pattern"
 
 - name: reject-pipe-enum
   cmnd: |
@@ -471,13 +471,21 @@ test::
   want: |
     ysd: tight quoted values cannot contain a double quote
 
-- name: reject-quote-in-operator-match
+- name: reject-quote-in-compact-match
   cmnd: |
     sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
   stdi: |
-    foo: =~"a"b"
+    foo: ~"a"b"
   want: |
     ysd: tight quoted values cannot contain a double quote
+
+- name: reject-old-match-syntax
+  cmnd: |
+    sh -c 'bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p'
+  stdi: |
+    foo: +Str =~"abc"
+  want: |
+    ysd: unsupported whole-string match syntax; use ~"pattern"
 
 - name: reject-old-size-sentinel
   cmnd: |
@@ -521,8 +529,8 @@ test::
 - name: labeled-clauses-in-arbitrary-order
   cmnd: bin/ysd -t ysdc -J -C -
   stdi: |
-    string: desc:"Words" size:1-3 =~"a b" title:"Title" init:x type:+Str
-    search: find:"a/b c" type:+Str
+    string: desc:"Words" size:1-3 ~"a b" title:"Title" init:x type:+Str
+    search: ~~"a/b c" type:+Str
     number: range:1..10 type:+Int
     sequence: null:true uniq:true solo:true size:1+ item:+Str
       type:+Any[]
