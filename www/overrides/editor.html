@@ -179,11 +179,31 @@
         <span>
           <strong>Scroll sync</strong>
           <small>
-            Keep the generated pane aligned while the selected source pane
-            scrolls.
+            Keep one pane aligned while the selected scroll source moves.
           </small>
         </span>
       </label>
+      <fieldset id="scroll-sync-source" class="editor-setting-options">
+        <legend>Scroll source</legend>
+        <div class="editor-setting-choices">
+          <label>
+            <input type="radio" name="scroll-sync-source" value="ysd"
+                   checked>
+            YAMLSchema
+          </label>
+          <label>
+            <input type="radio" name="scroll-sync-source" value="json">
+            JSON Schema
+          </label>
+          <label>
+            <input type="radio" name="scroll-sync-source" value="current">
+            Current Schema
+          </label>
+        </div>
+        <small>
+          Current Schema follows the most recently focused editable pane.
+        </small>
+      </fieldset>
       <label class="editor-setting">
         <input type="checkbox" id="ysdc-json">
         <span>
@@ -193,6 +213,13 @@
           </small>
         </span>
       </label>
+      <div class="editor-settings-reset">
+        <button type="button" id="factory-reset">Factory Reset</button>
+        <small>
+          Clear all site data, cookies, consent, and shared editor content,
+          then reload the default demo.
+        </small>
+      </div>
     </div>
   </dialog>
   <dialog id="editor-help-dialog" aria-labelledby="editor-help-title">
@@ -268,13 +295,19 @@
       <section>
         <h3>Adjust editor settings</h3>
         <p>
-          Scroll sync keeps the generated pane aligned while the selected
-          source pane scrolls.
-          The source pane is the one with the roundtrip indicator.
-          You can scroll the other pane independently.
-          Open Settings to turn it off when comparing different sections.
+          Scroll sync keeps one pane aligned while its selected source pane
+          scrolls.
+          YAMLSchema always uses the left pane as the scroll source.
+          JSON Schema always uses the right pane.
+          Current Schema follows the most recently focused editable pane,
+          which is also the pane with the roundtrip indicator.
+          You can turn scroll sync off when comparing different sections.
+          The scroll source choice is saved between visits.
           Settings can also show generated .ysdc content as JSON instead of
           YAML.
+          Factory Reset immediately clears all site settings, examples,
+          shared editor content, cookies, and consent, then reloads the
+          default demo.
         </p>
       </section>
       <section>
@@ -306,5 +339,5 @@
 </div>
 
 <script type="module"
-        src="{{ base_url }}/assets/editor/app.js?v=20"></script>
+        src="{{ base_url }}/assets/editor/app.js?v=21"></script>
 {% endblock %}

@@ -8,7 +8,7 @@ hide:
 
 <section class="home-hero">
   <div class="home-hero-copy">
-    <p class="home-eyebrow">YAML-native data schemas</p>
+    <p class="home-eyebrow">Concise schemas for YAML data</p>
     <h1><span>Define a lot more</span><br><span>with a lot less</span></h1>
     <p class="home-lead">
       YAMLSchema mirrors the data you validate, keeps required fields obvious,
@@ -16,7 +16,7 @@ hide:
     </p>
     <div class="home-actions">
       <a class="ys-button ys-button-primary" href="demo/">
-        Try the Demo
+        Try the Demos
       </a>
       <a class="ys-button ys-button-secondary" href="getting-started/">
         Get Started

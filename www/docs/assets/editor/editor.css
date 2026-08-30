@@ -493,6 +493,73 @@ body:has(.schema-editor) .md-main__inner {
   line-height: 1.45;
 }
 
+.schema-editor .editor-setting-options {
+  display: grid;
+  gap: 0.4rem;
+  margin: -0.35rem 0 0 1.65rem;
+  border: 0;
+  padding: 0;
+}
+
+.schema-editor .editor-setting-options legend {
+  margin-bottom: 0.3rem;
+  padding: 0;
+  font-weight: 700;
+}
+
+.schema-editor .editor-setting-choices {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 0.8rem;
+}
+
+.schema-editor .editor-setting-choices label {
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.schema-editor .editor-setting-options small,
+.schema-editor .editor-settings-reset small {
+  color: var(--editor-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.schema-editor .editor-setting-options:disabled,
+.schema-editor .editor-setting-options:disabled label {
+  color: var(--editor-muted);
+  cursor: default;
+}
+
+.schema-editor .editor-settings-reset {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  border-top: 1px solid var(--editor-border);
+  padding-top: 1rem;
+}
+
+.schema-editor #factory-reset {
+  border: 1px solid var(--editor-error);
+  border-radius: 0.2rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--editor-bg);
+  color: var(--editor-error);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.schema-editor #factory-reset:hover {
+  background: var(--editor-error);
+  color: var(--editor-bg);
+}
+
+.schema-editor #factory-reset:focus-visible {
+  outline: 2px solid var(--editor-error);
+  outline-offset: 2px;
+}
+
 .schema-editor .help-dialog-heading {
   display: flex;
   position: sticky;
@@ -630,6 +697,10 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 @media (max-width: 900px) and (orientation: portrait) {
+  body:has(.schema-editor) {
+    overflow: hidden;
+  }
+
   body:has(.schema-editor) .md-main__inner {
     margin-top: 0.4rem;
   }
@@ -661,10 +732,15 @@ body:has(.schema-editor) .md-main__inner {
     flex-direction: column;
   }
 
-  .schema-editor .code-editor {
-    height: auto;
+  .schema-editor .editor-pane {
     min-height: 0;
     flex: 1 1 0;
+  }
+
+  .schema-editor .code-editor {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     resize: none;
   }
 
@@ -680,11 +756,21 @@ body:has(.schema-editor) .md-main__inner {
 }
 
 @media (max-width: 700px) {
+  .schema-editor .editor-setting-choices {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
   .schema-editor .editor-heading {
     gap: 0.4rem;
   }
 
-  .schema-editor .cm-lineNumbers {
+  .schema-editor .format-selector,
+  .schema-editor .strict-control {
+    display: none;
+  }
+
+  .schema-editor .cm-gutters {
     display: none !important;
   }
 

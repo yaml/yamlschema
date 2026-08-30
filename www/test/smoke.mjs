@@ -512,13 +512,8 @@ if (
 ) {
   throw new Error('JSON Schema cookie-clearing shortcut is missing');
 }
-if (
-  !appSource.includes('sampleRouteSelected = Boolean(requestedSample)') ||
-  !appSource.includes(
-    'sampleRouteSelected ? selectedSample : undefined',
-  )
-) {
-  throw new Error('base demo route does not wait for a schema selection');
+if (!appSource.includes('replaceEditorURL(\n  initialSample,')) {
+  throw new Error('base demo route does not select its default schema');
 }
 const codeEditorSource = await readFile('src/editor/editor.js', 'utf8');
 const bundledApp = await readFile('docs/assets/editor/app.js', 'utf8');
@@ -622,10 +617,7 @@ if (
   !appSource.includes('parseEditorState(window.location.hash)') ||
   !appSource.includes('serializeEditorState({') ||
   !appSource.includes('Custom from ${origin}') ||
-  !appSource.includes(
-    'replaceEditorURL(sampleRouteSelected ? selectedSample : ' +
-    'undefined, hash)',
-  )
+  !appSource.includes('replaceEditorURL(selectedSample, hash)')
 ) {
   throw new Error('shareable editor URL state is incomplete');
 }
@@ -678,10 +670,13 @@ if (
 if (
   !appSource.includes('editorSettingsDialog.showModal()') ||
   !appSource.includes('yamlschema.scroll-sync') ||
+  !appSource.includes('yamlschema.scroll-sync-source') ||
   !appSource.includes('yamlschema.ysdc-json') ||
   !appSource.includes('`json-schema-to-ysdc-json${strict}`') ||
   !appSource.includes("yamlPaneFormat() === 'ysdc-json' ? json() : yaml()") ||
   !appSource.includes('yamlEditor.setLanguage(language)') ||
+  !appSource.includes("scrollSyncSource === 'current'") ||
+  !appSource.includes('scrollSyncSourceControl.disabled') ||
   !appSource.includes('editor !== scrollSyncSourceEditor()') ||
   !appSource.includes('scrollToSchemaLocation') ||
   !appSource.includes('requestAnimationFrame')
@@ -745,9 +740,7 @@ if (
 if (
   !appSource.includes('schemaEditor.dataset.schemaSlug') ||
   !appSource.includes('window.history.replaceState') ||
-  !appSource.includes(
-    'replaceEditorURL(\n  sampleRouteSelected ? initialSample : undefined,',
-  )
+  !appSource.includes('replaceEditorURL(\n  initialSample,')
 ) {
   throw new Error('editor schema routes do not select canonical inputs');
 }
@@ -844,6 +837,9 @@ if (
   !styleSource.includes('height: calc(100dvh - 3.6rem)') ||
   !styleSource.includes('grid-template-rows: repeat(2, minmax(0, 1fr))') ||
   !styleSource.includes('body:has(.schema-editor) .md-footer') ||
+  !styleSource.includes('body:has(.schema-editor) {\n    overflow: hidden;') ||
+  !styleSource.includes('.schema-editor .editor-pane {\n    min-height: 0;') ||
+  !styleSource.includes('height: 100%;\n    max-height: 100%;') ||
   !styleSource.includes('.schema-editor .error:empty')
 ) {
   throw new Error('both editor panes do not fit in the portrait layout');
@@ -1004,7 +1000,7 @@ if (
   !indexHTML.includes('id="gdpr-cookie-banner"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
-  !indexHTML.includes('/assets/editor/app.js?v=20') ||
+  !indexHTML.includes('/assets/editor/app.js?v=21') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -1116,9 +1112,24 @@ if (
   !indexHTML.includes('id="editor-settings-dialog"') ||
   !indexHTML.includes('id="scroll-sync" checked') ||
   !indexHTML.includes('<strong>Scroll sync</strong>') ||
+  !indexHTML.includes('id="scroll-sync-source"') ||
+  !/name="scroll-sync-source" value="ysd"\s+checked/.test(indexHTML) ||
+  !indexHTML.includes('name="scroll-sync-source" value="json"') ||
+  !indexHTML.includes('name="scroll-sync-source" value="current"') ||
   !indexHTML.includes('id="ysdc-json"') ||
   !indexHTML.includes('<strong>.ysdc as JSON</strong>') ||
-  !styleSource.includes('.schema-editor #editor-settings-dialog')
+  !indexHTML.includes('id="factory-reset"') ||
+  !appSource.includes('localStorage.clear()') ||
+  !appSource.includes('sessionStorage.clear()') ||
+  !appSource.includes('window.location.assign(editRootURL.href)') ||
+  !appSource.includes(
+    "factoryResetControl.addEventListener('click', factoryResetSite)",
+  ) ||
+  !indexHTML.includes('YAMLSchema always uses the left pane') ||
+  !indexHTML.includes('Factory Reset immediately clears all site settings') ||
+  !styleSource.includes('.schema-editor #editor-settings-dialog') ||
+  !styleSource.includes('.editor-setting-options:disabled') ||
+  !styleSource.includes('.schema-editor #factory-reset')
 ) {
   throw new Error('editor settings dialog is incomplete');
 }
@@ -1145,7 +1156,11 @@ if (
   styleSource.includes('flex-wrap: wrap') ||
   !styleSource.includes('min-width: 0;\n    flex: 1 1 0;') ||
   !styleSource.includes(
-    '.schema-editor .cm-lineNumbers {\n    display: none !important;',
+    '.schema-editor .format-selector,\n' +
+    '  .schema-editor .strict-control {\n    display: none;',
+  ) ||
+  !styleSource.includes(
+    '.schema-editor .cm-gutters {\n    display: none !important;',
   )
 ) {
   throw new Error('mobile editor layout is incomplete');
@@ -1231,6 +1246,9 @@ if (oldEditorExists) {
 const homeHTML = await readFile('site/index.html', 'utf8');
 if (!homeHTML.includes('Define a lot more')) {
   throw new Error('home page tagline is missing');
+}
+if (!homeHTML.includes('Try the Demos')) {
+  throw new Error('home page does not link to the demos');
 }
 if (
   !homeHTML.includes('class="home-proof" data-editor-href="demo/person/"') ||
@@ -1523,10 +1541,23 @@ const initialYSD = await readFile(
   'docs/assets/editor/examples/person.ysd.yaml',
   'utf8',
 );
-const expectedInitialYSD = `name: +Str
-age?: +Int 0..120
-email?: +JSON-Schema/email
-tags?: +Str[] [=good, bad, ugly]
+const expectedInitialYSD = String.raw`name: +Str 3-30 ~"{upper}{lower}+ {upper}{lower}+"
+age: +Int 0..120
+married?: +Bool =false
+address: +address
+phone: +Str[$1-3] ~"{plus}1-{digit}{3}-{digit}{3}-{digit}{4}"
+attributes?:
+  strength: +Num 0..10
+  dexterity: +Num 0..10
+  wisdom: +Num 0..10
+
++address:
+  street: +Str
+    ~"({digit}+ )?{upper}{lower}+( {upper}{lower}+)*
+      (St|Ave|Blvd|Rd|Ln|Dr)\.?"
+  city: +Str ~"{upper}{lower}+( {upper}{lower}+)*"
+  state: +Str ~"{upper}{2}"
+  postal code: +Str ~"{digit}{5}(-{digit}{4})?"
 `;
 if (initialYSD !== expectedInitialYSD) {
   throw new Error(`unexpected Person .ysd: ${initialYSD}`);
@@ -1546,16 +1577,23 @@ if (
   initialJSON.title !== undefined ||
   initialJSON.type !== 'object' ||
   initialJSON.additionalProperties !== false ||
-  initialJSON.required.join(',') !== 'name' ||
-  Object.keys(initialJSON.properties).join(',') !== 'name,age,email,tags' ||
+  initialJSON.required.join(',') !== 'name,age,address,phone' ||
+  Object.keys(initialJSON.properties).join(',') !==
+    'name,age,married,address,phone,attributes' ||
   initialJSON.properties.name.type !== 'string' ||
-  initialJSON.properties.email.format !== 'email' ||
+  initialJSON.properties.name.minLength !== 3 ||
+  initialJSON.properties.name.maxLength !== 30 ||
+  initialJSON.properties.name.pattern !==
+    '^[A-Z][a-z]+ [A-Z][a-z]+$' ||
   initialJSON.properties.age.type !== 'integer' ||
   initialJSON.properties.age.minimum !== 0 ||
   initialJSON.properties.age.maximum !== 120 ||
-  initialJSON.properties.tags.type !== 'array' ||
-  initialJSON.properties.tags.default !== 'good' ||
-  initialJSON.properties.tags.items.enum.join(',') !== 'good,bad,ugly'
+  initialJSON.properties.married.default !== false ||
+  initialJSON.properties.address.$ref !== '#/$defs/address' ||
+  initialJSON.properties.phone.anyOf[1].minItems !== 1 ||
+  initialJSON.properties.phone.anyOf[1].maxItems !== 3 ||
+  initialJSON.properties.attributes.properties.strength.maximum !== 10 ||
+  initialJSON.$defs.address.properties.state.pattern !== '^[A-Z]{2}$'
 ) {
   throw new Error(`unexpected initial JSON: ${initialResult.value}`);
 }
@@ -1565,7 +1603,8 @@ const initialBackToYSD = globalThis.gloat.exports['json-schema-to-ysd'](
 if (
   !initialBackToYSD.ok ||
   !initialBackToYSD.value.includes(
-    'tags?: +Str[] [=good, bad, ugly]',
+    'phone: +Str[$1-3] ' +
+      '~"{plus}1-{digit}{3}-{digit}{3}-{digit}{4}"',
   )
 ) {
   throw new Error(`unexpected regenerated Person .ysd: ${JSON.stringify(

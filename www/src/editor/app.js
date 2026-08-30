@@ -20,7 +20,14 @@ const editorSettingsDialog = document.querySelector(
 );
 const editorSettingsClose = document.querySelector('#editor-settings-close');
 const scrollSyncControl = document.querySelector('#scroll-sync');
+const scrollSyncSourceControl = document.querySelector(
+  '#scroll-sync-source',
+);
+const scrollSyncSourceControls = document.querySelectorAll(
+  'input[name="scroll-sync-source"]',
+);
 const ysdcJsonControl = document.querySelector('#ysdc-json');
+const factoryResetControl = document.querySelector('#factory-reset');
 const editorShare = document.querySelector('#editor-share');
 const editorShareStatus = document.querySelector('#editor-share-status');
 const editorCopyButtons = document.querySelectorAll('.editor-copy');
@@ -42,6 +49,7 @@ const ysdStrictControl = document.querySelector('#ysd-strict');
 const jsonNormalControl = document.querySelector('#json-normal');
 const formatStorageKey = 'yamlschema.yaml-format';
 const scrollSyncStorageKey = 'yamlschema.scroll-sync';
+const scrollSyncSourceStorageKey = 'yamlschema.scroll-sync-source';
 const ysdcJsonStorageKey = 'yamlschema.ysdc-json';
 const legacySampleStorageKey = 'yamlschema.sample';
 const sampleSourceStorageKey = 'yamlschema.sample-source';
@@ -125,9 +133,9 @@ let loadingEditorState = true;
 let linkedPane;
 let linkedLines;
 let canonicalSourceValues = {};
-let sampleRouteSelected = false;
 let scrollSyncFrame;
 let scrollSyncEnabled = loadScrollSync();
+let scrollSyncSource = loadScrollSyncSource();
 let ysdcJson = loadYSDCJson();
 let shareStatusTimer;
 const editorCopyTimers = new WeakMap();
@@ -174,6 +182,31 @@ function saveScrollSync(enabled) {
   }
 }
 
+function loadScrollSyncSource() {
+  try {
+    const source = localStorage.getItem(scrollSyncSourceStorageKey);
+    return ['ysd', 'json', 'current'].includes(source) ? source : 'ysd';
+  } catch {
+    return 'ysd';
+  }
+}
+
+function saveScrollSyncSource(source) {
+  try {
+    localStorage.setItem(scrollSyncSourceStorageKey, source);
+  } catch {
+    // Scroll sync still works when storage is unavailable.
+  }
+}
+
+function updateScrollSyncControls() {
+  scrollSyncControl.checked = scrollSyncEnabled;
+  scrollSyncSourceControl.disabled = !scrollSyncEnabled;
+  for (const control of scrollSyncSourceControls) {
+    control.checked = control.value === scrollSyncSource;
+  }
+}
+
 function editorFocused(editor) {
   const editableJson = editor === jsonEditor;
   const editableYSD = editor === yamlEditor && yamlFormat === 'ysd';
@@ -181,7 +214,7 @@ function editorFocused(editor) {
     const source = editor === jsonEditor ? 'json' : 'ysd';
     documentSource = source;
     updateYSDStrictControl();
-    if (!sampleRouteSelected || source !== selectedSampleSource) {
+    if (source !== selectedSampleSource) {
       delete canonicalSourceValues[source];
     }
     scheduleEditorURL();
@@ -190,8 +223,14 @@ function editorFocused(editor) {
 }
 
 function scrollSyncSourceEditor() {
-  if (roundtripSource === 'json') return jsonEditor;
-  if (roundtripSource === 'ysd') return yamlEditor;
+  if (scrollSyncSource === 'json') return jsonEditor;
+  if (scrollSyncSource === 'ysd') return yamlEditor;
+  if (scrollSyncSource === 'current' && roundtripSource === 'json') {
+    return jsonEditor;
+  }
+  if (scrollSyncSource === 'current' && roundtripSource === 'ysd') {
+    return yamlEditor;
+  }
   return undefined;
 }
 
@@ -403,7 +442,7 @@ function updateEditorURL() {
       ? true
       : undefined,
   });
-  replaceEditorURL(sampleRouteSelected ? selectedSample : undefined, hash);
+  replaceEditorURL(selectedSample, hash);
   if (custom === undefined) {
     selectSampleSource(selectedSampleSource, selectedSample);
   } else {
@@ -997,7 +1036,7 @@ function siteCookiePaths() {
   return [...new Set(paths)];
 }
 
-function clearSiteCookies() {
+function deleteSiteCookies() {
   const names = document.cookie.split(';')
     .map((cookie) => cookie.split('=', 1)[0].trim())
     .filter(Boolean);
@@ -1013,7 +1052,26 @@ function clearSiteCookies() {
       }
     }
   }
+}
+
+function clearSiteCookies() {
+  deleteSiteCookies();
   window.location.assign('https://yamlschema.org/demo/');
+}
+
+function factoryResetSite() {
+  try {
+    localStorage.clear();
+  } catch {
+    // Continue resetting the site when storage is unavailable.
+  }
+  try {
+    sessionStorage.clear();
+  } catch {
+    // Continue resetting the site when storage is unavailable.
+  }
+  deleteSiteCookies();
+  window.location.assign(editRootURL.href);
 }
 
 function cachedYSDCForYSD(ysd) {
@@ -1174,13 +1232,23 @@ for (const button of editorCopyButtons) {
     void copyEditorText(button);
   });
 }
-scrollSyncControl.checked = scrollSyncEnabled;
+updateScrollSyncControls();
 scrollSyncControl.addEventListener('change', () => {
   scrollSyncEnabled = scrollSyncControl.checked;
   saveScrollSync(scrollSyncEnabled);
+  updateScrollSyncControls();
   const source = scrollSyncSourceEditor();
   if (scrollSyncEnabled && source) synchronizeScroll(source);
 });
+for (const control of scrollSyncSourceControls) {
+  control.addEventListener('change', () => {
+    if (!control.checked) return;
+    scrollSyncSource = control.value;
+    saveScrollSyncSource(scrollSyncSource);
+    const source = scrollSyncSourceEditor();
+    if (scrollSyncEnabled && source) synchronizeScroll(source);
+  });
+}
 ysdcJsonControl.checked = ysdcJson;
 ysdcJsonControl.addEventListener('change', () => {
   ysdcJson = ysdcJsonControl.checked;
@@ -1190,6 +1258,7 @@ ysdcJsonControl.addEventListener('change', () => {
     void convertJsonToYaml(false, false);
   }
 });
+factoryResetControl.addEventListener('click', factoryResetSite);
 ysdStrictControl.addEventListener('click', (event) => {
   if (ysdStrict) {
     event.preventDefault();
@@ -1215,20 +1284,18 @@ const requestedSample = routedSampleSelection();
 const initialSampleSource = requestedSample?.source || loadSampleSource();
 const initialSample = requestedSample?.sample ||
   loadSample(initialSampleSource);
-sampleRouteSelected = Boolean(requestedSample);
 if (requestedSample) saveSample(requestedSample.source, requestedSample.sample);
 selectedSampleSource = initialSampleSource;
 selectedSample = initialSample;
 documentSource = initialSampleSource;
 selectSampleSource(initialSampleSource, initialSample);
 replaceEditorURL(
-  sampleRouteSelected ? initialSample : undefined,
+  initialSample,
   sharedStateResult.ok ? window.location.hash : '',
 );
 for (const [source, select] of Object.entries(sampleSelects)) {
   select.addEventListener('change', async () => {
     loadingEditorState = true;
-    sampleRouteSelected = true;
     saveSample(source, select.value);
     selectedSampleSource = source;
     selectedSample = select.value;
