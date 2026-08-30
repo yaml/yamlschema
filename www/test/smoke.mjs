@@ -1008,7 +1008,11 @@ if (
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
-  )
+  ) ||
+  !mkdocsConfig.includes(
+    '  - Design: reference/design.md\n- Blog: blog/index.md',
+  ) ||
+  !mkdocsConfig.includes('plugins:\n- blog\n- search:')
 ) {
   throw new Error('site navigation has incorrect home or demo tabs');
 }
@@ -1245,6 +1249,34 @@ for (const href of [
   if (!homeHTML.includes(href)) {
     throw new Error(`home page editor link is missing: ${href}`);
   }
+}
+const blogHTML = await readFile('site/blog/index.html', 'utf8');
+const introducingPostHTML = await readFile(
+  'site/blog/2026/08/30/introducing-yamlschema/index.html',
+  'utf8',
+);
+const blogArchiveHTML = await readFile(
+  'site/blog/archive/2026/index.html',
+  'utf8',
+);
+const blogCategoryHTML = await readFile(
+  'site/blog/category/yamlschema/index.html',
+  'utf8',
+);
+if (
+  !blogHTML.includes('YAMLSchema Blog') ||
+  !blogHTML.includes('Introducing YAMLSchema') ||
+  !blogHTML.includes('Ingy döt Net') ||
+  !blogHTML.includes('Continue reading') ||
+  blogHTML.includes('Schema That Mimics the Data') ||
+  !introducingPostHTML.includes('Introducing YAMLSchema') ||
+  !introducingPostHTML.includes('https://github.com/ingydotnet') ||
+  !introducingPostHTML.includes('href="../../../../../demo/"') ||
+  !introducingPostHTML.includes('https://github.com/yaml/yamlschema') ||
+  !blogArchiveHTML.includes('Introducing YAMLSchema') ||
+  !blogCategoryHTML.includes('Introducing YAMLSchema')
+) {
+  throw new Error('YAMLSchema blog output is incomplete');
 }
 const carouselSource = await readFile(
   'docs/javascripts/carousel.js',
