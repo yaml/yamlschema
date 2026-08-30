@@ -1,5 +1,26 @@
 # YAMLSchema release history
 
+- version: 0.1.8
+  date:    Sun Aug 30 10:06:58 AM EDT 2026
+  changes:
+  - Add YAMLSchema project blog
+  - Add consent-based site analytics
+  - Keep strict example URLs compact
+  - Polish strict editor feedback
+  - Add strict JSON Schema conversion
+  - Reject malformed type expressions
+  - Preserve root order in native roundtrips
+  - Speed up YSD formatting safely
+  - Preserve root and definition order
+  - Move Harbor demo to JSON Schema
+  - Rename JSON Schema format types
+  - Simplify website demo navigation
+  - Finish OpenAPI schema roundtrips
+  - Normalize inferred schema constraints
+  - Add native pattern property syntax
+  - Fix JSON Schema roundtrip normalization
+  - Label roundtrip diffs with filenames
+
 - version: 0.1.7
   date:    Wed Aug 26 08:47:40 PM EDT 2026
   changes:

@@ -159,6 +159,8 @@ flags: +Map{+flag}
 .PP
 \fB+Map{+Type}\fR expands to \fB+Str: +Type\fR\&.
 The value type must be one built-in, user-defined, or namespaced reference.
+Map parameters use braces; parenthesized forms such as \fB+Map(+Any)\fR are
+invalid.
 An incomplete \fB+Map\fR must be completed by sibling key/value pairs.
 
 .PP
@@ -453,6 +455,8 @@ to JSON Schema \fBconst\fR\&.
 alternative.
 A bare literal remains an accepted inferred-type shorthand.
 It also means a constant, while \fB=value\fR means only a default.
+The \fB+\fR prefix is reserved for type expressions, so an unrecognized
+plus-prefixed value is an error instead of an inferred string constant.
 
 .SH Lists and Sizes
 List suffixes are part of the value-side type expression:
