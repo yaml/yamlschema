@@ -381,12 +381,22 @@ function routedSampleSelection() {
   return undefined;
 }
 
-function replaceEditorURL(sample, hash = '') {
+function editorURL(sample, hash = '') {
   const url = sample
     ? new URL(`${sample}/`, editRootURL)
     : new URL(editRootURL);
   url.hash = hash;
+  return url;
+}
+
+function replaceEditorURL(sample, hash = '') {
+  const url = editorURL(sample, hash);
   window.history.replaceState(null, '', url);
+}
+
+function redirectEditorURL(sample, hash = '') {
+  const url = editorURL(sample, hash);
+  window.location.replace(url.href);
 }
 
 function removeCustomOptions() {
@@ -1289,10 +1299,12 @@ selectedSampleSource = initialSampleSource;
 selectedSample = initialSample;
 documentSource = initialSampleSource;
 selectSampleSource(initialSampleSource, initialSample);
-replaceEditorURL(
-  initialSample,
-  sharedStateResult.ok ? window.location.hash : '',
-);
+const initialHash = sharedStateResult.ok ? window.location.hash : '';
+if (requestedSample) {
+  replaceEditorURL(initialSample, initialHash);
+} else {
+  redirectEditorURL(initialSample, initialHash);
+}
 for (const [source, select] of Object.entries(sampleSelects)) {
   select.addEventListener('change', async () => {
     loadingEditorState = true;

@@ -512,7 +512,11 @@ if (
 ) {
   throw new Error('JSON Schema cookie-clearing shortcut is missing');
 }
-if (!appSource.includes('replaceEditorURL(\n  initialSample,')) {
+if (
+  !appSource.includes('if (requestedSample) {') ||
+  !appSource.includes('redirectEditorURL(initialSample, initialHash)') ||
+  !appSource.includes('window.location.replace(url.href)')
+) {
   throw new Error('base demo route does not select its default schema');
 }
 const codeEditorSource = await readFile('src/editor/editor.js', 'utf8');
@@ -740,7 +744,7 @@ if (
 if (
   !appSource.includes('schemaEditor.dataset.schemaSlug') ||
   !appSource.includes('window.history.replaceState') ||
-  !appSource.includes('replaceEditorURL(\n  initialSample,')
+  !appSource.includes('replaceEditorURL(initialSample, initialHash)')
 ) {
   throw new Error('editor schema routes do not select canonical inputs');
 }
@@ -987,6 +991,20 @@ const routedExamples = [
   ...exampleFiles.map((name) => [name, 'json']),
 ];
 const indexHTML = await readFile('site/demo/index.html', 'utf8');
+const demoPrimaryStart = indexHTML.indexOf('md-sidebar--primary');
+const demoSecondaryStart = indexHTML.indexOf('md-sidebar--secondary');
+const demoPrimarySidebar = indexHTML.slice(
+  demoPrimaryStart,
+  demoSecondaryStart,
+);
+if (
+  demoPrimaryStart < 0 ||
+  demoSecondaryStart < 0 ||
+  demoPrimarySidebar.includes(' hidden') ||
+  !demoPrimarySidebar.includes('md-nav--primary')
+) {
+  throw new Error('demo mobile navigation drawer is missing');
+}
 const mkdocsConfig = await readFile('mkdocs.yaml', 'utf8');
 const jsonSchemaReference = await readFile(
   'docs/reference/json-schema.md',
@@ -1000,7 +1018,7 @@ if (
   !indexHTML.includes('id="gdpr-cookie-banner"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
-  !indexHTML.includes('/assets/editor/app.js?v=21') ||
+  !indexHTML.includes('/assets/editor/app.js?v=22') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -1059,9 +1077,12 @@ if (
   throw new Error('editor panes are not CodeMirror mount points');
 }
 if (
-  indexHTML.includes('data-md-component="sidebar"') ||
   !styleSource.includes(
     'body:has(.schema-editor) .md-main__inner',
+  ) ||
+  !styleSource.includes(
+    'body:has(.schema-editor) .md-sidebar--primary {\n' +
+    '    display: none;',
   )
 ) {
   throw new Error('editor does not use the full page width');
@@ -1155,6 +1176,7 @@ if (
 if (
   styleSource.includes('flex-wrap: wrap') ||
   !styleSource.includes('min-width: 0;\n    flex: 1 1 0;') ||
+  !styleSource.includes('@media (max-width: 1200px)') ||
   !styleSource.includes(
     '.schema-editor .format-selector,\n' +
     '  .schema-editor .strict-control {\n    display: none;',
@@ -1244,8 +1266,19 @@ if (oldEditorExists) {
 }
 
 const homeHTML = await readFile('site/index.html', 'utf8');
+const siteStyleSource = await readFile('docs/css/extra.css', 'utf8');
 if (!homeHTML.includes('Define a lot more')) {
   throw new Error('home page tagline is missing');
+}
+if (
+  !siteStyleSource.includes(
+    '.md-typeset .home-hero h1 > span {\n  white-space: nowrap;',
+  ) ||
+  !siteStyleSource.includes(
+    '.md-typeset .home-eyebrow {\n    font-size: 0.7rem;',
+  )
+) {
+  throw new Error('home page headline is not responsive');
 }
 if (!homeHTML.includes('Try the Demos')) {
   throw new Error('home page does not link to the demos');

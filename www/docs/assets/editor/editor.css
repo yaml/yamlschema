@@ -65,6 +65,12 @@ body:has(.schema-editor) .md-main__inner {
   max-width: none;
 }
 
+@media screen and (min-width: 76.25em) {
+  body:has(.schema-editor) .md-sidebar--primary {
+    display: none;
+  }
+}
+
 .schema-editor .editors {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -696,6 +702,13 @@ body:has(.schema-editor) .md-main__inner {
   }
 }
 
+@media (max-width: 1200px) {
+  .schema-editor .format-selector,
+  .schema-editor .strict-control {
+    display: none;
+  }
+}
+
 @media (max-width: 900px) and (orientation: portrait) {
   body:has(.schema-editor) {
     overflow: hidden;
@@ -763,11 +776,6 @@ body:has(.schema-editor) .md-main__inner {
 
   .schema-editor .editor-heading {
     gap: 0.4rem;
-  }
-
-  .schema-editor .format-selector,
-  .schema-editor .strict-control {
-    display: none;
   }
 
   .schema-editor .cm-gutters {

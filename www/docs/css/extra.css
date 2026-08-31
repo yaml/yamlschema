@@ -112,6 +112,10 @@
   letter-spacing: -0.055em;
 }
 
+.md-typeset .home-hero h1 > span {
+  white-space: nowrap;
+}
+
 .md-typeset .home-lead {
   max-width: 36rem;
   margin: 1.5rem 0 0;
@@ -451,8 +455,8 @@
     font-size: clamp(1.4rem, 8.5vw, 2.2rem);
   }
 
-  .md-typeset .home-hero h1 > span {
-    white-space: nowrap;
+  .md-typeset .home-eyebrow {
+    font-size: 0.7rem;
   }
 
   .benefit-grid,
