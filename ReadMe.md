@@ -172,6 +172,7 @@ source = ysd.json_schema_to_ysd({
 schema = ysd.ysd_to_json_schema(source)
 ```
 
+JSON Schema arguments may be Python values, JSON text, or YAML text.
 The binding requires Python 3.10 or newer.
 It performs conversion rather than instance validation.
 The returned schemas can be passed directly to the Python `jsonschema`

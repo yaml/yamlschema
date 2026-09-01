@@ -92,7 +92,10 @@ def _schema_text(schema: Any) -> str:
 
 
 class YAMLSchema:
-    """Convert and roundtrip YAMLSchema and JSON Schema documents."""
+    """Convert and roundtrip YAMLSchema and JSON Schema documents.
+
+    JSON Schema strings may use JSON or YAML serialization.
+    """
 
     def _call(self, operation: str, source: str) -> Any:
         if "\0" in source:
@@ -126,22 +129,22 @@ class YAMLSchema:
             return _take_string(_native_version(), "version")
 
     def normalize_json_schema_text(self, schema: Any) -> str:
-        """Normalize a JSON Schema and return JSON text."""
+        """Normalize JSON Schema serialized as JSON or YAML to JSON text."""
         return self._call("json-schema-normalize", _schema_text(schema))
 
     def normalize_json_schema(self, schema: Any) -> Any:
-        """Normalize a JSON Schema and return a Python value."""
+        """Normalize JSON Schema in JSON or YAML to a Python value."""
         return json.loads(self.normalize_json_schema_text(schema))
 
     def json_schema_to_ysd(self, schema: Any, *, strict: bool = False) -> str:
-        """Convert JSON Schema to concise YAMLSchema text."""
+        """Convert JSON Schema in JSON or YAML to concise YAMLSchema."""
         suffix = "-strict" if strict else ""
         return self._call(
             f"json-schema-to-ysd{suffix}", _schema_text(schema)
         )
 
     def json_schema_to_ysdc(self, schema: Any, *, strict: bool = False) -> str:
-        """Convert JSON Schema to canonical YAMLSchema YAML text."""
+        """Convert JSON Schema in JSON or YAML to canonical YAML."""
         suffix = "-strict" if strict else ""
         return self._call(
             f"json-schema-to-ysdc{suffix}", _schema_text(schema)
@@ -150,7 +153,7 @@ class YAMLSchema:
     def json_schema_to_ysdc_data(
         self, schema: Any, *, strict: bool = False
     ) -> Any:
-        """Convert JSON Schema to decoded canonical YAMLSchema data."""
+        """Convert JSON Schema in JSON or YAML to canonical Python data."""
         suffix = "-strict" if strict else ""
         text = self._call(
             f"json-schema-to-ysdc-json{suffix}", _schema_text(schema)
@@ -166,14 +169,14 @@ class YAMLSchema:
         return json.loads(self.ysd_to_json_schema_text(source))
 
     def json_schema_roundtrip(self, schema: Any) -> dict[str, Any]:
-        """Return the JSON Schema roundtrip report."""
+        """Return a roundtrip report for JSON Schema in JSON or YAML."""
         text = self._call(
             "json-schema-roundtrip-report", _schema_text(schema)
         )
         return json.loads(text)
 
     def json_schema_roundtrip_works(self, schema: Any) -> bool:
-        """Return whether a JSON Schema roundtrip is lossless."""
+        """Return whether JSON Schema in JSON or YAML roundtrips losslessly."""
         return bool(
             self._call(
                 "json-schema-roundtrip-works", _schema_text(schema)

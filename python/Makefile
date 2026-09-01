@@ -23,7 +23,7 @@ PACKAGE-LIB := lib/ysd/libysd.$(SO)
 
 PYTHON-DEPS := $(PYTHON-VENV)/.ysd-python-deps
 
-test: $(PACKAGE-LIB) $(PYTHON-DEPS)
+test: $(PACKAGE-LIB) $(PYTHON-DEPS) Version
 	$(VENV) && PYTHONPATH=lib python -m pytest test
 
 wheel: $(PACKAGE-LIB) $(PYTHON-DEPS) Version

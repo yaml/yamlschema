@@ -14,6 +14,15 @@ PERSON = {
     "additionalProperties": False,
 }
 
+PERSON_YAML = """\
+type: object
+properties:
+  name:
+    type: string
+required: [name]
+additionalProperties: false
+"""
+
 
 @pytest.fixture(scope="module")
 def ysd():
@@ -30,6 +39,22 @@ def test_json_schema_objects_and_text(ysd):
     assert {key: normalized[key] for key in PERSON} == PERSON
     text = ysd.normalize_json_schema_text(json.dumps(PERSON))
     assert json.loads(text) == normalized
+
+
+def test_yaml_json_schema_text(ysd):
+    normalized = ysd.normalize_json_schema(PERSON_YAML)
+    assert {key: normalized[key] for key in PERSON} == PERSON
+    normalized_text = ysd.normalize_json_schema_text(PERSON_YAML)
+    assert json.loads(normalized_text) == normalized
+
+    source = ysd.json_schema_to_ysd(PERSON_YAML)
+    strict = ysd.json_schema_to_ysd(PERSON_YAML, strict=True)
+    assert "name: +Str" in source
+    assert "name: +Str" in strict
+    assert ".open: true" not in strict
+    assert ysd.json_schema_to_ysdc_data(PERSON_YAML)["name"] == "+Str"
+    assert ysd.json_schema_roundtrip_works(PERSON_YAML)
+    assert ysd.json_schema_roundtrip(PERSON_YAML)["works"] is True
 
 
 def test_json_schema_to_ysd(ysd):

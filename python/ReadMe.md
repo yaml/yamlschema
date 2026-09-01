@@ -18,9 +18,21 @@ source = ysd.json_schema_to_ysd(schema)
 roundtripped = ysd.ysd_to_json_schema(source)
 ```
 
-Methods that accept JSON Schema accept either Python JSON-compatible values or
-JSON text.
+Methods that accept JSON Schema accept Python JSON-compatible values, JSON
+text, or YAML text.
 Methods returning JSON Schema have object and `_text` forms.
+
+```python
+yaml_schema = """\
+type: object
+properties:
+  name:
+    type: string
+required: [name]
+"""
+
+source = ysd.json_schema_to_ysd(yaml_schema)
+```
 
 ## Validation
 
