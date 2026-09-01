@@ -77,6 +77,8 @@ JSON input converts to .ysd, while .ysd and .ysdc input convert to JSON Schema.
 The recognized filename extensions are `.ysd.yaml`, `.ysd.json`,
 `.ysdc.yaml`, `.ysdc.json`, `.schema.json`, `.schema.json.yaml`,
 `.schema.yaml`, and `.schema.yml`.
+JSON Schema input may use JSON or YAML syntax regardless of its recognized
+filename extension, so a `.schema.json` file containing YAML is accepted.
 
 ```bash
 ysd contact.schema.json
@@ -89,6 +91,7 @@ Use `-f` when reading standard input or when a filename is ambiguous:
 
 ```bash
 cat contact.yaml | ysd -f ysd -t jsc
+cat contact-schema.yaml | ysd -f jsc -t ysd
 ```
 
 ## Explicit targets

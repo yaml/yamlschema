@@ -582,10 +582,51 @@ defn run-schema-roundtrip(text opts):
     roundtrip-mismatch: result.original result.roundtripped opts
 
 defn roundtrip-input-format(text opts):
-  source =: normalize-format(opts.from)
-  if source:
-    then: source
-    else: (text =~ /^\s*\{/).if('schema.json' 'ysd.yaml')
+  explicit =: normalize-format(opts.from)
+  if explicit:
+    then: explicit
+    else:
+      data =: ys::yaml/load(text)
+      inferred =: infer-input-format(opts.input)
+      cond:
+        yamlschema-document?(data): 'ysd.yaml'
+        inferred: inferred
+        json-schema-document?(data): 'schema.json'
+        text =~ /^\s*\{/: 'schema.json'
+        else: 'ysd.yaml'
+
+defn yamlschema-document?(value):
+  if map?(value):
+    then:
+      if value:keys.some(ysd-marker-key?):
+        true value.some(yamlschema-field-entry?)
+    else: false
+
+defn ysd-marker-key?(key):
+  key =: key:S
+  or:
+    key.starts?('.')
+    key.starts?('+')
+    pattern-property-key?(key)
+
+defn yamlschema-field-entry?(entry):
+  key child =: entry
+  key =: key:S
+  when-not json-schema-detection-key?(key):
+    if string?(child):
+      (child =~ /^\+[A-Za-z_]/) yamlschema-document?(child)
+
+defn json-schema-document?(value):
+  boolean?(value) ||:
+    map?(value) &&: value:keys.some(json-schema-detection-key?)
+
+defn json-schema-detection-key?(key):
+  key:S.in?([
+    '$schema', '$id', '$ref', '$anchor', '$dynamicRef', '$dynamicAnchor',
+    '$vocabulary', '$defs', 'definitions',
+    'type', 'properties', 'patternProperties', 'additionalProperties',
+    'required', 'items', 'prefixItems', 'contains',
+    'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then', 'else'])
 
 defn roundtrip-result(text source report):
   case source:

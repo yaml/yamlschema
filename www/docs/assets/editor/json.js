@@ -31,3 +31,11 @@ export function normalizeJson(text) {
   JSON.parse(normalized);
   return normalized;
 }
+
+export function prepareJsonSchemaInput(text) {
+  try {
+    return {serialization: 'json', text: normalizeJson(text)};
+  } catch {
+    return {serialization: 'yaml', text};
+  }
+}

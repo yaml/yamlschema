@@ -185,6 +185,33 @@ test::
     foo?: +Str
     foo?: +Str
 
+- name: yaml-json-schema-input
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      trap "rm -r \"$dir\"" EXIT
+      for file in in.schema.json in.schema.yaml
+      do
+        printf "%s\n" \
+          "type: object" \
+          "properties:" \
+          "  name:" \
+          "    type: string" \
+          "required: [name]" \
+          "additionalProperties: false" > "$dir/$file"
+        bin/ysd "$dir/$file" | perl -ne "print if /^name:/"
+        bin/ysd -NC "$dir/$file" | jq -r .properties.name.type
+        bin/ysd -Rq "$dir/$file" && echo roundtrip
+      done
+    '
+  want: |
+    name: +Str
+    string
+    roundtrip
+    name: +Str
+    string
+    roundtrip
+
 - name: all-output-file-extensions
   cmnd: |
     sh -c '

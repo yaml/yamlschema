@@ -62,6 +62,9 @@ YAMLSchema uses these file extensions:
 - `.schema.json`, `.schema.json.yaml`, `.schema.yaml`, and `.schema.yml`
   contain JSON Schema.
 
+JSON Schema input may use JSON or YAML syntax regardless of its filename
+extension, including YAML content stored in a `.schema.json` file.
+
 The optional top-level `.ysid` identifies the human-maintained .ysd document.
 Its suffix is `.ysd.yaml` in .ysd and both .ysdc serializations.
 The corresponding JSON Schema `$id` uses `.schema.json`.

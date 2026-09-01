@@ -104,6 +104,10 @@ directive-to-keyword mapping.
 
 ## Strict Editor Conversion
 
+The JSON Schema editor accepts JSON or YAML and detects the serialization from
+the content.
+Normal and Strict regeneration produce canonical JSON.
+
 The browser editor enables its **Strict** checkbox after editable JSON Schema
 successfully generates `.ysd` or `.ysdc`.
 Selecting it closes every unconstrained mapping by removing `.open` directives

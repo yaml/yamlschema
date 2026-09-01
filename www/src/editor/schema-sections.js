@@ -121,6 +121,31 @@ function yamlMapping(pair) {
   return undefined;
 }
 
+function yamlJsonSchemaSections(state) {
+  const root = syntaxTree(state).topNode;
+  const documentNode = child(root, 'Document');
+  const mapping = documentNode && child(documentNode, 'BlockMapping');
+  if (!mapping) return [];
+  const result = [];
+  for (const pair of children(mapping, 'Pair')) {
+    const group = yamlKey(state, pair);
+    const prefix = group === 'properties' ? 'properties' : 'defs';
+    if (!['$defs', 'definitions', 'properties'].includes(group)) continue;
+    const values = yamlMapping(pair);
+    if (!values) continue;
+    for (const value of children(values, 'Pair')) {
+      const name = yamlKey(state, value);
+      if (name === undefined) continue;
+      result.push({
+        id: `${prefix}/${name}`,
+        from: value.from,
+        to: value.to,
+      });
+    }
+  }
+  return result.sort((left, right) => left.from - right.from);
+}
+
 function yamlPropertySection(state, pair) {
   let name = yamlKey(state, pair);
   if (!name || name.startsWith('.')) return undefined;
@@ -157,6 +182,7 @@ function yamlSections(state) {
 
 export function schemaSections(state, format) {
   if (format === 'json') return jsonSections(state);
+  if (format === 'jsc-yaml') return yamlJsonSchemaSections(state);
   if (format === 'ysdc-json') return jsonYSDCSections(state);
   return yamlSections(state);
 }

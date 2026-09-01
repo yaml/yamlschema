@@ -1,7 +1,9 @@
 import {json} from '@codemirror/lang-json';
 import {yaml} from '@codemirror/lang-yaml';
 
-import {normalizeJson} from '../../docs/assets/editor/json.js';
+import {
+  prepareJsonSchemaInput,
+} from '../../docs/assets/editor/json.js';
 import {CodeEditor} from './editor.js';
 import {ResultCache, resultCacheKey} from './result-cache.js';
 import {parseEditorState, serializeEditorState} from './url-state.js';
@@ -124,6 +126,7 @@ let ysdStrictReady = false;
 let jsonNormal = false;
 let ysdValue = '';
 let jsonValue = '';
+let jsonSerialization = 'json';
 let roundtripDiff = '';
 let roundtripDiffFilename = '';
 let selectedSample;
@@ -236,9 +239,13 @@ function scrollSyncSourceEditor() {
 
 function synchronizeScroll(editor) {
   if (!scrollSyncEnabled || editor !== scrollSyncSourceEditor()) return;
-  const sourceFormat = editor === jsonEditor ? 'json' : yamlPaneFormat();
+  const sourceFormat = editor === jsonEditor
+    ? jsonPaneFormat()
+    : yamlPaneFormat();
   const target = editor === jsonEditor ? yamlEditor : jsonEditor;
-  const targetFormat = target === jsonEditor ? 'json' : yamlPaneFormat();
+  const targetFormat = target === jsonEditor
+    ? jsonPaneFormat()
+    : yamlPaneFormat();
   target.scrollToSchemaLocation(
     editor.schemaLocation(sourceFormat),
     targetFormat,
@@ -286,6 +293,23 @@ function saveYSDCJson(enabled) {
 
 function yamlPaneFormat() {
   return yamlFormat === 'ysdc' && ysdcJson ? 'ysdc-json' : yamlFormat;
+}
+
+function jsonPaneFormat() {
+  return jsonSerialization === 'yaml' ? 'jsc-yaml' : 'json';
+}
+
+function setJsonSerialization(serialization) {
+  if (serialization === jsonSerialization) return;
+  jsonSerialization = serialization;
+  const language = serialization === 'yaml' ? yaml() : json();
+  jsonEditor.setLanguage(language);
+}
+
+function prepareJsonSchema(text) {
+  const input = prepareJsonSchemaInput(text);
+  setJsonSerialization(input.serialization);
+  return input.text;
 }
 
 function strictImportEnabled() {
@@ -554,6 +578,9 @@ function linkedSelectionChanged(pane, range) {
 
 function setEditorValue(editor, value) {
   updating = true;
+  if (editor === jsonEditor && !value.startsWith('Generating ')) {
+    prepareJsonSchema(value);
+  }
   editor.setValue(value);
   const pane = editor === jsonEditor ? 'json' : yamlFormat;
   if (!value.startsWith('Generating ') &&
@@ -588,7 +615,7 @@ function setRoundtripStatus(status, alternateTitle) {
     works: ['√', 'Roundtrip Works'],
     fails: ['X', 'Roundtrip Fails'],
     checking: ['…', 'Checking Roundtrip'],
-    unknown: ['?', 'JSON Parse Error'],
+    unknown: ['?', 'JSON Schema Input Error'],
   };
   const [symbol, defaultTitle] = states[status];
   const title = alternateTitle || defaultTitle;
@@ -788,30 +815,18 @@ async function convertJsonToYaml(
   updateYSD = true,
   checkRoundtrip = true,
 ) {
-  let json;
-  try {
-    json = normalizeJson(jsonValue);
-  } catch (error) {
-    cancelRoundtripStatus();
-    setRoundtripStatus('unknown');
-    showResult(jsonEditor, yamlEditor, jsonError, yamlError, {
-      ok: false,
-      error: error.message,
-    });
-    setYSDStrictReady(false);
-    return {ok: false, error: error.message};
-  }
+  const input = prepareJsonSchema(jsonValue);
   const id = ++conversionRequest;
   const ysdOperation = currentYSDOperation();
   const ysdcOperation = currentYSDCOperation();
-  const cachedYSD = cachedWorkerResult(ysdOperation, json);
-  const cachedYSDC = cachedWorkerResult(ysdcOperation, json);
+  const cachedYSD = cachedWorkerResult(ysdOperation, input);
+  const cachedYSDC = cachedWorkerResult(ysdcOperation, input);
   const cachedVisible = yamlFormat === 'ysdc' ? cachedYSDC : cachedYSD;
   if (!cachedVisible) showGeneratingYamlSchema();
-  if (checkRoundtrip) updateRoundtripStatus('json', json);
+  if (checkRoundtrip) updateRoundtripStatus('json', input);
   const [toYSD, toYSDC] = await Promise.all([
-    cachedYSD || callWorker(ysdOperation, json),
-    cachedYSDC || callWorker(ysdcOperation, json),
+    cachedYSD || callWorker(ysdOperation, input),
+    cachedYSDC || callWorker(ysdcOperation, input),
   ]);
   if (id !== conversionRequest) return;
   if (!toYSD.ok) {
@@ -886,7 +901,7 @@ async function makeJsonSchemaStrict() {
   if (canonicalSource) canonicalSourceValues.json = jsonValue;
   setJsonNormal(true);
   jsonNormalControl.disabled = !schemaWorkerReady;
-  updateRoundtripStatus('json', normalizeJson(jsonValue));
+  updateRoundtripStatus('json', prepareJsonSchema(jsonValue));
   updateYSDStrictControl();
   updateEditorURL();
   return result;
@@ -910,20 +925,10 @@ async function normalizeJsonSchema() {
   cancelRoundtripStatus();
   setRoundtripSource('json');
   setRoundtripStatus('checking');
-  let json;
-  try {
-    json = normalizeJson(sourceValue);
-  } catch (error) {
-    if (id !== jsonNormalRequest || jsonValue !== sourceValue) return;
-    jsonEditor.classList.add('invalid');
-    jsonError.textContent = error.message;
-    setRoundtripStatus('unknown');
-    jsonNormalControl.disabled = !schemaWorkerReady;
-    return;
-  }
+  const input = prepareJsonSchema(sourceValue);
   const operation = 'json-schema-normalize';
-  const cached = cachedWorkerResult(operation, json);
-  const result = cached || await callWorker(operation, json);
+  const cached = cachedWorkerResult(operation, input);
+  const result = cached || await callWorker(operation, input);
   if (id !== jsonNormalRequest || jsonValue !== sourceValue) return result;
   if (!result.ok) {
     jsonEditor.classList.add('invalid');
@@ -996,13 +1001,8 @@ function roundtripOnFocus(editor) {
     updateRoundtripStatus('ysd', yamlEditor.value, 0);
     return;
   }
-  try {
-    const json = normalizeJson(jsonValue);
-    updateRoundtripStatus('json', json, 0);
-  } catch {
-    cancelRoundtripStatus();
-    setRoundtripStatus('unknown');
-  }
+  const input = prepareJsonSchema(jsonValue);
+  updateRoundtripStatus('json', input, 0);
 }
 
 function closeDiffFromBackdrop(event) {
@@ -1089,7 +1089,7 @@ function cachedYSDCForYSD(ysd) {
   if (!json?.ok) return undefined;
   return cachedWorkerResult(
     currentYSDCOperation(),
-    normalizeJson(json.value),
+    prepareJsonSchemaInput(json.value).text,
   );
 }
 
@@ -1191,6 +1191,7 @@ function schedule(editor) {
   setYSDStrictReady(false);
   if (source === 'json') {
     jsonValue = jsonEditor.value;
+    prepareJsonSchema(jsonValue);
     jsonNormalControl.disabled = !schemaWorkerReady;
   } else {
     jsonNormalControl.disabled = true;

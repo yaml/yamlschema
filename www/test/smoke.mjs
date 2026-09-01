@@ -3,7 +3,10 @@ import {json as jsonLanguage} from '@codemirror/lang-json';
 import {yaml as yamlLanguage} from '@codemirror/lang-yaml';
 import {EditorState} from '@codemirror/state';
 import {readFile} from 'node:fs/promises';
-import {normalizeJson} from '../docs/assets/editor/json.js';
+import {
+  normalizeJson,
+  prepareJsonSchemaInput,
+} from '../docs/assets/editor/json.js';
 import {ResultCache, resultCacheKey} from '../src/editor/result-cache.js';
 import {schemaSections} from '../src/editor/schema-sections.js';
 import {
@@ -61,6 +64,19 @@ const sectionLegacyJSON = EditorState.create({
 }`,
   extensions: [jsonLanguage()],
 });
+const sectionYamlJSC = EditorState.create({
+  doc: `$defs:
+  thing:
+    type: string
+type: object
+properties:
+  name:
+    type: string
+  age:
+    type: integer
+`,
+  extensions: [yamlLanguage()],
+});
 const sectionYSD = EditorState.create({
   doc: `+thing: +Str
 name: +Str
@@ -91,6 +107,7 @@ const expectedSections = 'defs/thing,properties/name,properties/age';
 for (const [state, format] of [
   [sectionJSON, 'json'],
   [sectionLegacyJSON, 'legacy JSON'],
+  [sectionYamlJSC, 'jsc-yaml'],
   [sectionYSD, 'ysd'],
   [sectionYSDC, 'ysdc'],
   [sectionJSONYSDC, 'ysdc-json'],
@@ -285,6 +302,24 @@ if (normalizeJson('{"text": ",}"}') !== '{"text": ",}"}') {
   throw new Error('a comma inside a JSON string was changed');
 }
 
+const preparedJSON = prepareJsonSchemaInput('{"a": [1, 2,],}');
+if (preparedJSON.serialization !== 'json' ||
+    preparedJSON.text !== '{"a": [1, 2]}') {
+  throw new Error('JSON Schema JSON input was not detected');
+}
+
+const yamlSchemaText = `type: object
+properties:
+  name:
+    type: string
+required: [name]
+`;
+const preparedYAML = prepareJsonSchemaInput(yamlSchemaText);
+if (preparedYAML.serialization !== 'yaml' ||
+    preparedYAML.text !== yamlSchemaText) {
+  throw new Error('JSON Schema YAML input was not detected');
+}
+
 for (const invalidJSON of [
   '{"title": not valid json}',
   '{"a": 1 "b": 2}',
@@ -324,6 +359,39 @@ if (
   Object.hasOwn(normalizedSchema, 'additionalProperties')
 ) {
   throw new Error(`unexpected normalized JSON: ${normalizedResult.value}`);
+}
+
+const normalizedYAMLResult = globalThis.gloat.exports[
+  'json-schema-normalize'
+](yamlSchemaText);
+const normalizedYAMLSchema = normalizedYAMLResult.ok
+  ? JSON.parse(normalizedYAMLResult.value)
+  : {};
+if (!normalizedYAMLResult.ok ||
+    normalizedYAMLSchema.properties?.name?.type !== 'string') {
+  throw new Error(`YAML normalization failed: ${JSON.stringify(
+    normalizedYAMLResult,
+  )}`);
+}
+const yamlYSDResult = globalThis.gloat.exports[
+  'json-schema-to-ysd'
+](yamlSchemaText);
+const strictYamlYSDResult = globalThis.gloat.exports[
+  'json-schema-to-ysd-strict'
+](yamlSchemaText);
+const yamlRoundtripResult = globalThis.gloat.exports[
+  'json-schema-roundtrip-works'
+](yamlSchemaText);
+if (!yamlYSDResult.ok || !yamlYSDResult.value.includes('name: +Str') ||
+    !yamlYSDResult.value.includes('.open: true') ||
+    !strictYamlYSDResult.ok ||
+    strictYamlYSDResult.value.includes('.open: true') ||
+    !yamlRoundtripResult.ok || yamlRoundtripResult.value !== true) {
+  throw new Error(`YAML JSON Schema conversion failed: ${JSON.stringify({
+    yamlYSDResult,
+    strictYamlYSDResult,
+    yamlRoundtripResult,
+  })}`);
 }
 
 const normalizedRefResult = globalThis.gloat.exports[
@@ -594,7 +662,7 @@ if (
   throw new Error('roundtrip diff does not identify its source filename');
 }
 if (
-  !appSource.includes("updateRoundtripStatus('json', json)") ||
+  !appSource.includes("updateRoundtripStatus('json', input)") ||
   !appSource.includes("updateRoundtripStatus('ysd', ysd)")
 ) {
   throw new Error('roundtrip direction does not follow the edited pane');
@@ -608,7 +676,7 @@ if (
   !appSource.includes('delete canonicalSourceValues[source]') ||
   !appSource.includes('scheduleEditorURL();') ||
   !appSource.includes('roundtripOnFocus(editor)') ||
-  !appSource.includes("updateRoundtripStatus('json', json, 0)") ||
+  !appSource.includes("updateRoundtripStatus('json', input, 0)") ||
   !appSource.includes("updateRoundtripStatus('ysd', yamlEditor.value, 0)")
 ) {
   throw new Error('focusing an editor does not start its roundtrip check');
@@ -712,6 +780,16 @@ if (
   throw new Error('editor settings or scroll synchronization is incomplete');
 }
 if (
+  !appSource.includes('prepareJsonSchemaInput(text)') ||
+  !appSource.includes("jsonSerialization === 'yaml' ? 'jsc-yaml'") ||
+  !appSource.includes("serialization === 'yaml' ? yaml() : json()") ||
+  !appSource.includes('jsonEditor.setLanguage(language)') ||
+  !appSource.includes('prepareJsonSchema(jsonValue)') ||
+  !appSource.includes('? jsonPaneFormat()')
+) {
+  throw new Error('JSON Schema serialization detection is incomplete');
+}
+if (
   !appSource.includes('navigator.share({title: \'YAMLSchema\', url})') ||
   !appSource.includes('navigator.clipboard?.writeText') ||
   !appSource.includes("setShareStatus('Link copied')")
@@ -775,7 +853,7 @@ if (
 if (
   !appSource.includes('let jsonNormal = false;') ||
   !appSource.includes("let jsonValue = '';") ||
-  !appSource.includes('json = normalizeJson(jsonValue);') ||
+  !appSource.includes('const input = prepareJsonSchema(jsonValue);') ||
   !appSource.includes('setEditorValue(jsonEditor, jsonValue);') ||
   !appSource.includes('setJsonNormal(false);') ||
   !appSource.includes('setJsonNormal(true);') ||
@@ -1042,7 +1120,7 @@ if (
   !indexHTML.includes('id="gdpr-cookie-banner"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
-  !indexHTML.includes('/assets/editor/app.js?v=22') ||
+  !indexHTML.includes('/assets/editor/app.js?v=23') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -1127,6 +1205,7 @@ if (
   !indexHTML.includes('Choose a starting schema') ||
   !indexHTML.includes('Understand roundtrip status') ||
   !indexHTML.includes('Generated JSON Schema is marked Normal') ||
+  !indexHTML.includes('JSON Schema may be written as JSON or YAML') ||
   !indexHTML.includes('Editing the JSON Schema clears that mark') ||
   !indexHTML.includes('Select Normal to replace edited JSON Schema') ||
   !indexHTML.includes('Strict becomes available after editable JSON Schema') ||
