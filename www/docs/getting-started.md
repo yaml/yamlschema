@@ -4,7 +4,7 @@ empty_sidebar: true
 
 # Getting Started
 
-YAMLSchema is a YAML-native schema language.
+YAMLSchema is a concise schema language for defining and validating YAML data.
 The schema follows the shape of the data, required fields are the default, and
 constraints stay beside the values they describe.
 
@@ -147,6 +147,17 @@ ysd -R person.schema.json
 When they do not, `ysd` prints a unified diff showing the normalized change.
 
 ## Choose the right form
+
+YAMLSchema defines two different forms: YSD (YAMLSchema Definition) and YSDC
+(YAMLSchema Definiton Canonical).
+You write your schema in YSD (`.ysd.yaml`), but you can store it in a canonical
+form for interchange (YSDC).
+YSDC is best published as JSON ('.ysdc.json') for maximum portability.
+
+Of course, if you only need YAMLSchema's JSON Schema capabilities, you can also
+just publish it as JSON Schema ('.schema.json').
+
+The `ysd` command can convert between all three forms and also convert JSON Schema to a normalized JSON Schema form.
 
 | Extension | Purpose |
 | --- | --- |

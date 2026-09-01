@@ -18,7 +18,7 @@ release_branch=${RELEASE_BRANCH:-main}
 top=$(git rev-parse --show-toplevel)
 changes_file="$top/Changes"
 makefile="$top/Makefile"
-source_file="$top/bin/ysd"
+source_file="$top/lib/ysd/core.ys"
 
 current_version() {
   "$perl" -ne '
@@ -46,7 +46,7 @@ has_changes_entry() {
 }
 
 release_files() {
-  printf '%s\n' Changes Makefile bin/ysd | sort
+  printf '%s\n' Changes Makefile lib/ysd/core.ys | sort
 }
 
 generated_files() {
@@ -117,7 +117,7 @@ prepare() {
   local current previous_tag changes temporary previous_changes
   current=$(current_version)
   [[ $(source_version) == "$current" ]] || {
-    echo 'release: Makefile and bin/ysd versions do not match' >&2
+    echo 'release: Makefile and YSD core versions do not match' >&2
     exit 1
   }
   previous_tag=$(
@@ -239,7 +239,7 @@ preflight_new_release() {
   validate_git_context
   current=$(current_version)
   [[ $(source_version) == "$current" ]] || {
-    echo 'release: Makefile and bin/ysd versions do not match' >&2
+    echo 'release: Makefile and YSD core versions do not match' >&2
     exit 1
   }
   [[ $current != "$version" ]] || {

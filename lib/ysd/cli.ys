@@ -1,0 +1,24 @@
+#!/usr/bin/env ys-0
+
+defn main(*args):
+  try:
+    run-main: args*
+    catch Exception error:
+      data =: ex-data(error)
+      if data.type == 'yamlschema/usage':
+        handle-usage-error: error
+        throw: error
+
+EXPORT =::
+  json-schema-normalize: [str, str]
+  json-schema-to-ysd: [str, str]
+  json-schema-to-ysd-strict: [str, str]
+  json-schema-to-ysdc-json: [str, str]
+  json-schema-to-ysdc-json-strict: [str, str]
+  json-schema-to-ysdc: [str, str]
+  json-schema-to-ysdc-strict: [str, str]
+  json-schema-roundtrip-report: [str, str]
+  json-schema-roundtrip-works: [str, bool]
+  ysd-roundtrip-report: [str, str]
+  ysd-roundtrip-works: [str, bool]
+  ysd-to-json-schema: [str, str]

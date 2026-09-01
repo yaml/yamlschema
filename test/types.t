@@ -56,6 +56,22 @@ test::
   want: |
     OK
 
+- name: true-schema
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    true
+  want: |
+    # Converted from JSON Schema
+    .root: +Any
+
+- name: false-schema
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    false
+  want: |
+    # Converted from JSON Schema
+    .root: +Not(+Any)
+
 - name: yaml-number-inference
   cmnd: bin/ysd -t ysdc -J -C -
   stdi: |

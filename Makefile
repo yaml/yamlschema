@@ -20,6 +20,12 @@ RELEASE-DIST := $(CURDIR)/util/release-dist
 DIST := $(CURDIR)/dist
 RELEASE-BUILD := $(CURDIR)/.cache/release
 RELEASE-SMOKE-INPUT := $(CURDIR)/test/files/person.schema.json
+YSD-CORE := lib/ysd/core.ys
+YSD-CLI := lib/ysd/cli.ys
+YSD-CLI-SOURCE := .cache/ysd-cli.ys
+YSD-LIB-SOURCE := .cache/ysd-lib.ys
+YSD-COMPOSE := util/compose-ysd
+LIBYSD := libysd.$(SO)
 PREFIX ?= $(if $(filter 0,$(shell id -u)),/usr/local,$(HOME)/.local)
 PREFIX-PATH := $(abspath $(PREFIX))
 YAMLSCHEMA-INSTALL := $(PREFIX-PATH)/share/yamlschema
@@ -28,12 +34,27 @@ YSD-INSTALL := $(PREFIX-PATH)/bin/ysd
 version:
 	@echo '$(YSD-VERSION)'
 
-build: ysd
+build: ysd $(LIBYSD)
 
-ysd: bin/ysd $(GLOAT)
+ysd: $(YSD-CLI-SOURCE) $(GLOAT)
 	$(GLOAT) '$<' \
 	  --out='$@' --force --quiet \
 	  --module=github.com/yaml/yamlschema
+
+$(LIBYSD): $(YSD-LIB-SOURCE) $(GLOAT)
+	$(GLOAT) '$<' \
+	  --out='$@' --force --quiet \
+	  --module=github.com/yaml/yamlschema
+
+libysd: $(LIBYSD)
+
+$(YSD-CLI-SOURCE): $(YSD-CLI) $(YSD-CORE) $(YSD-COMPOSE) $(PERL)
+	mkdir -p '$(@D)'
+	$(PERL) '$(YSD-COMPOSE)' '$(YSD-CLI)' '$(YSD-CORE)' '$@'
+
+$(YSD-LIB-SOURCE): lib/ysd/ffi.ys $(YSD-CORE) $(YSD-COMPOSE) $(PERL)
+	mkdir -p '$(@D)'
+	$(PERL) '$(YSD-COMPOSE)' lib/ysd/ffi.ys '$(YSD-CORE)' '$@'
 
 install: build
 	@set -eu; \
@@ -77,7 +98,7 @@ install: build
 
 test: \
   test-unit test-native-order test-version test-release test-installer \
-  test-install test-upgrade test-man test-scripts
+  test-install test-upgrade test-man test-scripts test-python
 
 test-unit: $(YS) $(PERL)
 	prove$(if $v, -v) test/*.t
@@ -156,6 +177,12 @@ test-scripts: $(SHELLCHECK) $(YS)
 	zsh -n share/complete.zsh
 	fish -n share/complete.fish
 
+test-python: $(LIBYSD)
+	$(MAKE) -C python test
+
+python-wheel: $(LIBYSD)
+	$(MAKE) -C python wheel
+
 json-schema-suite:
 	util/ysd-suite-roundtrip --fetch-only
 
@@ -173,7 +200,7 @@ release-prep: $(PERL)
 	  $(error VERSION is required on the command line))
 	$Q PERL='$(PERL)' '$(RELEASE)' prepare '$(VERSION)'
 
-release-dist: $(GLOAT) $(PERL)
+release-dist: $(YSD-CLI-SOURCE) $(GLOAT) $(PERL)
 	@$(if $(filter command line,$(origin VERSION)),,\
 	  $(error VERSION is required on the command line))
 	$Q PERL='$(PERL)' '$(RELEASE-DIST)' \
@@ -214,16 +241,22 @@ release: $(GH) $(PERL)
 	  PERL='$(PERL)' GH='$(GH)' \
 	  '$(RELEASE)' release '$(VERSION)'
 
-MAKES-CLEAN += .cache/man-test .cache/release dist ysd
+MAKES-CLEAN += \
+  .cache/man-test .cache/release \
+  $(YSD-CLI-SOURCE) $(YSD-LIB-SOURCE) \
+  dist ysd libysd.h $(LIBYSD)
 
 serve publish:
 	$(MAKE) -C www $@
 
 clean::
 	$(MAKE) -C www $@
+	$(MAKE) -C python $@
 
 realclean::
 	$(MAKE) -C www $@
+	$(MAKE) -C python $@
 
 distclean::
 	$(MAKE) -C www $@
+	$(MAKE) -C python $@

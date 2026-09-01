@@ -222,6 +222,19 @@ test::
   want: |
     $schema type properties additionalProperties $defs
 
+- name: ysd-root-patterns-precede-definitions
+  cmnd: |
+    sh -c '
+      bin/ysd -t jsc - |
+        jq -r "keys_unsorted | join(\" \")"
+    '
+  stdi: |
+    name: +Str
+    /^x-/: +Any
+    +thing: +Str
+  want: |
+    $schema type properties required additionalProperties patternProperties $defs
+
 - name: normalization-preserves-json-object-key-order
   cmnd: |
     sh -c '

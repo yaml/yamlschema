@@ -5,7 +5,7 @@
 The goal is to make schemas look like the data they describe while keeping
 common validation constraints short and readable.
 It is intended to cover the same kind of data-model validation as JSON Schema,
-but with YAML-native syntax and a succinct form for human-authored schemas.
+using a succinct form designed for human-authored schemas.
 
 For the authoring syntax, see [doc/dsl.md](doc/dsl.md).
 For the broader language design, see [doc/design.md](doc/design.md).
@@ -39,8 +39,10 @@ This schema describes a mapping where:
 
 ## Repository Contents
 
-- [bin/ysd](bin/ysd) converts among succinct YAMLSchema, expanded YAMLSchema,
-  and JSON Schema.
+- [bin/ysd](bin/ysd) runs the converter during development.
+- [lib/ysd/](lib/ysd/) contains the converter core and native library
+  entrypoints.
+- [python/](python/) contains the Python binding and wheel packaging.
 - [test/](test/) contains YAMLScript TAP tests for the converter.
 - [doc/design.md](doc/design.md) describes the language model, syntax,
   directives, JSON Schema mapping, and current implementation scope.
@@ -145,6 +147,32 @@ The shell-specific completion files are `share/complete.bash`,
 `share/complete.zsh`, and `share/complete.fish`.
 
 After installation or local setup, try `ysd --<TAB>` or `man ysd`.
+
+### Python
+
+Install the Python binding from PyPI:
+
+```sh
+python -m pip install ysd
+```
+
+The wheel includes the native `libysd` library for its platform:
+
+```python
+from ysd import YAMLSchema
+
+ysd = YAMLSchema()
+source = ysd.json_schema_to_ysd({
+    "type": "object",
+    "properties": {"name": {"type": "string"}},
+})
+schema = ysd.ysd_to_json_schema(source)
+```
+
+The binding requires Python 3.10 or newer.
+It performs conversion rather than instance validation.
+The returned schemas can be passed directly to the Python `jsonschema`
+package when validation is needed.
 
 After that, the converter can be run as `ysd`:
 

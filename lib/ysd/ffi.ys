@@ -1,0 +1,43 @@
+#!/usr/bin/env ys-0
+
+EXPORT =::
+  ysd-call: [str, str, str]
+  ysd-version: [str]
+
+defn ysd-call(operation input):
+  try:
+    ffi-success: dispatch-ffi-operation(operation input)
+    catch Exception error:
+      ffi-failure: ex-message(error) || "$error"
+
+defn ysd-version():
+  VERSION
+
+defn dispatch-ffi-operation(operation input):
+  case operation:
+    'json-schema-normalize': json-schema-normalize(input)
+    'json-schema-to-ysd': json-schema-to-ysd(input)
+    'json-schema-to-ysd-strict': json-schema-to-ysd-strict(input)
+    'json-schema-to-ysdc-json': json-schema-to-ysdc-json(input)
+    'json-schema-to-ysdc-json-strict':
+      json-schema-to-ysdc-json-strict(input)
+    'json-schema-to-ysdc': json-schema-to-ysdc(input)
+    'json-schema-to-ysdc-strict': json-schema-to-ysdc-strict(input)
+    'json-schema-roundtrip-report':
+      json-schema-roundtrip-report(input)
+    'json-schema-roundtrip-works':
+      json-schema-roundtrip-works(input)
+    'ysd-roundtrip-report': ysd-roundtrip-report(input)
+    'ysd-roundtrip-works': ysd-roundtrip-works(input)
+    'ysd-to-json-schema': ysd-to-json-schema(input)
+    else: die("unknown ysd operation '$operation'")
+
+defn ffi-success(value):
+  ys::json/dump::
+    ok: true
+    value:: value
+
+defn ffi-failure(message):
+  ys::json/dump::
+    ok: false
+    error:: message

@@ -25,9 +25,9 @@ fake_bin="$temporary/bin"
 make_log="$temporary/make.log"
 gh_log="$temporary/gh.log"
 
-mkdir -p "$repo/bin" "$repo/man/man1" "$repo/util" "$fake_bin"
+mkdir -p "$repo/lib/ysd" "$repo/man/man1" "$repo/util" "$fake_bin"
 cp "$top/Changes" "$top/Makefile" "$repo/"
-cp "$top/bin/ysd" "$repo/bin/"
+cp "$top/lib/ysd/core.ys" "$repo/lib/ysd/"
 cp "$release" "$repo/util/"
 printf 'stale manual\n' > "$repo/man/man1/ysd.1"
 git init --quiet --initial-branch=main "$repo"
@@ -92,14 +92,14 @@ expected=$(printf '%s\n' update test)
 [[ $(git -C "$repo" log -1 --format=%s) == \
    "Prepare release $version" ]]
 grep -Fqx "YSD-VERSION := $version" "$repo/Makefile"
-grep -Fqx "VERSION =: '$version'" "$repo/bin/ysd"
+grep -Fqx "VERSION =: '$version'" "$repo/lib/ysd/core.ys"
 grep -Fqx -- "- version: $version" "$repo/Changes"
 
 changed=$(
   git -C "$repo" diff-tree --no-commit-id --name-only -r HEAD | sort
 )
 expected=$(printf '%s\n' \
-  Changes Makefile bin/ysd man/man1/ysd.1 | sort)
+  Changes Makefile lib/ysd/core.ys man/man1/ysd.1 | sort)
 [[ $changed == "$expected" ]]
 grep -Fqx 'generated manual' "$repo/man/man1/ysd.1"
 [[ -z $(git -C "$repo" status --short) ]]

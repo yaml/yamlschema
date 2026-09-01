@@ -38,10 +38,10 @@ source_version=$(
        print "$1\n";
        exit;
      }' \
-    "$top/bin/ysd"
+    "$top/lib/ysd/core.ys"
 )
 [[ $source_version == "$version" ]] || {
-  echo "release-dist: bin/ysd version $source_version does not match" \
+  echo "release-dist: YSD core version $source_version does not match" \
     "$version" >&2
   exit 1
 }
@@ -66,7 +66,7 @@ build_platform() {
     output="$build_dir/bin/$platform/$name"
     mkdir -p "${output%/*}"
     echo "* Building $platform"
-    "$gloat" "$top/bin/ysd" \
+    "$gloat" "$top/.cache/ysd-cli.ys" \
       --out="$output" --to=js --force --quiet \
       --module=github.com/yaml/yamlschema
     return
@@ -77,7 +77,7 @@ build_platform() {
   output="$build_dir/bin/$platform/$name"
   mkdir -p "${output%/*}"
   echo "* Building $platform"
-  "$gloat" "$top/bin/ysd" \
+  "$gloat" "$top/.cache/ysd-cli.ys" \
     --out="$output" --platform="$target" --force --quiet \
     --module=github.com/yaml/yamlschema
 }

@@ -1,0 +1,9 @@
+/.pytest_cache/
+/.venv/
+/Version
+/build/
+/dist/
+/lib/ysd.egg-info/
+/lib/ysd/__pycache__/
+/lib/ysd/libysd.*
+/test/__pycache__/

@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+my ($entry, $core, $output) = @ARGV;
+die "usage: compose-ysd ENTRY CORE OUTPUT\n"
+  unless defined $output;
+
+open my $out, '>', "$output.tmp"
+  or die "compose-ysd: cannot write $output.tmp: $!\n";
+
+print {$out} "#!/usr/bin/env ys-0\n\n";
+
+for my $file ($core, $entry) {
+  open my $in, '<', $file
+    or die "compose-ysd: cannot read $file: $!\n";
+  while (my $line = <$in>) {
+    next if $line =~ /^#!/;
+    next if $line =~ m{^ys::ys/load-file:};
+    print {$out} $line;
+  }
+  close $in or die "compose-ysd: cannot close $file: $!\n";
+  print {$out} "\n";
+}
+
+close $out or die "compose-ysd: cannot close $output.tmp: $!\n";
+rename "$output.tmp", $output
+  or die "compose-ysd: cannot rename $output.tmp: $!\n";

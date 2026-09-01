@@ -1,0 +1,219 @@
+name: Python release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version or tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ inputs.version || github.event.release.tag_name }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ env.VERSION }}
+    - id: version
+      name: Verify version
+      shell: bash
+      run: |
+        version=${VERSION#v}
+        expected=$(perl -ne '
+          print "$1\n" if /^YSD-VERSION := ([0-9]+\.[0-9]+\.[0-9]+)$/
+        ' Makefile)
+        test "$version" = "$expected"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - runner: ubuntu-latest
+          image: quay.io/pypa/manylinux_2_28_x86_64
+          arch: x64
+        - runner: ubuntu-24.04-arm
+          image: quay.io/pypa/manylinux_2_28_aarch64
+          arch: arm64
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    steps:
+    - name: Install build dependencies
+      run: dnf install -y curl git gzip make perl tar unzip xz zip
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ env.VERSION }}
+    - name: Configure Git workspace
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Build and test
+      shell: bash
+      run: |
+        make libysd
+        make -C python test
+        make -C python wheel
+        auditwheel show python/dist/*.whl
+        mkdir -p dist
+        archive="dist/libysd-${{ needs.verify.outputs.version }}"
+        archive="$archive-linux-${{ matrix.arch }}.tar.gz"
+        tar -czf "$archive" libysd.so lib/ysd.h
+    - uses: actions/upload-artifact@v6
+      with:
+        name: python-linux-${{ matrix.arch }}
+        path: |
+          dist/libysd-*.tar.gz
+          python/dist/*.whl
+
+  build-macos:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - runner: macos-15-intel
+          arch: x64
+        - runner: macos-14
+          arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ env.VERSION }}
+    - name: Install build dependencies
+      run: brew install xz
+    - name: Build and test
+      run: |
+        make libysd
+        make -C python test
+        make -C python wheel
+        otool -L libysd.dylib
+        mkdir -p dist
+        archive="dist/libysd-${{ needs.verify.outputs.version }}"
+        archive="$archive-macos-${{ matrix.arch }}.tar.gz"
+        tar -czf "$archive" libysd.dylib lib/ysd.h
+    - uses: actions/upload-artifact@v6
+      with:
+        name: python-macos-${{ matrix.arch }}
+        path: |
+          dist/libysd-*.tar.gz
+          python/dist/*.whl
+
+  build-windows:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ env.VERSION }}
+    - name: Install cross compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          curl gcc-mingw-w64-x86-64 perl unzip xz-utils zip
+    - name: Build wheel
+      run: |
+        make .cache/ysd-lib.ys
+        gloat=$(make --no-print-directory -s \
+          --eval='print-gloat:;@printf "%s\n" "$(GLOAT)"' print-gloat)
+        "$gloat" .cache/ysd-lib.ys \
+          --out=libysd.dll --platform=windows/amd64 \
+          --force --quiet --module=github.com/yaml/yamlschema
+        make -C python wheel \
+          WHEEL-PLAT=win_amd64 \
+          NATIVE-LIB=../libysd.dll \
+          PACKAGE-LIB=lib/ysd/libysd.dll
+        mkdir -p dist/libysd
+        cp libysd.dll lib/ysd.h dist/libysd/
+        cd dist && zip -qr \
+          "libysd-${{ needs.verify.outputs.version }}-windows-x64.zip" \
+          libysd
+    - uses: actions/upload-artifact@v6
+      with:
+        name: python-windows-x64
+        path: |
+          dist/libysd-*.zip
+          python/dist/*.whl
+
+  test-wheels:
+    needs: [build-linux, build-macos, build-windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - runner: ubuntu-latest
+          artifact: python-linux-x64
+        - runner: ubuntu-24.04-arm
+          artifact: python-linux-arm64
+        - runner: macos-15-intel
+          artifact: python-macos-x64
+        - runner: macos-14
+          artifact: python-macos-arm64
+        - runner: windows-2022
+          artifact: python-windows-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - uses: actions/download-artifact@v7
+      with:
+        name: ${{ matrix.artifact }}
+        path: artifacts
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.10"
+    - name: Install and smoke test wheel
+      shell: bash
+      run: |
+        wheel=$(find artifacts -name '*.whl' -print -quit)
+        test -n "$wheel"
+        python -m pip install "$wheel"
+        python - <<'PY'
+        from ysd import YAMLSchema
+
+        ysd = YAMLSchema()
+        assert ysd.version()
+        assert "name: +Str" in ysd.json_schema_to_ysd({
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        })
+        PY
+
+  publish:
+    needs: [verify, test-wheels]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v7
+      with:
+        pattern: python-*
+        path: artifacts
+        merge-multiple: true
+    - uses: actions/setup-python@v6
+      with:
+        python-version: "3.14"
+    - name: Verify artifacts
+      run: |
+        test "$(find artifacts -name '*.whl' | wc -l)" = 5
+        python -m pip install twine
+        python -m twine check artifacts/*.whl
+    - name: Upload GitHub release assets
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release upload "v${{ needs.verify.outputs.version }}" \
+          --clobber artifacts/libysd-* artifacts/*.whl
+    - name: Publish wheels to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: python -m twine upload --skip-existing artifacts/*.whl

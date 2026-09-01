@@ -77,8 +77,10 @@ $(EDITOR-BUNDLE): $(EDITOR-SOURCES) rollup.config.mjs $(NODE-MODULES)
 $(NODE-MODULES): package.json package-lock.json $(NODE)
 	npm ci
 
-$(WASM): ../bin/ysd $(GLOAT)
-	$(GLOAT) -qf -t js -o $@ $<
+$(WASM): \
+  ../lib/ysd/core.ys ../lib/ysd/cli.ys ../util/compose-ysd $(GLOAT)
+	$(MAKE) -C .. .cache/ysd-cli.ys
+	$(GLOAT) -qf -t js -o $@ ../.cache/ysd-cli.ys
 
 $(WASM-EXEC): $(GLOAT)
 	go_bin=$$($(GLOAT) --which=go); \

@@ -457,7 +457,7 @@ Here we added come new constraints:
 * Strings can have sizes `min-max`
 * Numbers can have ranges `min..max`
 
-This is just a glimpse of what YAMLSchema can alrady do.
+This is just a glimpse of what YAMLSchema can already do.
 
 Less than 20 lines of YAMLSchema expressed the same thing as over 100 lines of
 JSON Schema.
@@ -470,7 +470,6 @@ validate your data.
 That's the point, for now.
 Define more about your data with less definition, and make it easy to read and
 understand for you and others who look at it tomorrow.
-
 
 
 ## On YAMLScript
@@ -526,7 +525,7 @@ When you define data precisely, there is so much more you can do with the schema
 than just use it to validate data.
 
 You can use it to generate code, documentation, user interfaces, line protocols,
-fuzz-testing data generators, and more.
+database schema, unit tests, fuzz-testing data, and more.
 This is what OpenAPI has been doing for years, but applied much more broadly
 than just REST APIs.
 

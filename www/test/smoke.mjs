@@ -326,6 +326,30 @@ if (
   throw new Error(`unexpected normalized JSON: ${normalizedResult.value}`);
 }
 
+const normalizedRefResult = globalThis.gloat.exports[
+  'json-schema-normalize'
+]('{"$defs":{"Contact":{"type":"object"}},' +
+  '"$ref":"#/definitions/Contact"}');
+const normalizedRefSchema = normalizedRefResult.ok
+  ? JSON.parse(normalizedRefResult.value)
+  : {};
+if (
+  !normalizedRefResult.ok ||
+  normalizedRefSchema.$ref !== '#/$defs/Contact'
+) {
+  throw new Error(`unexpected normalized reference: ${JSON.stringify(
+    normalizedRefResult,
+  )}`);
+}
+const normalizedRefYSD = globalThis.gloat.exports[
+  'json-schema-to-ysd'
+](normalizedRefResult.value);
+if (!normalizedRefYSD.ok) {
+  throw new Error(`normalized reference conversion failed: ${JSON.stringify(
+    normalizedRefYSD,
+  )}`);
+}
+
 const strictInput = JSON.stringify({
   type: 'object',
   properties: {
