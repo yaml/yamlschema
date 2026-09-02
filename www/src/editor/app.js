@@ -96,6 +96,9 @@ const sampleSources = {
     'harbor-next': {
       url: assetURL('examples/harbor-next.schema.json'),
     },
+    'openqa-job-templates': {
+      url: assetURL('examples/openqa-job-templates.schema.json'),
+    },
     'openapi-3-schema': {
       url: assetURL('examples/openapi-3-schema.schema.json'),
     },

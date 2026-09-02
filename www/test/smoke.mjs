@@ -1085,6 +1085,7 @@ const exampleFiles = [
   'user-profile',
   'ansible-builder',
   'harbor-next',
+  'openqa-job-templates',
   'openapi-3-schema',
   'petstore',
   'netbox-generated',
@@ -1583,7 +1584,7 @@ for (const name of exampleFiles) {
     'utf8',
   );
   const schema = JSON.parse(text);
-  const dialect = name === 'openapi-3-schema'
+  const dialect = ['openapi-3-schema', 'openqa-job-templates'].includes(name)
     ? 'http://json-schema.org/draft-04/schema#'
     : 'https://json-schema.org/draft/2020-12/schema';
   if (schema.$schema &&
@@ -1626,6 +1627,16 @@ for (const name of exampleFiles) {
         roundtrip,
         ysdc,
       })}`);
+    }
+  }
+  if (name === 'openqa-job-templates') {
+    if (
+      schema.$id !== 'http://open.qa/api/schema/JobTemplates-01.yaml' ||
+      schema.description !== 'openQA job template' ||
+      !converted.value.includes('.prefixItems') ||
+      !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
+    ) {
+      throw new Error('openQA Job Templates schema is incorrect');
     }
   }
   if (name === 'openapi-3-schema') {
