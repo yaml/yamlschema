@@ -41,7 +41,9 @@ const roundtripDiffTitle = document.querySelector('#roundtrip-diff-title');
 const roundtripDiffOutput = document.querySelector('#roundtrip-diff');
 const roundtripDiffCopy = document.querySelector('#roundtrip-diff-copy');
 const roundtripDiffClose = document.querySelector('#roundtrip-diff-close');
-const editorHelpOpen = document.querySelector('#editor-help-open');
+const editorHelpOpenControls = document.querySelectorAll(
+  '[data-editor-help-open]',
+);
 const editorHelpDialog = document.querySelector('#editor-help-dialog');
 const editorHelpClose = document.querySelector('#editor-help-close');
 const yamlFormatControls = document.querySelectorAll(
@@ -1220,10 +1222,12 @@ roundtripDiffCopy.addEventListener('click', () => {
 roundtripDiffClose.addEventListener('click', () => {
   roundtripDiffDialog.close();
 });
-editorHelpOpen.addEventListener('click', (event) => {
-  event.preventDefault();
-  editorHelpDialog.showModal();
-});
+for (const control of editorHelpOpenControls) {
+  control.addEventListener('click', (event) => {
+    event.preventDefault();
+    editorHelpDialog.showModal();
+  });
+}
 editorHelpDialog.addEventListener('click', closeHelpFromBackdrop);
 editorHelpClose.addEventListener('click', () => {
   editorHelpDialog.close();

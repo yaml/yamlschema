@@ -8,6 +8,17 @@
      {% endif %}>
   <div class="editor-actions" aria-label="Editor actions">
     <span id="editor-share-status" role="status" aria-live="polite"></span>
+    <button type="button" id="editor-help-button"
+            data-editor-help-open
+            title="Open editor help" aria-label="Open editor help"
+            aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="
+          M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 17h-2v-2h2v2Zm2.1-7.8
+          -.9.9c-.8.8-1.2 1.4-1.2 2.9h-2v-.5c0-1.1.4-2.1 1.2-2.8l1.2-1.2
+          c.4-.4.6-.9.6-1.5a2 2 0 0 0-4 0H8a4 4 0 1 1 7.1 2.2Z"/>
+      </svg>
+    </button>
     <button type="button" id="editor-share"
             title="Share editor link" aria-label="Share editor link">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -40,6 +51,7 @@
                 title="Checking Roundtrip" aria-label="Checking Roundtrip"
                 disabled>…</button>
         <a id="editor-help-open" class="editor-title editor-help-link"
+           data-editor-help-open
            href="#editor-help-dialog" aria-haspopup="dialog"
            title="Open editor help">YAMLSchema</a>
         <div class="format-selector" role="radiogroup"
@@ -311,6 +323,44 @@
         </p>
       </section>
       <section>
+        <h3>How roundtrip checking works</h3>
+        <p>
+          A roundtrip starts with the current source pane and passes the
+          schema through the other format before converting it back.
+          Choosing an example or editing a pane makes that pane the source.
+          Focusing an editable pane also makes it the source and starts a new
+          check.
+          Generated .ysdc is read-only and is not used as a source.
+        </p>
+        <p>For YAMLSchema source, the editor:</p>
+        <ol>
+          <li>Expands .ysd into canonical .ysdc.</li>
+          <li>Converts the schema to normalized JSON Schema.</li>
+          <li>Converts that JSON Schema back to canonical .ysdc.</li>
+          <li>Compares the original and regenerated .ysdc documents.</li>
+        </ol>
+        <p>For JSON Schema source, the editor:</p>
+        <ol>
+          <li>Parses the source as JSON or YAML.</li>
+          <li>Normalizes it as draft 2020-12 JSON Schema.</li>
+          <li>Converts the normalized schema to .ysd.</li>
+          <li>Converts that .ysd back to normalized JSON Schema.</li>
+          <li>Compares the original and regenerated normalized schemas.</li>
+        </ol>
+        <p>
+          Comparing canonical forms ignores presentation differences such as
+          JSON versus YAML serialization, indentation, and compact versus
+          expanded YAMLSchema syntax.
+          It checks whether the supported schema meaning survives conversion.
+        </p>
+        <p>
+          When the comparison fails, select the X indicator to view a unified
+          diff between the canonical original and the canonical roundtrip.
+          Red lines were lost or changed, and green lines were introduced by
+          the conversion.
+        </p>
+      </section>
+      <section>
         <h3>Understand roundtrip status</h3>
         <ul>
           <li><strong>…</strong> means the roundtrip is being checked.</li>
@@ -339,5 +389,5 @@
 </div>
 
 <script type="module"
-        src="{{ base_url }}/assets/editor/app.js?v=23"></script>
+        src="{{ base_url }}/assets/editor/app.js?v=24"></script>
 {% endblock %}

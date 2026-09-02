@@ -755,6 +755,8 @@ if (
   throw new Error('roundtrip diff does not close from its backdrop');
 }
 if (
+  !appSource.includes("'[data-editor-help-open]'") ||
+  !appSource.includes('for (const control of editorHelpOpenControls)') ||
   !appSource.includes('editorHelpDialog.showModal()') ||
   !appSource.includes(
     "editorHelpDialog.addEventListener('click', closeHelpFromBackdrop)",
@@ -1120,7 +1122,7 @@ if (
   !indexHTML.includes('id="gdpr-cookie-banner"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
-  !indexHTML.includes('/assets/editor/app.js?v=23') ||
+  !indexHTML.includes('/assets/editor/app.js?v=24') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -1161,7 +1163,12 @@ if (
   !indexHTML.includes('id="editor-settings-open"') ||
   !indexHTML.includes('aria-label="Open editor settings"') ||
   !indexHTML.includes('class="editor-actions"') ||
+  !indexHTML.includes('id="editor-help-button"') ||
+  !indexHTML.includes('data-editor-help-open') ||
+  !indexHTML.includes('aria-label="Open editor help"') ||
   !indexHTML.includes('id="editor-share"') ||
+  indexHTML.indexOf('id="editor-help-button"') >
+    indexHTML.indexOf('id="editor-share"') ||
   !indexHTML.includes('aria-label="Share editor link"') ||
   !indexHTML.includes('data-copy-editor="yaml"') ||
   !indexHTML.includes('aria-label="Copy YAMLSchema text"') ||
@@ -1203,6 +1210,11 @@ if (
   !indexHTML.includes('back without losing information') ||
   !indexHTML.includes('a diff is available to show') ||
   !indexHTML.includes('Choose a starting schema') ||
+  !indexHTML.includes('How roundtrip checking works') ||
+  !indexHTML.includes('Expands .ysd into canonical .ysdc') ||
+  !indexHTML.includes('Normalizes it as draft 2020-12 JSON Schema') ||
+  !indexHTML.includes('Compares the original and regenerated .ysdc') ||
+  !indexHTML.includes('canonical original and the canonical roundtrip') ||
   !indexHTML.includes('Understand roundtrip status') ||
   !indexHTML.includes('Generated JSON Schema is marked Normal') ||
   !indexHTML.includes('JSON Schema may be written as JSON or YAML') ||
