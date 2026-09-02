@@ -720,6 +720,7 @@ defn normalize-json-map(value root?):
     value =: discard-generated-comment(value)
   result =: omap()
   result =: reduce(\(normalize-json-entry(_1 _2 value)) result value)
+  result =: normalize-required-order(result)
   result =: normalize-definitions(result)
   result =: normalize-ref(result)
   result =: normalize-single-ref-allof(result)
@@ -824,6 +825,17 @@ defn normalize-json-entry(result entry schema):
   if drop:
     then: result
     else: ordered-put(result key normalize-json-keyword-value(key value))
+
+defn normalize-required-order(schema):
+  required =: schema.required
+  properties =: schema.properties
+  if sequential?(required) && map?(properties):
+    then:
+      names =: set(required)
+      defined =: filterv(\(names.has?(_)) properties:keys)
+      undefined =: sort(remove(\(properties.has?(_)) required)):vec
+      ordered-put: schema 'required' vec(defined + undefined)
+    else: schema
 
 defn normalize-json-keyword-value(key value):
   cond:

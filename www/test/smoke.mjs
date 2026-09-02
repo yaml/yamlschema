@@ -1633,6 +1633,7 @@ for (const name of exampleFiles) {
     if (
       schema.$id !== 'http://open.qa/api/schema/JobTemplates-01.yaml' ||
       schema.description !== 'openQA job template' ||
+      roundtrip.value !== true ||
       !converted.value.includes('.prefixItems') ||
       !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
     ) {

@@ -262,11 +262,11 @@ test::
         "v": {"type": "string"},
         "data": {"default": {"z": 1, "a": 2, "m": 3}}
       },
-      "required": ["m", "z", "a"]
+      "required": ["orphan-z", "m", "z", "orphan-a", "a"]
     }
   want: |
     properties z a m y b x c w d v data
-    required m z a
+    required z a m orphan-a orphan-z
     default z a m
 
 - name: succinct-to-json-property-order-over-eight-keys
