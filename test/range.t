@@ -149,6 +149,12 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lower",
+        "upper",
+        "bounded"
+      ],
       "properties": {
         "lower": {
           "type": "integer",
@@ -163,13 +169,7 @@ test::
           "minimum": 0.5,
           "maximum": 1
         }
-      },
-      "required": [
-        "lower",
-        "upper",
-        "bounded"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: exclusive-ranges-to-json-schema
@@ -189,7 +189,7 @@ test::
       .xmin: true
       .xmax: true
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"lower":{"type":"number","minimum":0,"exclusiveMinimum":true},"upper":{"type":"number","maximum":10,"exclusiveMaximum":true},"both":{"type":"number","minimum":0,"maximum":10,"exclusiveMaximum":true,"exclusiveMinimum":true}},"required":["lower","upper","both"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["lower","upper","both"],"properties":{"lower":{"type":"number","minimum":0,"exclusiveMinimum":true},"upper":{"type":"number","maximum":10,"exclusiveMaximum":true},"both":{"type":"number","minimum":0,"maximum":10,"exclusiveMaximum":true,"exclusiveMinimum":true}}}
 
 - name: exclusive-range-validation-errors
   cmnd: |

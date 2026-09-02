@@ -141,10 +141,10 @@ test::
       rm -r "$dir"
     '
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
 
 - name: all-input-file-extensions
   cmnd: |
@@ -297,11 +297,11 @@ test::
     '
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"foo":{"type":"string"}},"required":["foo"],"additi
-    onalProperties":false}
+    bject","additionalProperties":false,"required":["foo"],"properties":{"fo
+    o":{"type":"string"}}}
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"foo":{"type":"string"}},"required":["foo"],"additi
-    onalProperties":false}
+    bject","additionalProperties":false,"required":["foo"],"properties":{"fo
+    o":{"type":"string"}}}
 
 - name: canonical-like-input
   cmnd: |

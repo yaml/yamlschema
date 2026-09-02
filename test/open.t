@@ -53,8 +53,7 @@ test::
         flag?: +Bool
         +Str: +Any
 
-    explicitAny?:
-      +Str: +Any
+    explicitAny?: +Map{}
     explicitStr?: +Map{+Str}
 
 - name: expanded-form-resolves-inherited-open-state

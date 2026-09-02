@@ -339,6 +339,10 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version"
+      ],
       "properties": {
         "version": {
           "const": "User"
@@ -356,18 +360,14 @@ test::
             },
             {
               "type": "array",
+              "minItems": 1,
               "items": {
                 "type": "string"
-              },
-              "minItems": 1
+              }
             }
           ]
         }
-      },
-      "required": [
-        "version"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: reject-duplicate-hybrid-directive
@@ -387,7 +387,7 @@ test::
       .type: +Str
       .need: [bar]
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"foo":{"type":"string"}},"required":["foo"],"dependentRequired":{"foo":["bar"]},"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"dependentRequired":{"foo":["bar"]},"properties":{"foo":{"type":"string"}}}
 
 - name: reject-list-directive
   cmnd: |

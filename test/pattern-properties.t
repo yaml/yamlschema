@@ -42,7 +42,7 @@ test::
     '/a: b/': +Int
     //foo//: +Bool
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"path":{"type":"string"}},"type":"object","properties":{"name":{"type":"string"}},"required":["name"],"additionalProperties":false,"patternProperties":{"^x-":{},"^\\\/":{"$ref":"#\/$defs\/path"},"a: b":{"type":"integer"},"\/foo\/":{"type":"boolean"}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["name"],"patternProperties":{"^x-":{},"^\\\/":{"$ref":"#\/$defs\/path"},"a: b":{"type":"integer"},"\/foo\/":{"type":"boolean"}},"$defs":{"path":{"type":"string"}},"properties":{"name":{"type":"string"}}}
 
 - name: pattern-properties-roundtrip
   cmnd: bin/ysd -R -f jsc -
@@ -62,6 +62,23 @@ test::
     }
   want: |
     OK
+
+- name: succinct-open-pattern-map
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "patternProperties": {
+        "^\\.[a-z0-9_]+$": {
+          "type": "object",
+          "description": "Definitions that can be re-used"
+        }
+      },
+      "additionalProperties": false
+    }
+  want: |
+    # Converted from JSON Schema
+    /^\.[a-z0-9_]+$/: +Map{} "Definitions that can be re-used"
 
 - name: empty-pattern-properties-normalize-away
   cmnd: bin/ysd -R -f jsc -
@@ -88,7 +105,7 @@ test::
       /^q-/: +Num
       +Str: +Any
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"root":{"type":"string"},"closed":{"type":"object","properties":{"known":{"type":"integer"}},"additionalProperties":false,"patternProperties":{"^p-":{"type":"boolean"}}},"local":{"type":"object","patternProperties":{"^q-":{"type":"number"}}}},"required":["closed","local"],"patternProperties":{"^x-":{}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","required":["closed","local"],"patternProperties":{"^x-":{}},"properties":{"root":{"type":"string"},"closed":{"type":"object","additionalProperties":false,"patternProperties":{"^p-":{"type":"boolean"}},"properties":{"known":{"type":"integer"}}},"local":{"type":"object","patternProperties":{"^q-":{"type":"number"}}}}}
 
 - name: pattern-mapping-sizes
   cmnd: bin/ysd -f jsc -t ysd -

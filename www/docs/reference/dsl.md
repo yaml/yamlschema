@@ -93,8 +93,8 @@ The key names the type and references use the same slug:
 
 ```yaml
 +resources:
-  requests?: +Map{+Any}
-  limits?: +Map{+Any}
+  requests?: +Map{}
+  limits?: +Map{}
 
 resources?: +resources
 ```
@@ -138,11 +138,12 @@ labels:
 String-keyed maps can name their value type directly:
 
 ```yaml
-config: +Map{+Any}
+config: +Map{}
 labels: +Map{+Str}
 flags: +Map{+flag}
 ```
 
+`+Map{}` expands to `+Str: +Any`.
 `+Map{+Type}` expands to `+Str: +Type`.
 The value type must be one built-in, user-defined, or namespaced reference.
 Map parameters use braces; parenthesized forms such as `+Map(+Any)` are
@@ -152,14 +153,15 @@ An incomplete `+Map` must be completed by sibling key/value pairs.
 Lists of maps append the list suffix to the value type:
 
 ```yaml
-maps: +Map{+Any}[]
+maps: +Map{}[]
 other: +Map{+Str}[]
 ```
 
-The reserved future form `+Map{+Key,+Value}` will support YAML key schemas.
-It is not implemented yet.
-The current one-reference form is shorthand for `+Map{+Str,+Value}` and
-therefore fixes keys to strings.
+The two-reference form requires `+Str` as its key type.
+`+Map{+Str,+Value}` is the explicit equivalent of `+Map{+Value}`.
+Therefore `+Map{}`, `+Map{+Any}`, and `+Map{+Str,+Any}` all describe an open
+mapping with string keys and unrestricted values.
+Generated YAMLSchema uses the shortest form, `+Map{}`.
 
 Mappings are closed by default.
 Top-level `.open: true` changes the default for the document mapping and every
@@ -246,7 +248,9 @@ non-empty property-to-type mappings.
 | `+Bool` | `true` or `false` |
 | `+Null` | `null` |
 | `+Map` | A mapping shape completed by sibling property definitions |
+| `+Map{}` | An open mapping with string keys and unrestricted values |
 | `+Map{+Type}` | A mapping with string keys and `+Type` values |
+| `+Map{+Str,+Type}` | The explicit string-key form of `+Map{+Type}` |
 | `+Tup{...}` | A positional sequence |
 
 Capitalized type names are reserved for these built-ins and the `+One`,
@@ -265,7 +269,7 @@ ratio: +Float
 number: +Num
 enabled: +Bool
 nothing: +Null
-metadata: +Map{+Any}
+metadata: +Map{}
 labels: +Map{+Str}
 point: +Tup{+Num,+Num}
 person:
@@ -309,10 +313,11 @@ Bare `+Map` is intentionally incomplete.
 It must have sibling property definitions, as in `person`, and its `.type`
 marker disappears during canonical expansion because the mapping shape already
 implies the type.
-Use `+Map{+Any}` for an otherwise unconstrained string-keyed mapping, or
+Use `+Map{}` for an otherwise unconstrained string-keyed mapping, or
 `+Map{+Type}` to constrain every value.
-The future two-argument form `+Map{+Key,+Value}` is reserved for mappings
-whose keys also have a schema.
+`+Map{+Any}` and `+Map{+Str,+Any}` are equivalent input aliases for
+`+Map{}`.
+The two-argument form accepts only `+Str` as its key type.
 
 Built-ins can be modified by the rest of the DSL.
 `+Type[]` is a list of that type, `+Type~` also accepts null, and `+Any(...)`,
@@ -348,7 +353,7 @@ It is the compact form of JSON Schema `prefixItems` with an unrestricted
 Tuple members can use other compact type expressions, including nested tuples:
 
 ```yaml
-record: +Tup{+Tup{+Str,+Int},+Map{+Any}}
+record: +Tup{+Tup{+Str,+Int},+Map{}}
 ```
 
 List and nullable suffixes follow the complete tuple expression:
@@ -533,7 +538,7 @@ A size clause also works after string, list, or mapping constraints:
 ```yaml
 code: +Str 8
 names: +Str[] 1+
-labels: +Map{+Any} 1-20
+labels: +Map{} 1-20
 ```
 
 Canonical sizes contain one number for an open upper bound and two for a

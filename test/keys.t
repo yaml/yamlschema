@@ -62,26 +62,26 @@ test::
       "type": "object",
       "anyOf": [
         {
+          "required": [
+            "harborAdminPassword"
+          ],
           "properties": {
             "harborAdminPassword": {
               "type": "string",
               "minLength": 8
             }
-          },
-          "required": [
-            "harborAdminPassword"
-          ]
+          }
         },
         {
+          "required": [
+            "existingSecretAdminPassword"
+          ],
           "properties": {
             "existingSecretAdminPassword": {
               "type": "string",
               "minLength": 1
             }
-          },
-          "required": [
-            "existingSecretAdminPassword"
-          ]
+          }
         }
       ]
     }
@@ -101,7 +101,7 @@ test::
       - third: +Bool
       - fourth: +Null
   want: |
-    [{"anyOf":[{"properties":{"first":{"type":"string"}},"required":["first"]},{"properties":{"second":{"type":"integer"}}}]},{"anyOf":[{"properties":{"third":{"type":"boolean"}},"required":["third"]},{"properties":{"fourth":{"type":"null"}},"required":["fourth"]}]}]
+    [{"anyOf":[{"required":["first"],"properties":{"first":{"type":"string"}}},{"properties":{"second":{"type":"integer"}}}]},{"anyOf":[{"required":["third"],"properties":{"third":{"type":"boolean"}}},{"required":["fourth"],"properties":{"fourth":{"type":"null"}}}]}]
 
 - name: key-rule-validation-errors
   cmnd: |

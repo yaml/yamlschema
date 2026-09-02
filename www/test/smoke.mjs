@@ -433,6 +433,10 @@ const strictInput = JSON.stringify({
       type: 'object',
       additionalProperties: {},
     },
+    combinedOpen: {
+      type: 'object',
+      allOf: [{type: 'object'}],
+    },
     typed: {
       type: 'object',
       additionalProperties: {type: 'string'},
@@ -455,6 +459,7 @@ const normalOpenYSD = globalThis.gloat.exports[
 if (
   !normalOpenYSD.ok ||
   !normalOpenYSD.value.includes('.open: true') ||
+  !normalOpenYSD.value.includes('+Map{}') ||
   !normalOpenYSD.value.includes('+Str: +Any')
 ) {
   throw new Error(`normal open conversion changed: ${JSON.stringify(
@@ -473,6 +478,9 @@ for (const operation of [
     !result.ok ||
     result.value.includes('.open:') ||
     result.value.includes('+Str: +Any') ||
+    result.value.includes('+Map{}') ||
+    result.value.includes('+Map{+Any}') ||
+    result.value.includes('+Map{+Str,+Any}') ||
     !result.value.includes(typedRule)
   ) {
     throw new Error(`invalid strict conversion: ${JSON.stringify({
@@ -511,6 +519,8 @@ if (
   strictSchema.properties?.implicit?.additionalProperties !== false ||
   strictSchema.properties?.explicitAny?.additionalProperties !== false ||
   strictSchema.properties?.explicitEmpty?.additionalProperties !== false ||
+  strictSchema.properties?.combinedOpen?.allOf?.[0]
+    ?.additionalProperties !== false ||
   strictSchema.properties?.closed?.properties?.reopened
     ?.additionalProperties !== false ||
   strictSchema.properties?.typed?.additionalProperties?.type !== 'string'
@@ -1222,8 +1232,8 @@ if (
   !indexHTML.includes('Editing the JSON Schema clears that mark') ||
   !indexHTML.includes('Select Normal to replace edited JSON Schema') ||
   !indexHTML.includes('Strict becomes available after editable JSON Schema') ||
-  !indexHTML.includes('Strict removes `.open` directives and ' +
-    '`+Str: +Any` wildcard pairs') ||
+  !indexHTML.includes('Strict removes `.open` directives and suppresses ' +
+    'open-map forms such') ||
   !indexHTML.includes('Once applied, Strict remains checked') ||
   !indexHTML.includes('Editing the JSON Schema clears Strict') ||
   !indexHTML.includes('Share content and lines')
@@ -1233,7 +1243,7 @@ if (
 if (
   !jsonSchemaReference.includes('## Strict Editor Conversion') ||
   !jsonSchemaReference.includes('removing `.open` directives') ||
-  !jsonSchemaReference.includes('`+Str: +Any` wildcard pairs') ||
+  !jsonSchemaReference.includes('open-map forms such as `+Map{}`') ||
   !jsonSchemaReference.includes('`additionalProperties: false`') ||
   !jsonSchemaReference.includes('Strict remains checked and disabled') ||
   !jsonSchemaReference.includes('Editing the JSON Schema clears Strict')
@@ -1634,7 +1644,11 @@ for (const name of exampleFiles) {
       schema.$id !== 'http://open.qa/api/schema/JobTemplates-01.yaml' ||
       schema.description !== 'openQA job template' ||
       roundtrip.value !== true ||
-      !converted.value.includes('.prefixItems') ||
+      !converted.value.includes('+Tup{+Str?,+Any...}') ||
+      !converted.value.includes(
+        '/^\\.[a-z0-9_]+$/: +Map{} ' +
+        '"Definitions that can be re-used"',
+      ) ||
       !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
     ) {
       throw new Error('openQA Job Templates schema is incorrect');

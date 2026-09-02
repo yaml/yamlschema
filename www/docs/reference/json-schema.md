@@ -111,7 +111,7 @@ Normal and Strict regeneration produce canonical JSON.
 The browser editor enables its **Strict** checkbox after editable JSON Schema
 successfully generates `.ysd` or `.ysdc`.
 Selecting it closes every unconstrained mapping by removing `.open` directives
-and `+Str: +Any` wildcard pairs.
+and suppressing open-map forms such as `+Map{}` and `+Str: +Any`.
 Typed additional-property rules such as `+Str: +Str` and `+Map{+Str}` remain
 unchanged.
 
@@ -178,7 +178,7 @@ Their direct JSON Schema mappings are:
 | `{"type": "number"}` | `+Num` |
 | `{"type": "boolean"}` | `+Bool` |
 | `{"type": "null"}` | `+Null` |
-| `{"type": "object"}` | `+Map{+Any}` or a mapping shape |
+| `{"type": "object"}` | `+Map{}` or a mapping shape |
 | `{"type": "array"}` | `+Any[]` or another value-side `+Type[]` |
 | `{"type": ["string", "integer"]}` | `+Any(+Str,+Int)` |
 
@@ -735,7 +735,7 @@ Explicit JSON Schema values import as follows:
 
 | JSON Schema | YAMLSchema |
 | --- | --- |
-| `additionalProperties: true` | Inherited openness or `+Str: +Any` |
+| `additionalProperties: true` | `+Map{}` or `+Str: +Any` |
 | `additionalProperties: {"type":"string"}` | `+Map{+Str}` |
 | `additionalProperties: {"$ref":"..."}` | `+Map{+name}` |
 | constrained `additionalProperties` | `+Str: schema` |
@@ -764,8 +764,9 @@ and uses a final `+Str: +Any` wildcard where a closed inherited default must
 be opened.
 
 An incomplete `+Map` requires sibling properties.
-The importer emits a wildcard block for pure unconstrained open objects.
-The `+Map{+Any}` shorthand remains valid input.
+The importer emits `+Map{}` for pure unconstrained open object values.
+`+Map{+Any}` and `+Map{+Str,+Any}` remain equivalent input aliases.
+Strict conversion does not emit these open-map forms.
 
 When named properties coexist with `additionalProperties`, the importer emits
 an explicit wildcard after the named properties:
@@ -796,8 +797,8 @@ schemas with Boolean pattern values, which are not native YAMLSchema types.
 The native and legacy forms cannot be mixed in one mapping.
 
 `+Map{+Type}` accepts one built-in, user-defined, or namespaced reference.
-It is shorthand for the future `+Map{+Str,+Type}` form.
-Two-reference maps are reserved for YAML key schemas but are not implemented.
+`+Map{+Str,+Type}` is its explicit equivalent.
+The two-reference form currently accepts only `+Str` as its key type.
 More complex value constraints continue to use explicit `+Str` syntax.
 
 Generated `.ysd.yaml` begins with `# Converted from JSON Schema`.

@@ -56,11 +56,6 @@ test::
       "$id": "https://example.com/device.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
-      "properties": {
-        "deviceType": {
-          "type": "string"
-        }
-      },
       "required": [
         "deviceType"
       ],
@@ -81,7 +76,12 @@ test::
             }
           }
         }
-      ]
+      ],
+      "properties": {
+        "deviceType": {
+          "type": "string"
+        }
+      }
     }
 
 - name: root-one-from-json-schema

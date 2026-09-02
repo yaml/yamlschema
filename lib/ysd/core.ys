@@ -1001,16 +1001,15 @@ defn canonical-json-schema(value):
       value
 
 defn canonical-json-map(value):
-  result =: omap()
-  preferred =: ordered-preferred-json-schema-keys(value)
-  result =: reduce(\(add-canonical-key(_1 _2 value))
-                   result preferred)
+  keys =: ordered-json-schema-keys(value)
+  reduce \(add-canonical-key(_1 _2 value)): omap() keys
+
+defn ordered-json-schema-keys(value):
+  preferred =: preferred-json-schema-keys()
   extra-keys =:
     sort(remove(\(preferred-json-schema-key?(_)) value:keys))
-  reduce \(add-canonical-key(_1 _2 value)): result extra-keys
-
-defn ordered-preferred-json-schema-keys(value):
-  keys =: preferred-json-schema-keys()
+  properties =: preferred.remove(\(_ == 'properties'))
+  keys =: vec(properties + extra-keys + ['properties'])
   if json-defs-follow-root?(value):
     then:
       ordered =: vec(keys.remove(\(_ == '$defs')))
@@ -1019,11 +1018,17 @@ defn ordered-preferred-json-schema-keys(value):
 
 defn json-defs-follow-root?(value):
   when contains?(value '$defs'):
-    root-keys =: set(drop(7 preferred-json-schema-keys()))
+    root-keys =: json-schema-root-content-keys()
     keys =: value:keys
     keys:
       .take-while(\(_ != '$defs'))
       .some(\(root-keys.has?(_)))
+
+defn json-schema-root-content-keys():
+  metadata =:
+    set: qw($id $schema $comment $anchor title description $defs)
+  set:
+    remove \(metadata.has?(_)): preferred-json-schema-keys()
 
 defn add-canonical-key(result key value):
   if contains?(value key):
@@ -1065,12 +1070,12 @@ defn preferred-json-schema-key?(key):
 
 defn preferred-json-schema-keys():
   split _ ' ':
-    '$comment $id $schema $anchor title description
-    $defs type format enum const default $ref
-    properties required dependentRequired additionalProperties
-    patternProperties items uniqueItems minItems maxItems
+    '$id $schema $comment $anchor title description
+    type format $ref const default
     minimum maximum minLength maxLength
-    minProperties maxProperties'
+    minItems maxItems uniqueItems minProperties maxProperties
+    items additionalProperties required patternProperties
+    enum dependentRequired $defs properties'
 
 defn pretty-json(value):
   pretty-value: value 0
@@ -1808,7 +1813,7 @@ defn base-primary-token?(token):
   primary ||: token.starts?('type:')
 
 defn typed-map-primary-token?(token):
-  token =~ /^(?:type:)?\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}(?:\[[^\]]*\])?~?$/
+  token =~ /^(?:type:)?\+Map\{[^\}]*\}(?:\[[^\]]*\])?~?$/
 
 defn expand-primary-token(token):
   when compact-enum-token?(token):
@@ -1832,7 +1837,7 @@ defn parse-primary(token):
   null =: token.ends?('~')
   token =: null.if(token.replace(/~$/) token)
   pattern =:
-    /^(?:type:)?\+Map\{(\+[A-Za-z_][A-Za-z0-9_\/-]*)\}(\[[^\]]*\])?$/
+    /^(?:type:)?\+Map\{([^\}]*)\}(\[[^\]]*\])?$/
   map-match =: re-matches(pattern token)
   cond:
     external-ref-form?(token): external-ref-primary(token null)
@@ -1970,10 +1975,7 @@ defn map-parameter-token?(token):
   token =~ /^(?:type:)?\+Map\{[^\}]*\}(?:\[[^\]]*\])?$/
 
 defn reject-map-parameters(token):
-  body =: token.replace(/^(?:type:)?\+Map\{/).replace(/\}.*$/)
-  if ','.in?(body):
-    usage: '+Map{+Key,+Value} is reserved but not supported yet'
-    usage: '+Map requires exactly one value type reference'
+  usage: "invalid map type: $token"
 
 defn compact-combinator-token?(token):
   pattern =:
@@ -2014,20 +2016,42 @@ defn compact-combinator-primary(token null):
   =>: +{'block' block, 'suffix' match.3, 'null' null}
 
 defn compact-combinator-members(name body):
-  members =: body.split(',').map(trim):vec
+  members =: split-tuple-members(body).map(trim):vec
   minimum =: name.eq('Not').if(1 2)
   too-few =: body:trim:empty? || (members.# < minimum)
   when too-few:
     requirement =:
       minimum.eq(1).if('one type reference' 'two type references')
     usage: "+$name requires at least $requirement"
-  when-not members.every?(type-symbol?):
+  when-not members.every?(direct-type-symbol?):
     usage: "+$name accepts only type references"
   =>: members
 
 defn typed-map-primary(match null):
-  +{'block' typed-map-block(match.1),
-    'suffix' match.2, 'null' null}
+  value-type =: map-parameter-value-type(match.1)
+  identity: +{'block' typed-map-block(value-type),
+              'suffix' match.2, 'null' null}
+
+defn map-parameter-value-type(body):
+  params =:
+    body:trim:empty?.if([] body.split(',').map(trim):vec)
+  when params.some(empty?):
+    usage: '+Map parameters cannot be empty'
+  cond:
+    params:empty?: '+Any'
+    params.# == 1: validate-map-parameter-type(params.0 'value')
+    params.# == 2:
+      key-type =: validate-map-parameter-type(params.0 'key')
+      when key-type != '+Str':
+        usage: '+Map key type must be +Str'
+      validate-map-parameter-type: params.1 'value'
+    else:
+      usage: '+Map requires zero, one, or two type references'
+
+defn validate-map-parameter-type(type role):
+  when-not type-symbol?(type):
+    usage: "+Map $role type must be a type reference"
+  =>: type
 
 defn normal-primary(token null):
   match =: re-matches(/^(.*?)(\[[^\]]*\])$/ token)
@@ -2206,10 +2230,10 @@ defn direct-type-symbol?(token):
     re-pattern:
       str: +
         '^\+[A-Za-z_][A-Za-z0-9_\/-]*'
-        '(?:\{\+[A-Za-z_][A-Za-z0-9_\/-]*\})?\[\]$'
+        '(?:\{[^\}]*\})?\[\]$'
   result =: type-symbol?(token) ||
     (token =~ list-pattern) ||
-    (token =~ /^\+Map\{\+[A-Za-z_][A-Za-z0-9_\/-]*\}$/)
+    (token =~ /^\+Map\{[^\}]*\}$/)
   =>: result
 
 defn labeled-type-block(token):
@@ -3938,7 +3962,7 @@ defn build-root-key-branch-entry(result entry required open strict=false):
 
 defn build-list-value(schema inherited-open solo=false strict=false):
   item =: array-item-schema(schema)
-  item-scalar =: empty?(item).if('+Any' succinct-scalar(item))
+  item-scalar =: empty?(item).if('+Any' succinct-scalar(item strict))
   suffix =: list-suffix(schema solo)
   value =:
     if item-scalar:
@@ -3981,8 +4005,9 @@ defn build-value(schema inherited-open=true strict=false):
 defn build-ordinary-value(schema inherited-open=true strict=false):
   validate-schema-dependent-required: schema
   scalar-schema =: schema-without-description(schema)
-  scalar =: succinct-default-scalar(scalar-schema)
-  description-scalar =: scalar || succinct-array-scalar(scalar-schema)
+  scalar =: succinct-default-scalar(scalar-schema strict)
+  description-scalar =:
+    scalar || succinct-array-scalar(scalar-schema strict)
   cond:
     description-scalar && succinct-description?(schema):
       annotated-scalar: description-scalar schema.description
@@ -4026,7 +4051,7 @@ defn schema-without-description(schema):
       dissoc: schema 'description'
     else: schema
 
-defn succinct-default-scalar(schema):
+defn succinct-default-scalar(schema strict=false):
   if contains?(schema 'default'):
     then:
       marked =: schema.has?('enum').when(
@@ -4034,11 +4059,11 @@ defn succinct-default-scalar(schema):
       if marked:
         then: marked
         else:
-          scalar =: succinct-scalar(dissoc(schema 'default'))
+          scalar =: succinct-scalar(dissoc(schema 'default') strict)
           token =: tight-default-token(schema.'default')
           when scalar && token.?:
             =>: "$scalar =$token"
-    else: succinct-scalar(schema)
+    else: succinct-scalar(schema strict)
 
 defn tight-default-token(value):
   cond:
@@ -4068,7 +4093,7 @@ defn annotated-scalar(scalar description):
   body =: encode-tight-string(description)
   =>: "$scalar \"$body\""
 
-defn succinct-array-scalar(schema):
+defn succinct-array-scalar(schema strict=false):
   is-array =: json-type(schema).eq('array')
   item-schema =: array-item-schema(schema)
   marked =:
@@ -4076,7 +4101,7 @@ defn succinct-array-scalar(schema):
       compact-enum-default-scalar:
         item-schema.put('default' schema.'default')
   when is-array && (marked || array-as-suffix?(schema)):
-    item =: marked || succinct-scalar(item-schema)
+    item =: marked || succinct-scalar(item-schema strict)
     when item:
       append-list-suffix: item list-suffix(schema)
 
@@ -4096,7 +4121,7 @@ defn build-properties-map(schema inherited-open strict=false):
   result =: add-pattern-properties(result schema child-open strict)
   result =: add-wildcard-entry(result schema inherited-open strict)
   result =: add-imported-combinators(result schema child-open strict)
-  result =: add-passthrough-directives(result schema)
+  result =: add-passthrough-directives(result schema strict)
   ordered-directives: result
 
 defn add-imported-combinators(result schema inherited-open strict=false):
@@ -4128,10 +4153,9 @@ defn add-block(result schema inherited-open=true strict=false):
   ts ||=: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
-  tuple =: native-tuple-block(schema)
+  tuple =: native-tuple-block(schema strict)
   pure-map =: t.eq('object') && object-with-fields?(schema).!
-  map-base =: pure-map.when(open-map-base(schema))
-  map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
+  map-base =: pure-map.when(open-map-base(schema strict))
   child-open =: imported-child-open(schema inherited-open)
   result =: tuple || result
   result =: add-schema-name-directive(result schema)
@@ -4208,7 +4232,7 @@ defn add-block(result schema inherited-open=true strict=false):
             map-base.if(result
               add-wildcard-entry(result schema inherited-open strict))
       else: result
-  add-passthrough-directives: result schema
+  add-passthrough-directives: result schema strict
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
@@ -4245,7 +4269,7 @@ defn add-array-items(result is-array schema inherited-open strict=false):
   if is-array && schema.items.?:
     then:
       items =: schema.items
-      item-scalar =: succinct-scalar(items)
+      item-scalar =: succinct-scalar(items strict)
       if item-scalar:
         then: ordered-put(result '.type' "$item-scalar[]")
         else:
@@ -4263,9 +4287,14 @@ defn typed-map-base(schema):
   value-type =: map-value-type-ref(schema)
   value-type: .when("+Map{$value-type}")
 
-defn open-map-base(schema):
-  when contains?(schema 'additionalProperties'):
-    typed-map-base: schema
+defn open-map-base(schema strict=false):
+  base =:
+    if contains?(schema 'additionalProperties'):
+      typed-map-base: schema
+      json-unconstrained-open?(schema): .when('+Map{}')
+  base =: base.eq('+Map{+Any}').if('+Map{}' base)
+  base :if (strict && base.eq('+Map{}')) =: nil
+  =>: base
 
 defn imported-child-open(schema inherited-open):
   close =: json-closed?(schema) && inherited-open
@@ -4352,20 +4381,21 @@ defn add-combinator-directive(result schema key directive open strict=false):
 # which yamlschema can encode requiredness.
 # Their values remain opaque JSON Schema data until a native yamlschema
 # representation is implemented.
-defn add-passthrough-directives(result schema):
+defn add-passthrough-directives(result schema strict=false):
   result =:
     if schema.required.? && empty?(schema.properties):
       then: result + {'.required' schema.required}
       else: result
-  reduce \(add-passthrough-directive-entry(_1 _2 schema)): result schema
+  reduce \(add-passthrough-directive-entry(_1 _2 schema strict)):
+    result schema
 
-defn add-passthrough-directive-entry(result entry schema):
+defn add-passthrough-directive-entry(result entry schema strict=false):
   key =: entry.0:S
   native-format =: (key == 'format') && native-json-format?(schema)
   native-range =: native-exclusive-range-keyword?(schema key)
   native-pattern =: native-pattern-properties-keyword?(schema key)
   native-tuple =:
-    (key == 'prefixItems') && native-tuple-block-schema?(schema)
+    (key == 'prefixItems') && native-tuple-block-schema?(schema strict)
   unsupported =:
     and:
       unsupported-json-schema-keyword?: key
@@ -4381,27 +4411,28 @@ defn add-passthrough-directive-entry(result entry schema):
 # Succinct-form helpers (unchanged from the original by-hand emitter).
 # --------------------------------------------------------------------
 
-defn succinct-scalar(schema):
+defn succinct-scalar(schema strict=false):
   nullable =: nullable-json-schema?(schema)
   schema =: nullable.if(without-null-type(schema) schema)
-  scalar =: succinct-nonnull-scalar(schema)
+  scalar =: succinct-nonnull-scalar(schema strict)
   when scalar:
     nullable.if(nullable-succinct-scalar(scalar) scalar)
 
 defn nullable-succinct-scalar(scalar):
   scalar.replace(/^(\S+)/ '$1~')
 
-defn succinct-nonnull-scalar(schema):
+defn succinct-nonnull-scalar(schema strict=false):
   cond:
     map?(schema).!!: nil
     empty?(schema): '+Any'
-    tuple-schema?(schema): succinct-tuple-scalar(schema)
+    tuple-schema?(schema): succinct-tuple-scalar(schema strict)
     native-json-format-only?(schema): native-json-format-type(schema)
+    unconstrained-map-only?(schema) && strict.!: '+Map{}'
     typed-map-only?(schema): typed-map-base(schema)
     only-singleton-ref-allof?(schema):
       reference-scalar(schema.allOf.0.'$ref')
-    base-allof-only?(schema): compact-base-allof-scalar(schema)
-    combinator-only?(schema): compact-combinator-scalar(schema)
+    base-allof-only?(schema): compact-base-allof-scalar(schema strict)
+    combinator-only?(schema): compact-combinator-scalar(schema strict)
     type-union-only?(schema): compact-type-union-scalar(schema)
     schema.has?('$ref'):
       only-ref?(schema).when(reference-scalar(schema.'$ref'))
@@ -4423,7 +4454,7 @@ defn tuple-schema?(schema):
     sequential?(schema.prefixItems)
     schema:keys.every?(\(allowed.has?(_)))
 
-defn native-tuple-block-schema?(schema):
+defn native-tuple-block-schema?(schema strict=false):
   allowed =:
     set: +[
       'type', 'prefixItems', 'items', 'minItems', 'maxItems',
@@ -4432,11 +4463,11 @@ defn native-tuple-block-schema?(schema):
   and:
     schema:keys.every?(\(allowed.has?(_)))
     tuple-schema?(core)
-    succinct-tuple-scalar(core).?
+    succinct-tuple-scalar(core strict).?
 
-defn native-tuple-block(schema):
-  when native-tuple-block-schema?(schema):
-    expand-tight: succinct-tuple-scalar(tuple-core-schema(schema))
+defn native-tuple-block(schema strict=false):
+  when native-tuple-block-schema?(schema strict):
+    expand-tight: succinct-tuple-scalar(tuple-core-schema(schema) strict)
 
 defn tuple-core-schema(schema):
   schema =:
@@ -4444,8 +4475,8 @@ defn tuple-core-schema(schema):
   keys =: qw(type prefixItems items minItems maxItems)
   select-keys: schema keys
 
-defn succinct-tuple-scalar(schema):
-  members =: schema.prefixItems.map(succinct-scalar):vec
+defn succinct-tuple-scalar(schema strict=false):
+  members =: schema.prefixItems.map(\(succinct-scalar(_ strict))):vec
   when members.every?(some?):
     count =: members.#
     minimum =: schema.get('minItems' 0)
@@ -4454,7 +4485,7 @@ defn succinct-tuple-scalar(schema):
       map-indexed(
         \(tuple-member-token(_1 _2 required))
         members):vec
-    rest =: tuple-rest-info(schema)
+    rest =: tuple-rest-info(schema strict)
     when rest.valid:
       members =: rest.type.if(conj(members "$(rest.type)...") members)
       token =: "+Tup{$(members.join(','))}"
@@ -4465,7 +4496,7 @@ defn tuple-member-token(index member required):
   optional =: (index < required).if('' '?')
   =>: "$member$optional"
 
-defn tuple-rest-info(schema):
+defn tuple-rest-info(schema strict=false):
   if contains?(schema 'items'):
     then:
       items =: schema.items
@@ -4474,7 +4505,7 @@ defn tuple-rest-info(schema):
         items == true: +{'valid' true, 'type' '+Any'}
         map?(items) && empty?(items): +{'valid' true, 'type' '+Any'}
         else:
-          type =: succinct-scalar(items)
+          type =: succinct-scalar(items strict)
           =>: +{'valid' type.?, 'type' type}
     else: +{'valid' true, 'type' '+Any'}
 
@@ -4511,6 +4542,13 @@ defn typed-map-only?(schema):
   result =: object-type && valid
   =>: result
 
+defn unconstrained-map-only?(schema):
+  allowed =: set(qw(type additionalProperties))
+  and:
+    json-type(schema).eq('object')
+    key-set(schema).every?(\(allowed.has?(_)))
+    json-unconstrained-open?(schema)
+
 defn only-ref?(schema):
   key-set(schema) ==: \{'$ref'}
 
@@ -4546,15 +4584,16 @@ defn schema-base-ref(schema):
 defn has-schema-base-reference?(schema):
   contains?(schema '$ref') || singleton-ref-allof?(schema)
 
-defn schema-type-ref(schema):
+defn schema-type-ref(schema strict=false):
   typed =:
     if type-only?(schema):
-      then: schema.type != 'array'
+      then: schema.type.in?(['array' 'object']).!
       else: false
   cond:
     empty?(schema): '+Any'
     only-ref?(schema): local-ref-sym(schema.'$ref')
     native-json-format-only?(schema): native-json-format-type(schema)
+    unconstrained-map-only?(schema) && strict.!: '+Map{}'
     typed: type-sym(schema.type)
 
 defn combinator-only?(schema):
@@ -4563,7 +4602,7 @@ defn combinator-only?(schema):
     keys.#.eq(1)
     keys:first.in?(qw(oneOf anyOf allOf not))
 
-defn compact-combinator-scalar(schema):
+defn compact-combinator-scalar(schema strict=false):
   keyword =: key-set(schema):first
   info =: +{'oneOf' ['One' 2], 'anyOf' ['Any' 2],
             'allOf' ['All' 2], 'not' ['Not' 1]}.$keyword
@@ -4571,7 +4610,7 @@ defn compact-combinator-scalar(schema):
     if keyword == 'not':
       compact-not-values(schema.not)
       schema.$keyword
-  refs =: values.when(vec(values.map(schema-type-ref)))
+  refs =: values.when(vec(values.map(\(schema-type-ref(_ strict)))))
   when refs:
     when refs.# >= info.1:
       when refs.every?(some?):
@@ -4613,13 +4652,13 @@ defn base-allof-only?(schema):
     when keys.# == 2:
       has?: keys 'allOf'
 
-defn compact-base-allof-scalar(schema):
+defn compact-base-allof-scalar(schema strict=false):
   base-schema =:
     if schema.has?('$ref'):
       then: +{'$ref' schema.'$ref'}
       else: +{'type' schema.type}
-  base =: schema-type-ref(base-schema)
-  refs =: vec(schema.allOf.map(schema-type-ref))
+  base =: schema-type-ref(base-schema strict)
+  refs =: vec(schema.allOf.map(\(schema-type-ref(_ strict))))
   when base:
     when refs.# >= 1:
       when refs.every?(some?):

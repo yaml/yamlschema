@@ -565,13 +565,13 @@ config:
 
 The first mapping accepts any string key with a string value.
 The second accepts `known` plus any other string key with any value.
-Pure arbitrary mappings use `+Map{+Any}`.
+Pure arbitrary mappings use `+Map{}`.
 
 The succinct typed-map form constrains values for otherwise-unmatched string
 keys:
 
 ```yaml
-config: +Map{+Any}
+config: +Map{}
 labels: +Map{+Str}
 custom: +Map{+value}
 ```
@@ -595,7 +595,7 @@ extraEnv?:
   .type: +Map[1-10,$!]
   name: +Str
   value?: +Str
-  valueFrom?: +Map{+Any}
+  valueFrom?: +Map{}
 ```
 
 This is a scalar or unique list of one through ten closed mapping values.
@@ -899,7 +899,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | `type: "number"` | `+Num` |
 | `type: "boolean"` | `+Bool` |
 | `type: "null"` | `+Null` |
-| `type: "object"` | `+Map{+Any}` or a nested mapping shape |
+| `type: "object"` | `+Map{}` or a nested mapping shape |
 | `properties` | Bare mapping keys |
 | `patternProperties` | Slash-delimited regex keys |
 | `required` | Default required keys; omitted names get `?` |

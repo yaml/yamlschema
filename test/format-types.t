@@ -90,16 +90,16 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dateOfBirth"
+      ],
       "properties": {
         "dateOfBirth": {
           "type": "string",
           "format": "date"
         }
-      },
-      "required": [
-        "dateOfBirth"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: nullable-qualified-format-type
@@ -110,6 +110,7 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "completedAt": {
           "type": [
@@ -118,8 +119,7 @@ test::
           ],
           "format": "date-time"
         }
-      },
-      "additionalProperties": false
+      }
     }
 
 - name: unknown-qualified-format-type-is-rejected

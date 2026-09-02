@@ -20,6 +20,10 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "right"
+      ],
       "properties": {
         "repository": {
           "description": "Repository path without registry host",
@@ -55,11 +59,7 @@ test::
         "quoted": {
           "const": "Description"
         }
-      },
-      "required": [
-        "right"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: schema.json-to-succinct-description

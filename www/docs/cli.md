@@ -114,6 +114,22 @@ Normalization adds the draft 2020-12 dialect, chooses canonical keyword
 positions, and preserves property order.
 Draft 4 root `id` normalizes to `$id`.
 
+The preferred keyword order is:
+
+```text
+$id $schema $comment $anchor title description
+type format $ref const default
+minimum maximum minLength maxLength
+minItems maxItems uniqueItems minProperties maxProperties
+items additionalProperties required patternProperties
+enum dependentRequired $defs properties
+```
+
+Unlisted keywords are sorted alphabetically immediately before `properties`.
+Definition and property names retain their source order.
+When root schema content precedes `$defs` in the source, normalization keeps
+that layout by moving `$defs` after `properties`.
+
 ```bash
 ysd -N contact.schema.json
 ysd -N -Y contact.schema.json

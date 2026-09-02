@@ -114,6 +114,7 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "absolute": {
           "$ref": "https://example.com/profile.schema.json"
@@ -143,8 +144,7 @@ test::
           "description": "External profile",
           "$ref": "https://example.com/profile.schema.json"
         }
-      },
-      "additionalProperties": false
+      }
     }
 
 - name: external-ref-canonical-expansion
@@ -204,15 +204,15 @@ test::
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "$anchor": "PersonSchema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string"
         }
-      },
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: definition-anchor-to-name

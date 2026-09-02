@@ -120,18 +120,24 @@ test::
   want: |
     $schema: https://json-schema.org/draft/2020-12/schema
     type: object
+    additionalProperties: false
+    required:
+    - pair
+    - optional
+    - open
+    - rest
     properties:
       pair:
         type: array
-        items: false
         minItems: 2
+        items: false
         prefixItems:
         - type: string
         - type: number
       optional:
         type: array
-        items: false
         minItems: 1
+        items: false
         prefixItems:
         - type: string
         - type: number
@@ -141,17 +147,11 @@ test::
         - type: string
       rest:
         type: array
+        minItems: 1
         items:
           type: number
-        minItems: 1
         prefixItems:
         - type: string
-    required:
-    - pair
-    - optional
-    - open
-    - rest
-    additionalProperties: false
 
 - name: modern-tuple-import
   cmnd: bin/ysd -f jsc -t ysd -

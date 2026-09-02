@@ -80,15 +80,15 @@ test::
       "$id": "https://example.com/device.schema.json?view=full#root",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string"
         }
-      },
-      "required": [
-        "name"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: extensionless-json-id-is-canonicalized

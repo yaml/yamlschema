@@ -281,8 +281,9 @@
           Select it to close every unconstrained mapping in the YAMLSchema and
           regenerate the JSON Schema with `additionalProperties: false` where
           needed.
-          Strict removes `.open` directives and `+Str: +Any` wildcard pairs,
-          while preserving typed wildcard rules such as `+Str: +Str`.
+          Strict removes `.open` directives and suppresses open-map forms such
+          as `+Map{}` and `+Str: +Any`, while preserving typed wildcard rules
+          such as `+Str: +Str`.
           Once applied, Strict remains checked and cannot be undone in the UI.
           Editing the JSON Schema clears Strict; it becomes available again
           after the edited schema successfully generates YAMLSchema.

@@ -74,7 +74,7 @@ Definitions begin with `+` and can be referenced anywhere in the document.
 ```yaml
 tags?: +Str[!1+]
 labels?: +Map{+Str}
-metadata?: +Map{+Any}
+metadata?: +Map{}
 ```
 
 `tags` is a non-empty list of unique strings.

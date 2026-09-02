@@ -80,7 +80,7 @@ test::
     ysd: warning: unsupported JSON Schema keyword "if" at /properties/choice/if
     ysd: warning: unsupported JSON Schema keyword "format" at /properties/choice/if/properties/kind/format
     ysd: warning: unsupported JSON Schema keyword "then" at /properties/choice/then
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"price":{"type":"number","exclusiveMinimum":0,"multipleOf":0.5},"choice":{"if":{"properties":{"kind":{"format":"uuid"}}},"then":{"required":["value"]}}},"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"properties":{"price":{"type":"number","exclusiveMinimum":0,"multipleOf":0.5},"choice":{"if":{"properties":{"kind":{"format":"uuid"}}},"then":{"required":["value"]}}}}
 
 - name: passthrough-array-and-item-keywords-stay-at-their-levels
   cmnd: |

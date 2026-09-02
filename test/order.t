@@ -186,7 +186,7 @@ test::
     root?: +Bool
     +after: +Int
   want: |
-    root $schema $defs type properties additionalProperties
+    root $schema type additionalProperties $defs properties
     defs before after
 
 - name: ysd-root-after-many-definitions-goes-last
@@ -207,7 +207,7 @@ test::
     +nine: +Str
     root?: +Bool
   want: |
-    $schema $defs type properties additionalProperties
+    $schema type additionalProperties $defs properties
 
 - name: ysd-root-before-definitions-goes-first
   cmnd: |
@@ -220,20 +220,122 @@ test::
     +before: +Str
     +after: +Int
   want: |
-    $schema type properties additionalProperties $defs
+    $schema type additionalProperties properties $defs
 
 - name: ysd-root-patterns-precede-definitions
   cmnd: |
     sh -c '
       bin/ysd -t jsc - |
-        jq -r "keys_unsorted | join(\" \")"
+        jq -r "keys_unsorted | join(\" \")" |
+        tr " " "\n"
     '
   stdi: |
     name: +Str
     /^x-/: +Any
     +thing: +Str
   want: |
-    $schema type properties required additionalProperties patternProperties $defs
+    $schema
+    type
+    additionalProperties
+    required
+    patternProperties
+    properties
+    $defs
+
+- name: normalized-json-schema-key-order
+  cmnd: |
+    sh -c '
+      bin/ysd -NC - |
+        jq -r "
+          \"root \" + (keys_unsorted | join(\" \")),
+          \"nested \" +
+            (.properties.nested | keys_unsorted | join(\" \"))
+        " |
+        tr " " "\n"
+    '
+  stdi: |
+    {
+      "title": "All keywords",
+      "$defs": {"item": {"type": "string"}},
+      "properties": {
+        "nested": {
+          "properties": {"leaf": {"type": "string"}},
+          "x-zeta": 2,
+          "maxLength": 10,
+          "description": "Nested schema",
+          "type": "object",
+          "x-alpha": 1,
+          "minLength": 1
+        }
+      },
+      "x-zeta": true,
+      "required": ["nested"],
+      "dependentRequired": {"nested": ["other"]},
+      "enum": [{}],
+      "patternProperties": {"^x": {"type": "string"}},
+      "additionalProperties": false,
+      "items": {"type": "string"},
+      "maxProperties": 8,
+      "minProperties": 1,
+      "uniqueItems": true,
+      "maxItems": 7,
+      "minItems": 2,
+      "maxLength": 6,
+      "minLength": 3,
+      "maximum": 5,
+      "minimum": 4,
+      "default": {"z": 1, "a": 2},
+      "const": "fixed",
+      "$ref": "#/$defs/item",
+      "format": "custom",
+      "type": "object",
+      "description": "Every preferred keyword",
+      "$anchor": "root",
+      "$comment": "Comment",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://example.com/all.schema.json",
+      "x-alpha": true
+    }
+  want: |
+    root
+    $id
+    $schema
+    $comment
+    $anchor
+    title
+    description
+    type
+    format
+    $ref
+    const
+    default
+    minimum
+    maximum
+    minLength
+    maxLength
+    minItems
+    maxItems
+    uniqueItems
+    minProperties
+    maxProperties
+    items
+    additionalProperties
+    required
+    patternProperties
+    enum
+    dependentRequired
+    $defs
+    x-alpha
+    x-zeta
+    properties
+    nested
+    description
+    type
+    minLength
+    maxLength
+    x-alpha
+    x-zeta
+    properties
 
 - name: normalization-preserves-json-object-key-order
   cmnd: |

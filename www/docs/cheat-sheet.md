@@ -122,7 +122,7 @@ person:
   age?: +Int 0..
 
 labels: +Map{+Str}
-metadata: +Map{+Any}
+metadata: +Map{}
 ```
 
 Shaped mappings are closed by default.

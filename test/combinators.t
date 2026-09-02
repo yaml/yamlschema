@@ -35,6 +35,15 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "one",
+        "any",
+        "all",
+        "composed",
+        "not",
+        "values"
+      ],
       "properties": {
         "one": {
           "oneOf": [
@@ -98,16 +107,7 @@ test::
             ]
           }
         }
-      },
-      "required": [
-        "one",
-        "any",
-        "all",
-        "composed",
-        "not",
-        "values"
-      ],
-      "additionalProperties": false
+      }
     }
 
 - name: json-schema-to-compact-combinators
@@ -195,8 +195,7 @@ test::
     # Converted from JSON Schema
     .open: true
 
-    +Base:
-      +Str: +Any
+    +Base: +Map{}
 
     value?:
       .xref: '#/definitions/Base'
@@ -213,7 +212,7 @@ test::
       .desc: Component
       local?: +Int
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}},"type":"object","properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}}}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","$defs":{"base":{"type":"object","properties":{"shared":{"type":"string"}}}},"properties":{"component":{"description":"Component","type":"object","$ref":"#\/$defs\/base","properties":{"local":{"type":"integer"}}}}}
 
 - name: primitive-any-is-json-type-union
   cmnd: bin/ysd -t jsc -C -
@@ -221,7 +220,7 @@ test::
     value: +Any(+Str,+Int)
     nullable: +Any(+Str,+Int)~
   want: |
-    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","properties":{"value":{"type":["string","integer"]},"nullable":{"type":["string","integer","null"]}},"required":["value","nullable"],"additionalProperties":false}
+    {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["value","nullable"],"properties":{"value":{"type":["string","integer"]},"nullable":{"type":["string","integer","null"]}}}
 
 - name: json-type-union-to-compact-any
   cmnd: bin/ysd -t ysd -
@@ -278,11 +277,11 @@ test::
       .not: +Str ~"x"
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"choice":{"oneOf":[{"type":"string","minLength":1},
-    {"type":"object","properties":{"name":{"type":"string"}},"required":["na
-    me"],"additionalProperties":false}]},"negative":{"not":{"type":"string",
-    "pattern":"^x$"}}},"required":["choice","negative"],"additionalPropertie
-    s":false}
+    bject","additionalProperties":false,"required":["choice","negative"],"pr
+    operties":{"choice":{"oneOf":[{"type":"string","minLength":1},{"type":"o
+    bject","additionalProperties":false,"required":["name"],"properties":{"n
+    ame":{"type":"string"}}}]},"negative":{"not":{"type":"string","pattern":
+    "^x$"}}}}
 
 - name: combinator-arity-errors
   cmnd: |
@@ -342,9 +341,9 @@ test::
     value: +base +constraint
   want: |
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"o
-    bject","properties":{"value":{"$ref":"#\/$defs\/base","allOf":[{"$ref":"
-    #\/$defs\/constraint"}]}},"required":["value"],"additionalProperties":fa
-    lse}
+    bject","additionalProperties":false,"required":["value"],"properties":{"
+    value":{"$ref":"#\/$defs\/base","allOf":[{"$ref":"#\/$defs\/constraint"}
+    ]}}}
 
 - name: explicit-combinator-empty-error
   cmnd: |
@@ -466,15 +465,15 @@ test::
     {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_pip"
+      ],
       "properties": {
         "package_pip": {
           "type": "string"
         }
-      },
-      "required": [
-        "package_pip"
-      ],
-      "additionalProperties": false
+      }
     }
 
 done:
