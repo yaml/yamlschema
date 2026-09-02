@@ -1006,12 +1006,16 @@ Current passthrough keywords include:
 
 ```text
 $dynamicRef $dynamicAnchor $vocabulary $comment
-prefixItems contains dependentSchemas propertyNames
+contains dependentSchemas propertyNames
 if then else unevaluatedItems unevaluatedProperties multipleOf
 exclusiveMaximum exclusiveMinimum maxContains minContains
 deprecated readOnly writeOnly examples format
 contentEncoding contentMediaType contentSchema
 ```
+
+`prefixItems` uses native `+Tup{...}` syntax when its positional and remainder
+schemas have compact YAMLSchema forms.
+Other `prefixItems` values remain `.prefixItems` passthrough data.
 
 `exclusiveMinimum` and `exclusiveMaximum` are passthrough keywords only when
 they are not boolean `true` companions to `minimum` and `maximum`.

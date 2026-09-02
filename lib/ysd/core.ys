@@ -4,7 +4,7 @@ WILDCARD-KEY =: '+Str'
 BUILT-IN-TYPE-NAMES =:
   set: +[
     'Any', 'Str', 'Int', 'Float', 'Num', 'Bool',
-    'Null', 'Map', 'One', 'All', 'Not']
+    'Null', 'Map', 'Tup', 'One', 'All', 'Not']
 JSON-SCHEMA-FORMATS =:
   set: qw(
     date-time date time duration email idn-email hostname idn-hostname
@@ -1267,10 +1267,12 @@ defn expand-type(value):
 
 defn validate-complete-map-type(value):
   reference =: value.'.type'
-  incomplete =: reference.in?(['+Map', '+Map[]'])
+  incomplete =: reference.in?(['+Map', '+Map[]', '+Tup', '+Tup[]'])
   shaped =: value:keys.some(\(_ !~ /^\./)) || contains?(value '.open')
   when incomplete && shaped.!:
-    usage: 'incomplete +Map type requires key/value pairs'
+    if reference.starts?('+Tup'):
+      then: usage('incomplete +Tup type requires braces')
+      else: usage('incomplete +Map type requires key/value pairs')
 
 defn expand-type-map(value):
   validate-pattern-property-forms: value
@@ -1800,6 +1802,7 @@ defn base-primary-token?(token):
   normal =:
     token =~ /^\+[A-Za-z_][A-Za-z0-9_\/-]*(?:\{[^\}]*\})?(?:\[[^\]]*\])?~?$/
   primary =: external-ref-form?(token) ||
+    tuple-primary-token?(token) ||
     compact-combinator-token?(token) ||
     typed-map-primary-token?(token) || normal
   primary ||: token.starts?('type:')
@@ -1833,6 +1836,7 @@ defn parse-primary(token):
   map-match =: re-matches(pattern token)
   cond:
     external-ref-form?(token): external-ref-primary(token null)
+    tuple-primary-token?(token): tuple-primary(token null)
     old-compact-combinator-token?(token):
       reject-old-compact-combinator(token)
     old-map-parameter-token?(token): reject-old-map-parameters(token)
@@ -1841,6 +1845,99 @@ defn parse-primary(token):
     map-match: typed-map-primary(map-match null)
     map-parameter-token?(token): reject-map-parameters(token)
     else: normal-primary(token null)
+
+defn tuple-primary-token?(token):
+  token =~ /^\+Tup\{.*\}(?:\[[^\]]*\])?~?$/
+
+defn tuple-type-token?(token):
+  token =~ /^\+Tup\{.*\}$/
+
+defn tuple-primary(token null):
+  match =: re-matches(/^\+Tup\{(.*)\}(\[[^\]]*\])?$/ token)
+  when match.!:
+    usage: "invalid tuple type: $token"
+  info =: parse-tuple-body(match.1)
+  identity: +{'block' {'.type' canonical-tuple-token(info)},
+              'suffix' match.2, 'null' null}
+
+defn parse-tuple-body(body):
+  raw =: body:trim:empty?.if([] split-tuple-members(body))
+  state =: parse-tuple-members(raw initial-tuple-state())
+  state +: +{'token' canonical-tuple-token(state)}
+
+defn initial-tuple-state():
+  +{'members' [], 'required' 0, 'optional' false, 'rest' nil}
+
+defn parse-tuple-members(members state):
+  if members:empty?:
+    then: state
+    else:
+      state =: add-tuple-member(state members.0)
+      recur: members:rest state
+
+defn add-tuple-member(state raw):
+  member =: raw:trim
+  when member:empty?:
+    usage: 'tuple type contains an empty member'
+  when state.rest.?:
+    usage: 'repeating tuple member must be last'
+  repeating =: member.ends?('...')
+  member =: repeating.if(member.replace(/\.\.\.$/) member)
+  optional =: member.ends?('?')
+  member =: optional.if(member.replace(/\?$/) member):trim
+  when member:empty?:
+    usage: 'tuple type contains an empty member type'
+  when repeating && optional:
+    usage: 'repeating tuple member cannot be optional'
+  when state.optional && optional.! && repeating.!:
+    usage: 'required tuple member cannot follow an optional member'
+  expand-type: member
+  cond:
+    repeating: state + {'rest' member}
+    optional:
+      state + {'members' conj(state.members [member true]),
+               'optional' true}
+    else:
+      state + {'members' conj(state.members [member false]),
+               'required' state.required.++}
+
+defn split-tuple-members(body):
+  tuple-member-loop: body:seq '' [] false 0 0 0
+
+defn tuple-member-loop(chars member members quoted parens brackets braces):
+  if chars:empty?:
+    then:
+      when quoted || parens.? || brackets.? || braces.?:
+        usage: 'unbalanced tuple type expression'
+      conj: members member
+    else:
+      char =: chars.0:S
+      rest =: chars:rest
+      separator =: (char == ',') && quoted.! &&
+        parens.! && brackets.! && braces.!
+      if separator:
+        then:
+          tuple-member-loop:
+            rest '' conj(members member) quoted parens brackets braces
+        else:
+          was-quoted =: quoted
+          quote =: C(34):S
+          quoted =: (char == quote).if(quoted.! quoted)
+          tuple-member-loop:
+            rest
+            (member + char)
+            members
+            quoted
+            tight-token-depth(parens char '(' ')' was-quoted)
+            tight-token-depth(brackets char '[' ']' was-quoted)
+            tight-token-depth(braces char '{' '}' was-quoted)
+
+defn canonical-tuple-token(info):
+  members =:
+    info.members.map(
+      \("$(_.0)$(_.1.if('?' ''))")):vec
+  members =: info.rest.if(conj(members "$(info.rest)...") members)
+  =>: "+Tup{$(members.join(','))}"
 
 defn external-ref-form?(token):
   token =~ /^\+Ref\(.*\)(?:\[[^\]]*\])?~?$/
@@ -2843,6 +2940,10 @@ defn ysdc-block-to-schema(value inherited-open=false):
     if list:
       then: canonical-list-schema(item value)
       else: canonical-sized-schema(item value.'.size')
+  result =:
+    map-put-if:
+      result (result.type.eq('array') && value.'.uniq')
+      'uniqueItems' true
   result =: add-passthrough-schema-keywords(result value)
   result =: add-canonical-annotations(result value)
   add-null-schema: result value.'.null'
@@ -3144,6 +3245,8 @@ defn ysdc-bare-scalar-to-schema(value):
   cond:
     value-list-scalar?(s):
       value-list-to-schema(s)
+    tuple-type-token?(s):
+      tuple-type-to-schema(s)
     json-schema-format-type?(s):
       +{'type' 'string', 'format' json-schema-format-name(s)}
     s == '+Str': +{'type' 'string'}
@@ -3166,6 +3269,25 @@ defn ysdc-bare-scalar-to-schema(value):
       range-to-schema(s)
     else:
       +{'const' value}
+
+defn tuple-type-to-schema(value):
+  match =: re-matches(/^\+Tup\{(.*)\}$/ value)
+  when match.!:
+    usage: "invalid tuple type: $value"
+  info =: parse-tuple-body(match.1)
+  result =: +{'type' 'array'}
+  prefix =: info.members.map(\(tuple-member-to-schema(_.0))):vec
+  result =: map-put-if(result prefix:seq 'prefixItems' prefix)
+  result =:
+    if info.rest.?:
+      then:
+        rest =: tuple-member-to-schema(info.rest)
+        result: .map-put-if(empty?(rest).! 'items' rest)
+      else: result + {'items' false}
+  map-put-if: result info.required.? 'minItems' info.required
+
+defn tuple-member-to-schema(value):
+  ysdc-value-to-schema: expand-type(value)
 
 defn value-list-scalar?(s):
   s =~ /^.+\[[^\]]*\]$/
@@ -3327,10 +3449,7 @@ defn canonicalize-legacy-additional-items(result value):
   if unconstrained:
     then: result
     else:
-      value =:
-        if value == false:
-          then: ordered-put(omap() 'not' omap())
-          else: canonicalize-legacy-tuple-items(value)
+      value :if (value != false) =: canonicalize-legacy-tuple-items(value)
       ordered-put: result 'items' value
 
 defn canonicalize-json-schema-child(key value):
@@ -3356,12 +3475,15 @@ defn warn-unsupported-json-schema(value path=''):
       native-format =: (key == 'format') && native-json-format?(value)
       native-range =: native-exclusive-range-keyword?(value key)
       native-pattern =: native-pattern-properties-keyword?(value key)
+      native-tuple =:
+        (key == 'prefixItems') && native-tuple-block-schema?(value)
       unsupported =:
         and:
           unsupported-json-schema-keyword?: key
           not: native-format
           not: native-range
           not: native-pattern
+          not: native-tuple
       when unsupported:
         warn-unsupported-json-schema-keyword: key child-path
       warn-json-schema-children: key child child-path
@@ -4006,10 +4128,12 @@ defn add-block(result schema inherited-open=true strict=false):
   ts ||=: type-sym(t)
   has-type =: t.? && (t != 'array') && (t != 'object')
   is-array =: t.eq('array')
+  tuple =: native-tuple-block(schema)
   pure-map =: t.eq('object') && object-with-fields?(schema).!
   map-base =: pure-map.when(open-map-base(schema))
   map-base =: map-base.eq('+Map{+Any}').if(nil map-base)
   child-open =: imported-child-open(schema inherited-open)
+  result =: tuple || result
   result =: add-schema-name-directive(result schema)
   result =: add-open-override(result schema inherited-open strict)
   result =: map-put-if(result map-base '.type' map-base)
@@ -4022,7 +4146,7 @@ defn add-block(result schema inherited-open=true strict=false):
           else: result
       else: result
   result =: map-put-if(result has-type '.type' ts)
-  result =: map-put-if(result is-array '.type' '+Any[]')
+  result =: map-put-if(result (is-array && tuple.!) '.type' '+Any[]')
   result =: add-external-ref-directive(result schema)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
@@ -4071,7 +4195,7 @@ defn add-block(result schema inherited-open=true strict=false):
     .add-size-directive(schema.minLength schema.maxLength)
     .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
-    .add-array-items(is-array schema child-open strict)
+    .add-array-items((is-array && tuple.!) schema child-open strict)
   result =:
     if t == 'object':
       then:
@@ -4240,12 +4364,15 @@ defn add-passthrough-directive-entry(result entry schema):
   native-format =: (key == 'format') && native-json-format?(schema)
   native-range =: native-exclusive-range-keyword?(schema key)
   native-pattern =: native-pattern-properties-keyword?(schema key)
+  native-tuple =:
+    (key == 'prefixItems') && native-tuple-block-schema?(schema)
   unsupported =:
     and:
       unsupported-json-schema-keyword?: key
       not: native-format
       not: native-range
       not: native-pattern
+      not: native-tuple
   if unsupported:
     then: ordered-put(result ".$key" entry.1)
     else: result
@@ -4268,6 +4395,7 @@ defn succinct-nonnull-scalar(schema):
   cond:
     map?(schema).!!: nil
     empty?(schema): '+Any'
+    tuple-schema?(schema): succinct-tuple-scalar(schema)
     native-json-format-only?(schema): native-json-format-type(schema)
     typed-map-only?(schema): typed-map-base(schema)
     only-singleton-ref-allof?(schema):
@@ -4287,6 +4415,81 @@ defn succinct-nonnull-scalar(schema):
       range-scalar(schema)
     type-only?(schema):
       type-only-scalar(schema)
+
+defn tuple-schema?(schema):
+  allowed =: set(qw(type prefixItems items minItems maxItems))
+  and:
+    schema.type.eq('array')
+    sequential?(schema.prefixItems)
+    schema:keys.every?(\(allowed.has?(_)))
+
+defn native-tuple-block-schema?(schema):
+  allowed =:
+    set: +[
+      'type', 'prefixItems', 'items', 'minItems', 'maxItems',
+      'uniqueItems', 'default', 'title', 'description', '$anchor']
+  core =: tuple-core-schema(schema)
+  and:
+    schema:keys.every?(\(allowed.has?(_)))
+    tuple-schema?(core)
+    succinct-tuple-scalar(core).?
+
+defn native-tuple-block(schema):
+  when native-tuple-block-schema?(schema):
+    expand-tight: succinct-tuple-scalar(tuple-core-schema(schema))
+
+defn tuple-core-schema(schema):
+  schema =:
+    nullable-json-schema?(schema).if(without-null-type(schema) schema)
+  keys =: qw(type prefixItems items minItems maxItems)
+  select-keys: schema keys
+
+defn succinct-tuple-scalar(schema):
+  members =: schema.prefixItems.map(succinct-scalar):vec
+  when members.every?(some?):
+    count =: members.#
+    minimum =: schema.get('minItems' 0)
+    required =: min(count minimum)
+    members =:
+      map-indexed(
+        \(tuple-member-token(_1 _2 required))
+        members):vec
+    rest =: tuple-rest-info(schema)
+    when rest.valid:
+      members =: rest.type.if(conj(members "$(rest.type)...") members)
+      token =: "+Tup{$(members.join(','))}"
+      size =: tuple-extra-size-token(schema count)
+      size: .if("$token $size" token)
+
+defn tuple-member-token(index member required):
+  optional =: (index < required).if('' '?')
+  =>: "$member$optional"
+
+defn tuple-rest-info(schema):
+  if contains?(schema 'items'):
+    then:
+      items =: schema.items
+      cond:
+        false-schema?(items): +{'valid' true, 'type' nil}
+        items == true: +{'valid' true, 'type' '+Any'}
+        map?(items) && empty?(items): +{'valid' true, 'type' '+Any'}
+        else:
+          type =: succinct-scalar(items)
+          =>: +{'valid' type.?, 'type' type}
+    else: +{'valid' true, 'type' '+Any'}
+
+defn false-schema?(schema):
+  schema == false ||:
+    map?(schema) &&
+    key-set(schema).eq(\{'not'}) &&
+    map?(schema.not) &&
+    empty?(schema.not)
+
+defn tuple-extra-size-token(schema count):
+  minimum =: schema.get('minItems' 0)
+  maximum =: schema.maxItems
+  when (minimum > count) || maximum.?:
+    size-scalar: schema.minItems maximum
 
 defn type-only-scalar(schema):
   when schema.type != 'object':

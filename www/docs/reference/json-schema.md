@@ -893,6 +893,34 @@ exist in the same `properties` map.
 Supporting undeclared triggers needs a future object-level representation.
 
 
+## Positional Array Items
+
+JSON Schema `prefixItems` imports as a native tuple when every positional
+schema has a compact YAMLSchema representation:
+
+```json
+{
+  "type": "array",
+  "prefixItems": [
+    {"type": "string"}
+  ]
+}
+```
+
+```yaml
++Tup{+Str?,+Any...}
+```
+
+`minItems` determines which prefix positions are required.
+Positions beyond that minimum receive `?`.
+An omitted or unconstrained `items` becomes `+Any...`, `items: false` closes
+the tuple, and any other compact item schema becomes a typed repeating member.
+Legacy array-valued `items` imports through the same tuple syntax.
+
+Complex positional schemas that cannot fit a compact tuple remain available as
+the `.prefixItems` passthrough directive.
+
+
 ## Unsupported or Open JSON Schema Features
 
 The converter keeps unsupported keywords as same-named dotted directives and
@@ -916,7 +944,7 @@ Open design areas include:
 | `if` / `then` / `else` | `.when` |
 | `dependentSchemas` | Extended `.with` or conditional schema |
 | `propertyNames` | Key constraints |
-| `prefixItems` | Positional list schemas |
+| noncompact `prefixItems` | `.prefixItems` passthrough |
 | `contains` | List membership constraints |
 | `unevaluatedItems` | Strict list mode |
 | `unevaluatedProperties` | Strict map mode |

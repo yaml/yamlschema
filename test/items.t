@@ -107,15 +107,136 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    openTuple?:
-      .type: +Any[]
-      .prefixItems:
-      - type: string
-    closedTuple?:
-      .type: +Not(+Any)[]
-      .prefixItems:
-      - type: integer
-      - type: string
+    openTuple?: +Tup{+Str?,+Any...}
+    closedTuple?: +Tup{+Int?,+Str?}
+
+- name: native-tuple-types
+  cmnd: bin/ysd -t jsc -Y -
+  stdi: |
+    pair: +Tup{+Str,+Num}
+    optional: +Tup{+Str,+Num?}
+    open: +Tup{+Str?,+Any...}
+    rest: +Tup{+Str,+Num...}
+  want: |
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
+    properties:
+      pair:
+        type: array
+        items: false
+        minItems: 2
+        prefixItems:
+        - type: string
+        - type: number
+      optional:
+        type: array
+        items: false
+        minItems: 1
+        prefixItems:
+        - type: string
+        - type: number
+      open:
+        type: array
+        prefixItems:
+        - type: string
+      rest:
+        type: array
+        items:
+          type: number
+        minItems: 1
+        prefixItems:
+        - type: string
+    required:
+    - pair
+    - optional
+    - open
+    - rest
+    additionalProperties: false
+
+- name: modern-tuple-import
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "open": {
+          "type": "array",
+          "prefixItems": [{"type": "string"}]
+        },
+        "bounded": {
+          "type": "array",
+          "prefixItems": [{"type": "string"}],
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 5
+        },
+        "annotated": {
+          "type": "array",
+          "prefixItems": [{"type": "string"}],
+          "title": "Value",
+          "uniqueItems": true
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    open?: +Tup{+Str?,+Any...}
+    bounded?: +Tup{+Str,+Num...} 3-5
+    annotated?:
+      .type: +Tup{+Str?,+Any...}
+      .uniq: true
+      .title: Value
+
+- name: tuple-list-suffixes
+  cmnd: bin/ysd -t ysdc -Y -
+  stdi: |
+    list: +Tup{+Str,+Num}[]
+    solo: +Tup{+Str,+Num}[$]
+    nullable: +Tup{+Str,+Num?}~
+    nested: +Tup{+Tup{+Str},+Map{+Any}}
+  want: |
+    list: +Tup{+Str,+Num}[]
+    solo:
+      .type: +Tup{+Str,+Num}[]
+      .solo: true
+    nullable:
+      .type: +Tup{+Str,+Num?}
+      .null: true
+    nested: +Tup{+Tup{+Str},+Map{+Any}}
+
+- name: native-tuples-roundtrip
+  cmnd: sh -c 'bin/ysd -Rq -f ysd - && echo OK'
+  stdi: |
+    pair: +Tup{+Str,+Num}
+    optional: +Tup{+Str,+Num?}
+    open: +Tup{+Str?,+Any...}
+    rest: +Tup{+Str,+Num...}
+    list: +Tup{+Str,+Num}[]
+    solo: +Tup{+Str,+Num}[$]
+  want: |
+    OK
+
+- name: invalid-tuple-members
+  cmnd: |
+    sh -c '
+      for value in \
+        "+Tup{+Str?,+Num}" \
+        "+Tup{+Str...,+Num}" \
+        "+Tup{+Str...,+Num...}" \
+        "+Tup{+Str?...}" \
+        "+Tup{+Str,,+Num}"; do
+        printf "x: %s\n" "$value" |
+          bin/ysd -t ysdc -J -C - 2>&1 |
+          perl -ne "print if /^ysd:/"
+      done
+    '
+  want: |
+    ysd: required tuple member cannot follow an optional member
+    ysd: repeating tuple member must be last
+    ysd: repeating tuple member must be last
+    ysd: repeating tuple member cannot be optional
+    ysd: tuple type contains an empty member
 
 - name: scalar-or-list-any-of
   cmnd: bin/ysd -f jsc -t ysd -

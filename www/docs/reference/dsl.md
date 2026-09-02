@@ -247,6 +247,7 @@ non-empty property-to-type mappings.
 | `+Null` | `null` |
 | `+Map` | A mapping shape completed by sibling property definitions |
 | `+Map{+Type}` | A mapping with string keys and `+Type` values |
+| `+Tup{...}` | A positional sequence |
 
 Capitalized type names are reserved for these built-ins and the `+One`,
 `+All`, and `+Not` combinator heads.
@@ -266,6 +267,7 @@ enabled: +Bool
 nothing: +Null
 metadata: +Map{+Any}
 labels: +Map{+Str}
+point: +Tup{+Num,+Num}
 person:
   .type: +Map
   name: +Str
@@ -317,6 +319,48 @@ Built-ins can be modified by the rest of the DSL.
 `+One(...)`, `+All(...)`, and `+Not(...)` combine referenced types.
 These are type expressions built from the built-ins, not additional built-in
 scalar types.
+
+
+## Tuples
+
+Tuple members are written in braces:
+
+```yaml
+pair: +Tup{+Str,+Num}
+optional: +Tup{+Str,+Num?}
+open: +Tup{+Str?,+Any...}
+numbers: +Tup{+Str,+Num...}
+```
+
+An ordinary member is required.
+`?` makes that position optional, and `...` makes the final member repeat zero
+or more times.
+Required members must precede optional members, and a repeating member must be
+last.
+
+Without a repeating member, no additional items are accepted.
+`+Tup{+Str,+Num}` therefore accepts exactly two items.
+`+Tup{+Str?,+Any...}` accepts an empty sequence or a sequence whose first item
+is a string and whose remaining items have any type.
+It is the compact form of JSON Schema `prefixItems` with an unrestricted
+`items` remainder.
+
+Tuple members can use other compact type expressions, including nested tuples:
+
+```yaml
+record: +Tup{+Tup{+Str,+Int},+Map{+Any}}
+```
+
+List and nullable suffixes follow the complete tuple expression:
+
+```yaml
+rows: +Tup{+Str,+Num}[]
+rowOrRows: +Tup{+Str,+Num}[$]
+maybeRow: +Tup{+Str,+Num}~
+```
+
+These mean a list of tuples, one tuple or a list of tuples, and a nullable
+tuple respectively.
 
 
 ## Tight Type Expressions
