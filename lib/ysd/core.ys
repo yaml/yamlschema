@@ -3279,11 +3279,61 @@ defn load-json-schema(text report=true):
     validate-json-schema-dialect: schema
   schema =:
     if map?(schema):
-      then: discard-generated-comment(schema)
+      then:
+        canonicalize-legacy-tuple-items:
+          discard-generated-comment: schema
       else: schema
   when report:
     warn-unsupported-json-schema: schema
   =>: schema
+
+defn canonicalize-legacy-tuple-items(schema):
+  if map?(schema):
+    then:
+      tuple =: sequential?(schema.items)
+      reduce \(canonicalize-legacy-json-entry(_1 _2 tuple)):
+        omap() schema
+    else: schema
+
+defn canonicalize-legacy-json-entry(result entry tuple):
+  key value =: entry
+  key =: key:S
+  cond:
+    tuple && (key == 'items'):
+      ordered-put:
+        result 'prefixItems'
+        mapv(canonicalize-legacy-tuple-items value)
+    tuple && (key == 'additionalItems'):
+      canonicalize-legacy-additional-items: result value
+    else:
+      ordered-put:
+        result entry.0 canonicalize-json-schema-child(key value)
+
+defn canonicalize-legacy-additional-items(result value):
+  unconstrained =:
+    (value == true) || (map?(value) && empty?(value))
+  if unconstrained:
+    then: result
+    else:
+      value =:
+        if value == false:
+          then: ordered-put(omap() 'not' omap())
+          else: canonicalize-legacy-tuple-items(value)
+      ordered-put: result 'items' value
+
+defn canonicalize-json-schema-child(key value):
+  cond:
+    single-schema-json-keyword?(key):
+      canonicalize-legacy-tuple-items: value
+    sequence-schema-json-keyword?(key) && sequential?(value):
+      mapv(canonicalize-legacy-tuple-items value)
+    mapping-schema-json-keyword?(key) && map?(value):
+      reduce canonicalize-json-schema-mapping-entry: omap() value
+    else: value
+
+defn canonicalize-json-schema-mapping-entry(result entry):
+  ordered-put:
+    result entry.0 canonicalize-legacy-tuple-items(entry.1)
 
 defn warn-unsupported-json-schema(value path=''):
   when map?(value):
@@ -4197,7 +4247,10 @@ defn succinct-scalar(schema):
   schema =: nullable.if(without-null-type(schema) schema)
   scalar =: succinct-nonnull-scalar(schema)
   when scalar:
-    nullable.if("$scalar~" scalar)
+    nullable.if(nullable-succinct-scalar(scalar) scalar)
+
+defn nullable-succinct-scalar(scalar):
+  scalar.replace(/^(\S+)/ '$1~')
 
 defn succinct-nonnull-scalar(schema):
   cond:

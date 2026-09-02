@@ -24,6 +24,24 @@ test::
     n: +Num
     b: +Bool
 
+- name: nullable-pattern
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "testsuite": {
+          "type": ["string", "null"],
+          "pattern": "^[\\p{Word} _*.+-]+$",
+          "description": "Optional test suite name"
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    testsuite?: +Str~ ~"[\p{Word} _*.+-]+" "Optional test suite name"
+
 - name: unconstrained-and-closed-schemas
   cmnd: bin/ysd -f jsc -t ysd -
   stdi: |

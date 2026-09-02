@@ -86,6 +86,37 @@ test::
     extraManifests?: +Any[] "Extra static manifests to deploy"
     extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
 
+- name: legacy-tuple-items
+  cmnd: sh -c 'bin/ysd -f jsc -t ysd - 2>/dev/null'
+  stdi: |
+    {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "type": "object",
+      "properties": {
+        "openTuple": {
+          "type": "array",
+          "items": [{"type": "string"}]
+        },
+        "closedTuple": {
+          "type": "array",
+          "items": [{"type": "integer"}, {"type": "string"}],
+          "additionalItems": false
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    openTuple?:
+      .type: +Any[]
+      .prefixItems:
+      - type: string
+    closedTuple?:
+      .type: +Not(+Any)[]
+      .prefixItems:
+      - type: integer
+      - type: string
+
 - name: scalar-or-list-any-of
   cmnd: bin/ysd -f jsc -t ysd -
   stdi: |
