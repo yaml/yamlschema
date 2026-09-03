@@ -34,7 +34,7 @@ test::
     .open: true
     email: +Str ~"\S+@\S+"
     zip: +Str ~"{digit}{5}"
-    externalURL: +Str ~"https?://.*" 1+ "External URL for Harbor"
+    externalURL: +Str ~"https?://.*" 1+ --"External URL for Harbor"
     spaced: +Str ~"a b"
     quoted:
       .type: +Str

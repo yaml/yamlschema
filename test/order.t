@@ -84,7 +84,7 @@ test::
       .match: word
       .type: +Str[]
   want: |
-    .type .item .like .size .solo .uniq .null .init .title .desc
+    .desc .type .item .like .size .solo .uniq .null .init .title
 
 - name: json-schema-definition-and-property-order
   cmnd: |

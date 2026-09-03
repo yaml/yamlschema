@@ -116,8 +116,8 @@ the reference has sibling constraints:
 
 ```yaml
 author:
+  --: An externally defined author
   .xref: https://example.com/user-profile.schema.json
-  .desc: An externally defined author
 empty:
   .xref: ''
 ```
@@ -376,7 +376,7 @@ order:
 
 ```text
 +Base [(alternatives)] [list-suffix] [~] [pattern-or-range]
-      [enum] [size] [constant] [default] [title] [description]
+      [enum] [size] [constant] [default] [title] [--"description"]
 ```
 
 The core is normally a `+Type` reference, which later clauses refine:
@@ -582,7 +582,7 @@ enabled?: +Bool~
 Tight annotations follow all constraints:
 
 ```yaml
-enabled?: +Bool~ =false title:"Enabled" "Enable the service"
+enabled?: +Bool~ =false title:"Enabled" --"Enable the service"
 label?: +Str ="pretty good"
 mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 ```
@@ -590,7 +590,7 @@ mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 - `=value` is a single YAML scalar default.
 - `="..."` is a string default that may contain spaces.
 - `title:"..."` is `.title`.
-- A final `"..."` is `.desc`.
+- `--"..."` is `.desc` and may occur anywhere among the clauses.
 - Labeled scalar clauses may occur in any order.
   They are `type`, `match`, `find`, `const`, `range`, `size`, `item`, `solo`,
   `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
@@ -609,6 +609,10 @@ Use the explicit directive when that is needed.
 A scalar consisting entirely of a YAML-quoted string is a literal value, not
 an annotation, because YAML does not preserve its original quote style.
 The obsolete trailing single-quoted description form is an error.
+For compatibility, a final bare `"..."` and `desc:"..."` are still accepted.
+Generated .ysd always uses `--"..."`.
+For a description that cannot use the tight form, use `--:` in .ysd or
+canonical `.desc:` in .ysdc.
 
 
 ## Hybrid Explicit Types
@@ -716,9 +720,9 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.name .type .xref .open .need .item .one .any .all .not .like
+.desc .name .type .xref .open .need .item .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
-.desc .also .with .when
+.also .with .when
 ```
 
 An unrefined built-in or named reference is emitted directly as a `+Type`

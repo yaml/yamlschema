@@ -120,6 +120,26 @@ ysd -t jsc -Y contact.ysd.yaml
 Normalization adds the draft 2020-12 dialect, chooses canonical keyword
 positions, and preserves property order.
 Draft 4 root \fBid\fR normalizes to \fB$id\fR\&.
+JSON Schema input keeps its JSON or YAML serialization unless \fB-J\fR, \fB-Y\fR,
+\fB-C\fR, or an output filename selects one explicitly.
+
+.PP
+The preferred keyword order is:
+
+.EX
+$id $schema $comment $anchor title description
+type format $ref const default
+minimum maximum minLength maxLength
+minItems maxItems uniqueItems minProperties maxProperties
+items additionalProperties required patternProperties
+enum dependentRequired $defs properties
+.EE
+
+.PP
+Unlisted keywords are sorted alphabetically immediately before \fBproperties\fR\&.
+Definition and property names retain their source order.
+When root schema content precedes \fB$defs\fR in the source, normalization keeps
+that layout by moving \fB$defs\fR after \fBproperties\fR\&.
 
 .EX
 ysd -N contact.schema.json

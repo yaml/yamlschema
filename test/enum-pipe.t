@@ -94,11 +94,12 @@ test::
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
     logLevel?: +Str [debug,=info,warning,error,fatal]
-      "Log level for all components"
+      --"Log level for all components"
     count?: +Int [1,=2,3]
   want: |
     {
       "logLevel?": {
+        ".desc": "Log level for all components",
         ".type": "+Str",
         ".enum": [
           "debug",
@@ -107,8 +108,7 @@ test::
           "error",
           "fatal"
         ],
-        ".init": "info",
-        ".desc": "Log level for all components"
+        ".init": "info"
       },
       "count?": {
         ".type": "+Int",

@@ -59,11 +59,11 @@ test::
     # Converted from JSON Schema
     .open: true
     imagePullSecrets?:
+      --: List of image pull secrets
       .type: +Any[]
       .one:
       - +Str 1+
       - name: +Str 1+
-      .desc: List of image pull secrets
 
 - name: described-array-of-any-items
   cmnd: bin/ysd -t ysd -
@@ -83,8 +83,8 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
-    extraManifests?: +Any[] "Extra static manifests to deploy"
-    extraTemplateManifests?: +Any[] "Extra templated manifests to deploy"
+    extraManifests?: +Any[] --"Extra static manifests to deploy"
+    extraTemplateManifests?: +Any[] --"Extra templated manifests to deploy"
 
 - name: legacy-tuple-items
   cmnd: sh -c 'bin/ysd -f jsc -t ysd - 2>/dev/null'
@@ -297,7 +297,7 @@ test::
 
     python?: +Str[$]
     ids?: +Int[$!1+]
-    dates?: +JSON-Schema/date[$] "One date or several dates"
+    dates?: +JSON-Schema/date[$] --"One date or several dates"
     things?: +thing[$]
     mismatch?:
       .any:
@@ -326,10 +326,10 @@ test::
     # Converted from JSON Schema
     .open: true
     value?:
+      --: One or many
       .name: values
       .type: +Str[$]
       .init: x
       .title: Values
-      .desc: One or many
 
 done:

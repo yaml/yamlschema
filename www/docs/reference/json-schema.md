@@ -585,7 +585,7 @@ schema metadata.
 | `$id` or Draft 4 root `id` | `.ysid` |
 | `$anchor` | `.name` |
 | `title` | `.title` |
-| `description` | Trailing `"description"` or `.desc` |
+| `description` | `--"description"` or `--:` in .ysd; `.desc` in .ysdc |
 | Known string `format` | `+JSON-Schema/format` |
 
 `.ysid` is the first mapping entry in generated YAMLSchema.

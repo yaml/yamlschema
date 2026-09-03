@@ -101,8 +101,8 @@ The key names the type and references use the same slug:
 
 .EX
 +resources:
-  requests?: +Map{+Any}
-  limits?: +Map{+Any}
+  requests?: +Map{}
+  limits?: +Map{}
 
 resources?: +resources
 .EE
@@ -126,8 +126,8 @@ the reference has sibling constraints:
 
 .EX
 author:
+  --: An externally defined author
   .xref: https://example.com/user-profile.schema.json
-  .desc: An externally defined author
 empty:
   .xref: ''
 .EE
@@ -151,12 +151,13 @@ labels:
 String-keyed maps can name their value type directly:
 
 .EX
-config: +Map{+Any}
+config: +Map{}
 labels: +Map{+Str}
 flags: +Map{+flag}
 .EE
 
 .PP
+\fB+Map{}\fR expands to \fB+Str: +Any\fR\&.
 \fB+Map{+Type}\fR expands to \fB+Str: +Type\fR\&.
 The value type must be one built-in, user-defined, or namespaced reference.
 Map parameters use braces; parenthesized forms such as \fB+Map(+Any)\fR are
@@ -167,15 +168,16 @@ An incomplete \fB+Map\fR must be completed by sibling key/value pairs.
 Lists of maps append the list suffix to the value type:
 
 .EX
-maps: +Map{+Any}[]
+maps: +Map{}[]
 other: +Map{+Str}[]
 .EE
 
 .PP
-The reserved future form \fB+Map{+Key,+Value}\fR will support YAML key schemas.
-It is not implemented yet.
-The current one-reference form is shorthand for \fB+Map{+Str,+Value}\fR and
-therefore fixes keys to strings.
+The two-reference form requires \fB+Str\fR as its key type.
+\fB+Map{+Str,+Value}\fR is the explicit equivalent of \fB+Map{+Value}\fR\&.
+Therefore \fB+Map{}\fR, \fB+Map{+Any}\fR, and \fB+Map{+Str,+Any}\fR all describe an open
+mapping with string keys and unrestricted values.
+Generated YAMLSchema uses the shortest form, \fB+Map{}\fR\&.
 
 .PP
 Mappings are closed by default.
@@ -271,9 +273,16 @@ l l .
 \fB+Map\fR	T{
 A mapping shape completed by sibling property definitions
 T}
+\fB+Map{}\fR	T{
+An open mapping with string keys and unrestricted values
+T}
 \fB+Map{+Type}\fR	T{
 A mapping with string keys and \fB+Type\fR values
 T}
+\fB+Map{+Str,+Type}\fR	T{
+The explicit string-key form of \fB+Map{+Type}\fR
+T}
+\fB+Tup{...}\fR	A positional sequence
 .TE
 
 .PP
@@ -294,8 +303,9 @@ ratio: +Float
 number: +Num
 enabled: +Bool
 nothing: +Null
-metadata: +Map{+Any}
+metadata: +Map{}
 labels: +Map{+Str}
+point: +Tup{+Num,+Num}
 person:
   .type: +Map
   name: +Str
@@ -343,10 +353,11 @@ Bare \fB+Map\fR is intentionally incomplete.
 It must have sibling property definitions, as in \fBperson\fR, and its \fB\&.type\fR
 marker disappears during canonical expansion because the mapping shape already
 implies the type.
-Use \fB+Map{+Any}\fR for an otherwise unconstrained string-keyed mapping, or
+Use \fB+Map{}\fR for an otherwise unconstrained string-keyed mapping, or
 \fB+Map{+Type}\fR to constrain every value.
-The future two-argument form \fB+Map{+Key,+Value}\fR is reserved for mappings
-whose keys also have a schema.
+\fB+Map{+Any}\fR and \fB+Map{+Str,+Any}\fR are equivalent input aliases for
+\fB+Map{}\fR\&.
+The two-argument form accepts only \fB+Str\fR as its key type.
 
 .PP
 Built-ins can be modified by the rest of the DSL.
@@ -355,6 +366,51 @@ Built-ins can be modified by the rest of the DSL.
 These are type expressions built from the built-ins, not additional built-in
 scalar types.
 
+.SH Tuples
+Tuple members are written in braces:
+
+.EX
+pair: +Tup{+Str,+Num}
+optional: +Tup{+Str,+Num?}
+open: +Tup{+Str?,+Any...}
+numbers: +Tup{+Str,+Num...}
+.EE
+
+.PP
+An ordinary member is required.
+\fB?\fR makes that position optional, and \fB\&...\fR makes the final member repeat zero
+or more times.
+Required members must precede optional members, and a repeating member must be
+last.
+
+.PP
+Without a repeating member, no additional items are accepted.
+\fB+Tup{+Str,+Num}\fR therefore accepts exactly two items.
+\fB+Tup{+Str?,+Any...}\fR accepts an empty sequence or a sequence whose first item
+is a string and whose remaining items have any type.
+It is the compact form of JSON Schema \fBprefixItems\fR with an unrestricted
+\fBitems\fR remainder.
+
+.PP
+Tuple members can use other compact type expressions, including nested tuples:
+
+.EX
+record: +Tup{+Tup{+Str,+Int},+Map{}}
+.EE
+
+.PP
+List and nullable suffixes follow the complete tuple expression:
+
+.EX
+rows: +Tup{+Str,+Num}[]
+rowOrRows: +Tup{+Str,+Num}[$]
+maybeRow: +Tup{+Str,+Num}~
+.EE
+
+.PP
+These mean a list of tuples, one tuple or a list of tuples, and a nullable
+tuple respectively.
+
 .SH Tight Type Expressions
 A tight type expression is a YAML plain scalar.
 A type reference is normally first, but labeled clauses may appear in any
@@ -362,7 +418,7 @@ order:
 
 .EX
 +Base [(alternatives)] [list-suffix] [~] [pattern-or-range]
-      [enum] [size] [constant] [default] [title] [description]
+      [enum] [size] [constant] [default] [title] [--"description"]
 .EE
 
 .PP
@@ -545,7 +601,7 @@ A size clause also works after string, list, or mapping constraints:
 .EX
 code: +Str 8
 names: +Str[] 1+
-labels: +Map{+Any} 1-20
+labels: +Map{} 1-20
 .EE
 
 .PP
@@ -592,7 +648,7 @@ enabled?: +Bool~
 Tight annotations follow all constraints:
 
 .EX
-enabled?: +Bool~ =false title:"Enabled" "Enable the service"
+enabled?: +Bool~ =false title:"Enabled" --"Enable the service"
 label?: +Str ="pretty good"
 mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .EE
@@ -604,7 +660,7 @@ mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .IP \(bu 2
 \fBtitle:"..."\fR is \fB\&.title\fR\&.
 .IP \(bu 2
-A final \fB"..."\fR is \fB\&.desc\fR\&.
+\fB--"..."\fR is \fB\&.desc\fR and may occur anywhere among the clauses.
 .IP \(bu 2
 Labeled scalar clauses may occur in any order.
 They are \fBtype\fR, \fBmatch\fR, \fBfind\fR, \fBconst\fR, \fBrange\fR, \fBsize\fR, \fBitem\fR, \fBsolo\fR,
@@ -627,6 +683,10 @@ Use the explicit directive when that is needed.
 A scalar consisting entirely of a YAML-quoted string is a literal value, not
 an annotation, because YAML does not preserve its original quote style.
 The obsolete trailing single-quoted description form is an error.
+For compatibility, a final bare \fB"..."\fR and \fBdesc:"..."\fR are still accepted.
+Generated .ysd always uses \fB--"..."\fR\&.
+For a description that cannot use the tight form, use \fB--:\fR in .ysd or
+canonical \fB\&.desc:\fR in .ysdc.
 
 .SH Hybrid Explicit Types
 When one constraint is clearer explicitly, \fB\&.type\fR may contain the complete
@@ -738,9 +798,9 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 .EX
-\&.name .type .xref .open .need .item .one .any .all .not .like
+\&.desc .name .type .xref .open .need .item .one .any .all .not .like
 \&.enum .const .range .size .solo .uniq .null .init .title
-\&.desc .also .with .when
+\&.also .with .when
 .EE
 
 .PP

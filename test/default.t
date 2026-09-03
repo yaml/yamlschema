@@ -42,6 +42,6 @@ test::
     quoted:
       .type: +Str
       .init: say "hi"
-    logLevel: +Str [debug, =info, warning, error, fatal] "Component log level"
+    logLevel: +Str [debug, =info, warning, error, fatal] --"Component log level"
 
 done:

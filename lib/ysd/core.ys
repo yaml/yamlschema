@@ -1164,12 +1164,38 @@ defn indent(width):
 defn expand-ysdc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
+  doc =: normalize-description-directives(doc source)
   validate-regex-directives: doc source
   validate-pattern-property-forms: doc
   expanded =: reduce(expand-doc-entry omap() doc)
   expanded =: canonicalize-document-ysid(expanded)
   validate-schema-names: expanded
   resolve-open-doc: expanded
+
+defn normalize-description-directives(value source):
+  cond:
+    map?(value):
+      reduce \(normalize-description-entry(_1 _2 source)): omap() value
+    sequential?(value):
+      vec: value.map(\(normalize-description-directives(_ source)))
+    else: value
+
+defn normalize-description-entry(result entry source):
+  key =: entry.0:S
+  canonical =:
+    if key == '--':
+      then:
+        when source == 'ysdc':
+          usage: 'unsupported .ysdc directive: --; use .desc'
+        =>: '.desc'
+      else: key
+  when canonical.eq('.desc') && result.has?('.desc'):
+    usage: 'duplicate yamlschema directive: .desc in description aliases'
+  value =:
+    if passthrough-directive?(key):
+      then: entry.1
+      else: normalize-description-directives(entry.1 source)
+  ordered-put: result canonical value
 
 defn validate-regex-directives(value source):
   cond:
@@ -1627,11 +1653,11 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.name', '.type', '.xref', '.open', '.need',
+    +['.desc', '.name', '.type', '.xref', '.open', '.need',
       '.list', '.item', '.one', '.any', '.all',
       '.not', '.like', '.enum', '.const', '.range', '.xmin', '.xmax',
       '.size', '.solo', '.uniq', '.null', '.init',
-      '.title', '.desc', '.also', '.with', '.when']
+      '.title', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
   result =: reduce(put-non-directive result value)
   if contains?(value WILDCARD-KEY):
@@ -2104,6 +2130,8 @@ defn typed-map-block(value-type):
 
 defn primary-block(token):
   cond:
+    token.starts?('--'):
+      usage: 'description clause requires a type expression'
     token.starts?('+Ref'):
       usage: 'invalid external reference; use +Ref(reference) or .xref'
     token.starts?('type:'): labeled-type-block(token)
@@ -2195,6 +2223,13 @@ defn expand-tight-token(result token):
     token.starts?('='):
       merge-directives:
         result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
+    token.starts?('--"'):
+      merge-directives:
+        result
+        {'.desc' tight-string-value(token.replace(/^--/))}
+        'description clause'
+    token.starts?('--'):
+      usage: 'invalid description clause; use --"description"'
     tight-quoted?(token):
       merge-directives:
         result {'.desc' tight-string-value(token)} 'description clause'
@@ -2303,6 +2338,7 @@ defn tight-quoted?(value):
 defn tight-token-quoted?(token):
   raw =:
     cond:
+      token.starts?('--'): token.replace(/^--/)
       token.starts?('=~'): token.replace(/^=~/)
       token.starts?('~~'): token.replace(/^~~/)
       token.starts?('~'): token.replace(/^~/)
@@ -3715,6 +3751,7 @@ defn json-pointer-child(path key):
 defn convert(schema strict=false):
   doc =: build-doc(schema strict)
   text =: ys::yaml/dump(doc)
+  text =: format-ysd-description-directives(text)
   text =: format-ysd-tight-scalars(text)
   text =: format-ysd-document(text)
   post-process: text
@@ -4130,7 +4167,7 @@ defn plain-description-safe?(description):
 
 defn annotated-scalar(scalar description):
   body =: encode-tight-string(description)
-  =>: "$scalar \"$body\""
+  =>: "$scalar --\"$body\""
 
 defn succinct-array-scalar(schema strict=false):
   is-array =: json-type(schema).eq('array')
@@ -4271,7 +4308,8 @@ defn add-block(result schema inherited-open=true strict=false):
             map-base.if(result
               add-wildcard-entry(result schema inherited-open strict))
       else: result
-  add-passthrough-directives: result schema strict
+  ordered-directives:
+    add-passthrough-directives(result schema strict)
 
 defn add-size-directive(result lo hi):
   if lo.? || hi.?:
@@ -5041,7 +5079,35 @@ defn literal-value(v): v
 # Post-processing the dumped YAML.
 # --------------------------------------------------------------------
 
-# Wrap generated .ysd tight scalars and `.desc` pairs without changing their
+# Rename generated `.desc` directives without rebuilding ordered maps.
+# Values under passthrough directives are raw JSON Schema data, so leave their
+# keys unchanged.
+defn format-ysd-description-directives(text):
+  initial =: +{'lines' [], 'raw-indent' nil}
+  state =: reduce(format-ysd-description-line initial text:lines)
+  join "\n": state.lines
+
+defn format-ysd-description-line(state line):
+  stripped =: line.replace(/^ */)
+  indent =: line.# - stripped.#
+  raw-indent =: state.raw-indent
+  raw? =:
+    (raw-indent != nil) &&:
+      ((indent > raw-indent) ||
+       ((indent == raw-indent) && stripped.starts?('-')))
+  raw-indent :if raw?.! =: nil
+  match =:
+    when raw?.!:
+      re-matches: /^([ ]*)(\.[A-Za-z][A-Za-z0-9]*):(.*)$/ line
+  key =: match.when(match.2)
+  output =:
+    if key == '.desc':
+      then: "$(match.1)--:$(match.3)"
+      else: line
+  raw-indent :if (key && passthrough-directive?(key)) =: indent
+  state +: +{'lines' state.lines.conj(output), 'raw-indent' raw-indent}
+
+# Wrap generated .ysd tight scalars and `--` pairs without changing their
 # folded YAML values. When a complete tight-scalar line exceeds 80 columns,
 # the enum and description clauses each start on their own continuation line.
 defn format-ysd-tight-scalars(text):
@@ -5072,7 +5138,7 @@ defn format-ysd-tight-line(result line):
 defn wrapped-ysd-tight-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
   match =: re-matches(pattern line)
-  desc-pattern =: re-pattern(str('^([ ]*)\.desc' ':' ' (.*)$'))
+  desc-pattern =: re-pattern(str('^([ ]*)--' ':' ' (.*)$'))
   desc =: re-matches(desc-pattern line)
   cond:
     line.# <= 80: +[line]
@@ -5093,7 +5159,7 @@ defn wrappable-ysd-desc?(value):
 
 defn ysd-desc-pair-lines(indent value):
   tokens =: split-wrappable-spaces(value isolated-space?)
-  prefix =: "$indent.desc$(C(58)) "
+  prefix =: "$indent--$(C(58)) "
   state =: +{
     'lines' [], 'line' prefix,
     'continuation' "$indent  ", 'has-token' false}
@@ -5111,10 +5177,7 @@ defn append-ysd-desc-token(state token):
 
 defn ysd-tight-line-clauses(value):
   tokens =: tight-tokens(value)
-  description =:
-    when tokens.# >= 2:
-      last =: tokens:last
-      =>: tight-quoted?(last).when(last)
+  description =: first(tokens.filter(marked-description-token?))
   enum =: first(tokens.filter(compact-enum-token?))
   when enum || description:
     head =: tokens
@@ -5147,7 +5210,7 @@ defn ysd-enum-member-token(index member count):
     else: "$member,"
 
 defn ysd-description-clause-lines(indent clause):
-  body =: clause.replace(/^./).replace(/.$/)
+  body =: clause.replace(/^--"/).replace(/"$/)
   words =:
     if body:empty?:
       then: +['']
@@ -5155,7 +5218,10 @@ defn ysd-description-clause-lines(indent clause):
   count =: words.#
   tokens =:
     map-indexed(\(ysd-description-word-token(_1 _2 count)) words):vec
-  wrap-ysd-clause-tokens: indent '"' tokens
+  wrap-ysd-clause-tokens: indent '--"' tokens
+
+defn marked-description-token?(token):
+  token.starts?('--"') && token.ends?('"')
 
 defn split-wrappable-spaces(value break?):
   loop index 0, tokens [], token '':

@@ -172,8 +172,8 @@ local: +address
 external: +Ref(profile.schema.json)
 
 detailed:
+  --: External profile
   .xref: https://example.com/profile.schema.json
-  .desc: External profile
 ```
 
 </section>
@@ -227,12 +227,12 @@ choice: +Any(+Str,+Bool)
 
 ```yaml
 .title: Person
-.desc: A person record
+--: A person record
 
-name: +Str "Display name"
+name: +Str --"Display name"
 age:
+  --: Age in years
   .type: +Int
-  .desc: Age in years
 ```
 
 </section>

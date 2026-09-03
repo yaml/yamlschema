@@ -205,10 +205,10 @@ test::
         ]
       },
       "annotated": {
+        ".desc": "Accept one integer or a list",
         ".type": "+Int[]",
         ".solo": true,
-        ".title": "Number or numbers",
-        ".desc": "Accept one integer or a list"
+        ".title": "Number or numbers"
       }
     }
 
@@ -243,30 +243,30 @@ test::
 - name: nullable-default-title-description
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
-    flag?: +Bool~ =false title:"Flag" "Whether it is enabled"
+    flag?: --"Whether it is enabled" +Bool~ =false title:"Flag"
     label?: +Str ="pretty good"
     level?: type:+Str enum:[debug,info] init:info desc:"Log level"
   want: |
     {
       "flag?": {
+        ".desc": "Whether it is enabled",
         ".type": "+Bool",
         ".null": true,
         ".init": false,
-        ".title": "Flag",
-        ".desc": "Whether it is enabled"
+        ".title": "Flag"
       },
       "label?": {
         ".type": "+Str",
         ".init": "pretty good"
       },
       "level?": {
+        ".desc": "Log level",
         ".type": "+Str",
         ".enum": [
           "debug",
           "info"
         ],
-        ".init": "info",
-        ".desc": "Log level"
+        ".init": "info"
       }
     }
 
@@ -286,7 +286,7 @@ test::
     +named: +Str
     plain: +Str
     named: +named
-    annotated: +Float =1.5 title:"Number" "A number"
+    annotated: +Float --"A number" =1.5 title:"Number"
     refined:
       .type: +Str
       .enum: [foo, bar]
@@ -296,14 +296,17 @@ test::
       "plain": "+Str",
       "named": "+named",
       "annotated": {
+        ".desc": "A number",
         ".type": "+Float",
         ".init": 1.5,
-        ".title": "Number",
-        ".desc": "A number"
+        ".title": "Number"
       },
       "refined": {
         ".type": "+Str",
-        ".enum": ["foo","bar"]
+        ".enum": [
+          "foo",
+          "bar"
+        ]
       }
     }
 
@@ -537,7 +540,7 @@ test::
     alternate: also:former type:+Str
     choice: enum:[a,b c] type:+Str
   want: |
-    {"string":{".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title",".desc":"Words"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".type":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
+    {"string":{".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".type":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |

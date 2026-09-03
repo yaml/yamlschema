@@ -94,7 +94,7 @@ test::
 
     +flag: +Bool
 
-    config?: +Map{} "Primary component config."
+    config?: +Map{} --"Primary component config."
     labels?: +Map{+Str}
     custom?: +Map{+flag}
     hybrid?:
@@ -278,8 +278,8 @@ test::
     .open: true
     startup?: +Map{}~
     probes?:
+      --: Container probes.
       .null: true
-      .desc: Container probes.
       liveness?: +Map{}~
 
 - name: nullable-any-map-to-json-schema

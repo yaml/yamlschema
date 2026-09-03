@@ -1696,7 +1696,7 @@ for (const name of exampleFiles) {
       !converted.value.includes('+Tup{+Str?,+Any...}') ||
       !converted.value.includes(
         '/^\\.[a-z0-9_]+$/: +Map{} ' +
-        '"Definitions that can be re-used"',
+        '--"Definitions that can be re-used"',
       ) ||
       !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
     ) {
@@ -1710,7 +1710,15 @@ for (const name of exampleFiles) {
       Object.keys(schema.definitions).length !== 42 ||
       roundtrip.value !== true
     ) {
-      throw new Error('OpenAPI 3.0 schema is incorrect');
+      const report = globalThis.gloat.exports[
+        'json-schema-roundtrip-report'
+      ](text);
+      throw new Error(`OpenAPI 3.0 schema is incorrect: ${JSON.stringify({
+        id: schema.id,
+        definitions: Object.keys(schema.definitions).length,
+        roundtrip,
+        report,
+      })}`);
     }
   }
   if (name === 'address') {

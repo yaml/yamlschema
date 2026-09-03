@@ -2,7 +2,7 @@
 # Reserved keys and compact type expressions are not yet constrained.
 .ysid: https://yamlschema.org/schema/yamlschema.ysd.yaml
 .title: YAMLSchema Document
-.desc: Parsed YAMLSchema document with recursively nested YAML values.
+--: Parsed YAMLSchema document with recursively nested YAML values.
 
 +schema-node:
   .one:

@@ -93,7 +93,7 @@ test::
       .xref: ''
     unsafe?:
       .xref: https://example.com/a)b schema.json
-    annotated?: +Ref(https://x.io/p.json) "External profile"
+    annotated?: +Ref(https://x.io/p.json) --"External profile"
 
 - name: external-refs-to-json-schema
   cmnd: bin/ysd -f ysd -t jsc -
@@ -158,8 +158,8 @@ test::
     author:
       .xref: https://example.com/user-profile.schema.json
     reviewer:
-      .xref: ../schemas/reviewer.json#/$defs/profile
       .desc: External reviewer
+      .xref: ../schemas/reviewer.json#/$defs/profile
 
 - name: external-ref-roundtrip
   cmnd: bin/ysd -f jsc -R -

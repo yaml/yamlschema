@@ -26,16 +26,16 @@ test::
       +Str:
         .type: +Str
     annotated?:
-      .type: +Str
       .desc: Kept explicit
+      .type: +Str
   want: |
     namespace?: +Str
     topologySpreadConstraints?: +Any[]
     labels?:
       +Str: +Str
     annotated?:
-      .type: +Str
       .desc: Kept explicit
+      .type: +Str
 
 - name: ysd-output-serializations
   cmnd: |

@@ -108,13 +108,14 @@ directive-to-keyword mapping.
 .SH Strict Editor Conversion
 The JSON Schema editor accepts JSON or YAML and detects the serialization from
 the content.
-Normal and Strict regeneration produce canonical JSON.
+Normal and Strict regeneration produce canonical JSON Schema while preserving
+whether the editor content is serialized as JSON or YAML.
 
 .PP
 The browser editor enables its \fBStrict\fP checkbox after editable JSON Schema
 successfully generates \fB\&.ysd\fR or \fB\&.ysdc\fR\&.
 Selecting it closes every unconstrained mapping by removing \fB\&.open\fR directives
-and \fB+Str: +Any\fR wildcard pairs.
+and suppressing open-map forms such as \fB+Map{}\fR and \fB+Str: +Any\fR\&.
 Typed additional-property rules such as \fB+Str: +Str\fR and \fB+Map{+Str}\fR remain
 unchanged.
 
@@ -185,7 +186,7 @@ l l .
 \fB{"type": "number"}\fR	\fB+Num\fR
 \fB{"type": "boolean"}\fR	\fB+Bool\fR
 \fB{"type": "null"}\fR	\fB+Null\fR
-\fB{"type": "object"}\fR	\fB+Map{+Any}\fR or a mapping shape
+\fB{"type": "object"}\fR	\fB+Map{}\fR or a mapping shape
 \fB{"type": "array"}\fR	\fB+Any[]\fR or another value-side \fB+Type[]\fR
 \fB{"type": ["string", "integer"]}\fR	\fB+Any(+Str,+Int)\fR
 .TE
@@ -628,7 +629,7 @@ l l .
 \fB$id\fR or Draft 4 root \fBid\fR	\fB\&.ysid\fR
 \fB$anchor\fR	\fB\&.name\fR
 \fBtitle\fR	\fB\&.title\fR
-\fBdescription\fR	Trailing \fB"description"\fR or \fB\&.desc\fR
+\fBdescription\fR	\fB--"description"\fR or \fB--:\fR in .ysd; \fB\&.desc\fR in .ysdc
 Known string \fBformat\fR	\fB+JSON-Schema/format\fR
 .TE
 
@@ -792,7 +793,7 @@ allbox;
 l l
 l l .
 \fBJSON Schema\fP	\fBYAMLSchema\fP
-\fBadditionalProperties: true\fR	Inherited openness or \fB+Str: +Any\fR
+\fBadditionalProperties: true\fR	\fB+Map{}\fR or \fB+Str: +Any\fR
 \fBadditionalProperties: {"type":"string"}\fR	\fB+Map{+Str}\fR
 \fBadditionalProperties: {"$ref":"..."}\fR	\fB+Map{+name}\fR
 constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
@@ -826,8 +827,9 @@ be opened.
 
 .PP
 An incomplete \fB+Map\fR requires sibling properties.
-The importer emits a wildcard block for pure unconstrained open objects.
-The \fB+Map{+Any}\fR shorthand remains valid input.
+The importer emits \fB+Map{}\fR for pure unconstrained open object values.
+\fB+Map{+Any}\fR and \fB+Map{+Str,+Any}\fR remain equivalent input aliases.
+Strict conversion does not emit these open-map forms.
 
 .PP
 When named properties coexist with \fBadditionalProperties\fR, the importer emits
@@ -862,8 +864,8 @@ The native and legacy forms cannot be mixed in one mapping.
 
 .PP
 \fB+Map{+Type}\fR accepts one built-in, user-defined, or namespaced reference.
-It is shorthand for the future \fB+Map{+Str,+Type}\fR form.
-Two-reference maps are reserved for YAML key schemas but are not implemented.
+\fB+Map{+Str,+Type}\fR is its explicit equivalent.
+The two-reference form currently accepts only \fB+Str\fR as its key type.
 More complex value constraints continue to use explicit \fB+Str\fR syntax.
 
 .PP
@@ -969,6 +971,34 @@ For now, importing JSON Schema requires every \fBdependentRequired\fR trigger to
 exist in the same \fBproperties\fR map.
 Supporting undeclared triggers needs a future object-level representation.
 
+.SH Positional Array Items
+JSON Schema \fBprefixItems\fR imports as a native tuple when every positional
+schema has a compact YAMLSchema representation:
+
+.EX
+{
+  "type": "array",
+  "prefixItems": [
+    {"type": "string"}
+  ]
+}
+.EE
+
+.EX
++Tup{+Str?,+Any...}
+.EE
+
+.PP
+\fBminItems\fR determines which prefix positions are required.
+Positions beyond that minimum receive \fB?\fR\&.
+An omitted or unconstrained \fBitems\fR becomes \fB+Any...\fR, \fBitems: false\fR closes
+the tuple, and any other compact item schema becomes a typed repeating member.
+Legacy array-valued \fBitems\fR imports through the same tuple syntax.
+
+.PP
+Complex positional schemas that cannot fit a compact tuple remain available as
+the \fB\&.prefixItems\fR passthrough directive.
+
 .SH Unsupported or Open JSON Schema Features
 The converter keeps unsupported keywords as same-named dotted directives and
 warns for every occurrence.
@@ -995,7 +1025,7 @@ l l .
 \fBif\fR / \fBthen\fR / \fBelse\fR	\fB\&.when\fR
 \fBdependentSchemas\fR	Extended \fB\&.with\fR or conditional schema
 \fBpropertyNames\fR	Key constraints
-\fBprefixItems\fR	Positional list schemas
+noncompact \fBprefixItems\fR	\fB\&.prefixItems\fR passthrough
 \fBcontains\fR	List membership constraints
 \fBunevaluatedItems\fR	Strict list mode
 \fBunevaluatedProperties\fR	Strict map mode
