@@ -17,6 +17,7 @@ endif
 
 include $M/gloat.mk
 include $M/node.mk
+include $M/perl.mk
 include $M/python.mk
 include $M/typos.mk
 include $M/clean.mk
@@ -32,7 +33,6 @@ export NO_MKDOCS_2_WARNING := 1
 
 REPO ?= git@github.com:yaml/yamlschema
 SERVE-HOST ?= localhost
-SERVE-PORT ?= 8000
 
 EDITOR-ASSETS := docs/assets/editor
 EDITOR-SOURCE := src/editor
@@ -56,9 +56,12 @@ build: site
 test: site $(NODE)
 	$(NODE) test/smoke.mjs
 
-serve: $(DEPS)
-	@printf '\nYAMLSchema: http://$(SERVE-HOST):$(SERVE-PORT)/\n\n'
-	mkdocs serve --livereload -a $(SERVE-HOST):$(SERVE-PORT)
+serve: $(DEPS) $(PERL)
+	$Q port=$${PORT:-$$('$(PERL)' -MIO::Socket::INET -e \
+	  'print IO::Socket::INET->new( \
+	     Listen => 1, LocalAddr => "$(SERVE-HOST)")->sockport')}; \
+	printf '\nYAMLSchema: http://$(SERVE-HOST):%s/\n\n' "$$port"; \
+	mkdocs serve --livereload -a $(SERVE-HOST):$$port
 
 lint: $(TYPOS)
 	typos docs mkdocs.yaml
