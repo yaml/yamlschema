@@ -121,7 +121,16 @@ test::
         "all": {"allOf": [{"$ref": "#/$defs/foo"},
                             {"$ref": "#/$defs/bar"}]},
         "not": {"not": {"anyOf": [{"type": "string"},
-                                      {"type": "integer"}]}}
+                                      {"type": "integer"}]}},
+        "machine": {
+          "oneOf": [
+            {"type": "string"},
+            {
+              "type": "array",
+              "prefixItems": [{"type": "string"}]
+            }
+          ]
+        }
       }
     }
   want: |
@@ -131,6 +140,48 @@ test::
     any?: +Any(+foo,+bar)
     all?: +All(+foo,+bar)
     not?: +Not(+Str,+Int)
+    machine?: +One(+Str,+Tup{+Str?,+Any...})
+
+- name: tuple-combinator-roundtrip
+  cmnd: sh -c 'bin/ysd -Rq -f ysd - && echo OK'
+  stdi: |
+    machine?: +One(+Str,+Tup{+Str?,+Any...})
+  want: |
+    OK
+
+- name: annotated-tuple-combinator-stays-block
+  cmnd: bin/ysd -f jsc -t ysd -
+  stdi: |
+    {
+      "properties": {
+        "choice": {
+          "oneOf": [
+            {"type": "string"},
+            {
+              "type": "array",
+              "prefixItems": [{"type": "string"}],
+              "description": "Tuple"
+            }
+          ]
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    choice?:
+      .one:
+      - +Str
+      - +Tup{+Str?,+Any...} "Tuple"
+
+- name: invalid-tuple-combinator-member
+  cmnd: |
+    sh -c 'bin/ysd -f ysd -t ysdc - 2>&1 |
+      perl -ne "print if /^ysd:/"'
+  stdi: |
+    bad: +One(+Str,+Tup{+Str?,+Num})
+  want: |
+    ysd: required tuple member cannot follow an optional member
 
 - name: singleton-ref-allof-with-properties
   cmnd: bin/ysd -t ysd -

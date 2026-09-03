@@ -2271,7 +2271,8 @@ defn direct-type-symbol?(token):
         '(?:\{[^\}]*\})?\[\]$'
   result =: type-symbol?(token) ||
     (token =~ list-pattern) ||
-    (token =~ /^\+Map\{[^\}]*\}$/)
+    (token =~ /^\+Map\{[^\}]*\}$/) ||
+    tuple-type-token?(token)
   =>: result
 
 defn labeled-type-block(token):
@@ -4648,11 +4649,20 @@ defn compact-combinator-scalar(schema strict=false):
     if keyword == 'not':
       compact-not-values(schema.not)
       schema.$keyword
-  refs =: values.when(vec(values.map(\(schema-type-ref(_ strict)))))
+  refs =:
+    values.when(vec(values.map(\(compact-combinator-type-ref(_ strict)))))
   when refs:
     when refs.# >= info.1:
       when refs.every?(some?):
         =>: "+$(info.0)($(refs.join(',')))"
+
+defn compact-combinator-type-ref(schema strict=false):
+  direct =: schema-type-ref(schema strict)
+  if direct:
+    then: direct
+    else:
+      when tuple-schema?(schema):
+        succinct-tuple-scalar: schema strict
 
 defn type-union-only?(schema):
   types =: schema.type
