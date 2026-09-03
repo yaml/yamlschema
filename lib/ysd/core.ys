@@ -55,7 +55,7 @@ defn run-schema-command(opts):
   when opts.roundtrip:
     exit: roundtrip-schema(text opts)
   target =: opts.norm.if('schema.json' output-format(opts))
-  encoding =: output-encoding(opts target)
+  encoding =: output-encoding(opts target text)
   when opts.norm:
     output =: normalize-json-schema-output(text opts encoding)
     emit-output: output opts.output
@@ -66,6 +66,11 @@ defn run-schema-command(opts):
 defn json-schema-normalize(text):
   schema =: load-json-schema(text false)
   normalized-json-schema-text: schema {}
+
+defn json-schema-normalize-yaml(text):
+  schema =: load-json-schema(text false)
+  schema =: normalize-json-schema(schema true)
+  schema-output: schema 'yaml' {}
 
 defn json-schema-to-ysd(text):
   convert: load-json-schema(text false)
@@ -106,6 +111,10 @@ defn ysd-to-json-schema(text):
   schema =: yamlschema-input-schema(text 'ysd.yaml' false)
   opts =: +{'compact' false}
   json-output: schema opts
+
+defn ysd-to-json-schema-yaml(text):
+  schema =: yamlschema-input-schema(text 'ysd.yaml' false)
+  schema-output: schema 'yaml' {}
 
 defn convert-to(target encoding text opts):
   case target:
@@ -221,20 +230,43 @@ defn output-format(opts):
     usage: "output format conflicts with file extension: $(opts.output)"
   explicit ||: inferred || default-output-format(opts)
 
-defn output-encoding(opts target):
+defn output-encoding(opts target text=nil):
   explicit =: explicit-output-encoding(opts)
   inferred =: infer-output-encoding(opts.output)
   when explicit && inferred && (explicit != inferred):
     usage: "output encoding conflicts with file extension: $(opts.output)"
-  explicit ||: inferred || default-output-encoding(target)
+  explicit ||:
+    inferred ||
+    default-output-encoding(target opts text)
 
 defn explicit-output-encoding(opts):
   cond:
     opts.yaml: 'yaml'
     opts.json: 'json'
+    opts.compact: 'json'
 
-defn default-output-encoding(target):
-  if target == 'schema.json': +'json' 'yaml'
+defn default-output-encoding(target opts text):
+  if target == 'schema.json':
+    then:
+      source =: input-format(opts)
+      schema-source =: source:nil? || (source == 'schema.json')
+      preserve =: opts.norm && schema-source
+      if preserve:
+        then:
+          inferred =: infer-input-encoding(opts.input)
+          detected =:
+            when text:
+              json-schema-input-encoding: text
+          detected ||: inferred || 'json'
+        else: 'json'
+    else: 'yaml'
+
+defn json-schema-input-encoding(text):
+  try:
+    ys::json/load: text
+    =>: 'json'
+    catch Exception error:
+      =>: 'yaml'
 
 defn default-output-format(opts):
   source =: input-format(opts)
@@ -414,6 +446,12 @@ defn infer-file-format(path):
     path =~ /\.ysd\.(?:yaml|json)$/: 'ysd.yaml'
 
 defn infer-output-encoding(path):
+  infer-file-encoding: path
+
+defn infer-input-encoding(path):
+  infer-file-encoding: path
+
+defn infer-file-encoding(path):
   cond:
     path:nil?: nil
     path == '-': nil

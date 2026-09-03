@@ -106,7 +106,8 @@ directive-to-keyword mapping.
 
 The JSON Schema editor accepts JSON or YAML and detects the serialization from
 the content.
-Normal and Strict regeneration produce canonical JSON.
+Normal and Strict regeneration produce canonical JSON Schema while preserving
+whether the editor content is serialized as JSON or YAML.
 
 The browser editor enables its **Strict** checkbox after editable JSON Schema
 successfully generates `.ysd` or `.ysdc`.

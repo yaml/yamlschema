@@ -146,6 +146,37 @@ test::
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
     {"$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","type":"object","additionalProperties":false,"required":["foo"],"properties":{"foo":{"type":"string"}}}
 
+- name: normalization-preserves-json-schema-serialization
+  cmnd: |
+    sh -c '
+      dir=$(mktemp -d)
+      trap "rm -r \"$dir\"" EXIT
+      printf "%s\n" \
+        "type: object" \
+        "properties: {name: {type: string}}" \
+        "required: [name]" > "$dir/yaml.schema.yaml"
+      cp "$dir/yaml.schema.yaml" "$dir/disguised.schema.json"
+      printf "%s\n" \
+        "{\"type\":\"object\",\"properties\":{}}" \
+        > "$dir/json.schema.json"
+      bin/ysd -N "$dir/yaml.schema.yaml" |
+        perl -ne "print if \$. == 1"
+      bin/ysd -N "$dir/disguised.schema.json" |
+        perl -ne "print if \$. == 1"
+      bin/ysd -N "$dir/json.schema.json" |
+        perl -ne "print if \$. == 1"
+      bin/ysd -NJ "$dir/yaml.schema.yaml" |
+        perl -ne "print if \$. == 1"
+      bin/ysd -NY "$dir/json.schema.json" |
+        perl -ne "print if \$. == 1"
+    '
+  want: |
+    $schema: https://json-schema.org/draft/2020-12/schema
+    $schema: https://json-schema.org/draft/2020-12/schema
+    {
+    {
+    $schema: https://json-schema.org/draft/2020-12/schema
+
 - name: all-input-file-extensions
   cmnd: |
     sh -c '

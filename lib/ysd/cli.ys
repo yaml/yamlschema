@@ -11,6 +11,7 @@ defn main(*args):
 
 EXPORT =::
   json-schema-normalize: [str, str]
+  json-schema-normalize-yaml: [str, str]
   json-schema-to-ysd: [str, str]
   json-schema-to-ysd-strict: [str, str]
   json-schema-to-ysdc-json: [str, str]
@@ -22,3 +23,4 @@ EXPORT =::
   ysd-roundtrip-report: [str, str]
   ysd-roundtrip-works: [str, bool]
   ysd-to-json-schema: [str, str]
+  ysd-to-json-schema-yaml: [str, str]

@@ -113,6 +113,8 @@ ysd -t jsc -Y contact.ysd.yaml
 Normalization adds the draft 2020-12 dialect, chooses canonical keyword
 positions, and preserves property order.
 Draft 4 root `id` normalizes to `$id`.
+JSON Schema input keeps its JSON or YAML serialization unless `-J`, `-Y`,
+`-C`, or an output filename selects one explicitly.
 
 The preferred keyword order is:
 

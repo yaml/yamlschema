@@ -34,9 +34,9 @@ copied from OpenAPI Initiative repository commit
 It is distributed under the Apache License 2.0 in
 [LICENSE-OAI](LICENSE-OAI).
 
-`openqa-job-templates.schema.json` is a JSON serialization of the
+`openqa-job-templates.schema.yaml` is the original YAML serialization of the
 [openQA Job Templates schema](https://github.com/os-autoinst/openQA/blob/c5886df66ff7bf04a93108771091f6bdf173b992/public/schema/JobTemplates-01.yaml),
-including its expanded YAML anchors and aliases.
+including its YAML anchors and aliases.
 It was copied from openQA repository commit
 `c5886df66ff7bf04a93108771091f6bdf173b992`.
 The source is distributed under the

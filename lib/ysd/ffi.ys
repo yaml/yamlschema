@@ -16,6 +16,7 @@ defn ysd-version():
 defn dispatch-ffi-operation(operation input):
   case operation:
     'json-schema-normalize': json-schema-normalize(input)
+    'json-schema-normalize-yaml': json-schema-normalize-yaml(input)
     'json-schema-to-ysd': json-schema-to-ysd(input)
     'json-schema-to-ysd-strict': json-schema-to-ysd-strict(input)
     'json-schema-to-ysdc-json': json-schema-to-ysdc-json(input)
@@ -30,6 +31,7 @@ defn dispatch-ffi-operation(operation input):
     'ysd-roundtrip-report': ysd-roundtrip-report(input)
     'ysd-roundtrip-works': ysd-roundtrip-works(input)
     'ysd-to-json-schema': ysd-to-json-schema(input)
+    'ysd-to-json-schema-yaml': ysd-to-json-schema-yaml(input)
     else: die("unknown ysd operation '$operation'")
 
 defn ffi-success(value):

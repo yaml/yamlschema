@@ -4,6 +4,7 @@ let ready = false;
 const pending = [];
 const operations = new Set([
   'json-schema-normalize',
+  'json-schema-normalize-yaml',
   'json-schema-to-ysdc-json',
   'json-schema-to-ysdc-json-strict',
   'json-schema-to-ysdc',
@@ -11,6 +12,7 @@ const operations = new Set([
   'json-schema-to-ysd',
   'json-schema-to-ysd-strict',
   'ysd-to-json-schema',
+  'ysd-to-json-schema-yaml',
 ]);
 
 function callExport({id, operation, input}) {

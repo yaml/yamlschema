@@ -97,7 +97,7 @@ const sampleSources = {
       url: assetURL('examples/harbor-next.schema.json'),
     },
     'openqa-job-templates': {
-      url: assetURL('examples/openqa-job-templates.schema.json'),
+      url: assetURL('examples/openqa-job-templates.schema.yaml'),
     },
     'openapi-3-schema': {
       url: assetURL('examples/openapi-3-schema.schema.json'),
@@ -309,6 +309,10 @@ function setJsonSerialization(serialization) {
   jsonSerialization = serialization;
   const language = serialization === 'yaml' ? yaml() : json();
   jsonEditor.setLanguage(language);
+}
+
+function jsonSchemaOutputOperation(operation) {
+  return jsonSerialization === 'yaml' ? `${operation}-yaml` : operation;
 }
 
 function prepareJsonSchema(text) {
@@ -885,7 +889,7 @@ async function makeJsonSchemaStrict() {
     return conversion;
   }
   const id = conversionRequest;
-  const operation = 'ysd-to-json-schema';
+  const operation = jsonSchemaOutputOperation('ysd-to-json-schema');
   const cached = cachedWorkerResult(operation, conversion.ysd);
   showGeneratingJSONSchema();
   const result = cached || await callWorker(operation, conversion.ysd);
@@ -931,7 +935,7 @@ async function normalizeJsonSchema() {
   setRoundtripSource('json');
   setRoundtripStatus('checking');
   const input = prepareJsonSchema(sourceValue);
-  const operation = 'json-schema-normalize';
+  const operation = jsonSchemaOutputOperation('json-schema-normalize');
   const cached = cachedWorkerResult(operation, input);
   const result = cached || await callWorker(operation, input);
   if (id !== jsonNormalRequest || jsonValue !== sourceValue) return result;
@@ -961,6 +965,7 @@ async function convertYamlToJson() {
   jsonNormalRequest++;
   setJsonNormal(false);
   jsonNormalControl.disabled = true;
+  setJsonSerialization('json');
   const operation = 'ysd-to-json-schema';
   const cached = cachedWorkerResult(operation, ysd);
   if (!cached) showGeneratingJSONSchema();

@@ -373,6 +373,18 @@ if (!normalizedYAMLResult.ok ||
     normalizedYAMLResult,
   )}`);
 }
+const preservedYAMLResult = globalThis.gloat.exports[
+  'json-schema-normalize-yaml'
+](yamlSchemaText);
+if (!preservedYAMLResult.ok ||
+    !preservedYAMLResult.value.startsWith(
+      '$schema: https://json-schema.org/draft/2020-12/schema\n',
+    ) ||
+    !preservedYAMLResult.value.includes('  name:\n    type: string')) {
+  throw new Error(`YAML normalization was not preserved: ${JSON.stringify(
+    preservedYAMLResult,
+  )}`);
+}
 const yamlYSDResult = globalThis.gloat.exports[
   'json-schema-to-ysd'
 ](yamlSchemaText);
@@ -529,6 +541,18 @@ if (
     strictJSON,
   )}`);
 }
+const strictYAML = globalThis.gloat.exports[
+  'ysd-to-json-schema-yaml'
+](strictYSD.value);
+if (!strictYAML.ok ||
+    !strictYAML.value.startsWith(
+      '$schema: https://json-schema.org/draft/2020-12/schema\n',
+    ) ||
+    !strictYAML.value.includes('additionalProperties: false')) {
+  throw new Error(`strict YAML regeneration failed: ${JSON.stringify(
+    strictYAML,
+  )}`);
+}
 
 const blogText = await readFile(
   'docs/assets/editor/examples/blog-post.schema.json',
@@ -654,7 +678,9 @@ if (
   !appSource.includes('showRoundtripResult(cached);') ||
   !appSource.includes('(roundtripBusy || roundtripTimer !== undefined)') ||
   !appSource.includes('cachedYSDCForYSD(ysd)') ||
-  !appSource.includes("const operation = 'json-schema-normalize';")
+  !appSource.includes(
+    "jsonSchemaOutputOperation('json-schema-normalize')",
+  )
 ) {
   throw new Error('generated documents are not reused for unchanged inputs');
 }
@@ -986,9 +1012,11 @@ if (!schemaWorkerSource.includes("fetch('ysd.wasm?v=20')")) {
   throw new Error('schema worker does not load the current Wasm asset');
 }
 for (const operation of [
+  'json-schema-normalize-yaml',
   'json-schema-to-ysd-strict',
   'json-schema-to-ysdc-strict',
   'json-schema-to-ysdc-json-strict',
+  'ysd-to-json-schema-yaml',
 ]) {
   if (!schemaWorkerSource.includes(`'${operation}'`)) {
     throw new Error(`schema worker is missing ${operation}`);
@@ -1589,15 +1617,34 @@ for (const name of exampleFiles) {
   if (yamlSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is incorrectly in the YAMLSchema selector`);
   }
+  const suffix = name === 'openqa-job-templates'
+    ? 'schema.yaml'
+    : 'schema.json';
   const text = await readFile(
-    `docs/assets/editor/examples/${name}.schema.json`,
+    `docs/assets/editor/examples/${name}.${suffix}`,
     'utf8',
   );
-  const schema = JSON.parse(text);
-  const dialect = ['openapi-3-schema', 'openqa-job-templates'].includes(name)
+  let schema;
+  if (name === 'openqa-job-templates') {
+    const normalized = globalThis.gloat.exports[
+      'json-schema-normalize'
+    ](text);
+    if (!normalized.ok ||
+        !text.includes(
+          '$schema: http://json-schema.org/draft-04/schema#',
+        )) {
+      throw new Error(`${name} normalization failed: ${JSON.stringify(
+        normalized,
+      )}`);
+    }
+    schema = JSON.parse(normalized.value);
+  } else {
+    schema = JSON.parse(text);
+  }
+  const dialect = name === 'openapi-3-schema'
     ? 'http://json-schema.org/draft-04/schema#'
     : 'https://json-schema.org/draft/2020-12/schema';
-  if (schema.$schema &&
+  if (name !== 'openqa-job-templates' && schema.$schema &&
       schema.$schema !== dialect) {
     throw new Error(`${name} has the wrong JSON Schema dialect`);
   }
@@ -1641,7 +1688,9 @@ for (const name of exampleFiles) {
   }
   if (name === 'openqa-job-templates') {
     if (
-      schema.$id !== 'http://open.qa/api/schema/JobTemplates-01.yaml' ||
+      !text.includes(
+        '$id: http://open.qa/api/schema/JobTemplates-01.yaml',
+      ) ||
       schema.description !== 'openQA job template' ||
       roundtrip.value !== true ||
       !converted.value.includes('+Tup{+Str?,+Any...}') ||
