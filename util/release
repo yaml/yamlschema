@@ -8,6 +8,7 @@ command=${1:?usage: release release|prepare|publish VERSION}
 version=${2:?usage: release release|prepare|publish VERSION}
 version=${version#v}
 perl=${PERL:?PERL is required}
+ys=${YS:?YS is required}
 release_branch=${RELEASE_BRANCH:-main}
 
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
@@ -184,6 +185,32 @@ release_notes() {
   ' "$changes_file"
 }
 
+load_pypi_token() {
+  local secrets_file token
+  secrets_file=${YAML_PUBLISH_SECRETS:-$HOME/.yaml-publish-secrets}
+  [[ -r $secrets_file ]] || {
+    echo "release: cannot read PyPI secrets file $secrets_file" >&2
+    exit 1
+  }
+  if ! token=$("$ys" -e \
+      'get-in(_ [".python" "token"]):print' "$secrets_file"); then
+    echo "release: cannot load .python.token from $secrets_file" >&2
+    exit 1
+  fi
+  [[ -n $token ]] || {
+    echo "release: .python.token is empty in $secrets_file" >&2
+    exit 1
+  }
+  printf '%s' "$token"
+}
+
+publish_pypi_token() {
+  local gh=$1 token=$2
+  printf '%s' "$token" |
+    "$gh" secret set PYPI_API_TOKEN \
+      --app actions --repo yaml/yamlschema
+}
+
 release_commit_ready() {
   local changed subject
   [[ $(current_version) == "$version" ]] || return 1
@@ -297,7 +324,7 @@ Prepare validated artifacts for publication."
 }
 
 publish() {
-  local tag notes_file gh
+  local tag notes_file gh pypi_token
   validate_release_state
   tag="v$version"
   if [[ ${RELEASE_SKIP_REMOTE_CHECK:-0} == 0 ]]; then
@@ -307,9 +334,14 @@ publish() {
       exit 1
     }
   fi
+  pypi_token=$(load_pypi_token)
 
   make test
   make release-smoke VERSION="$version"
+
+  gh=${GH:-gh}
+  publish_pypi_token "$gh" "$pypi_token"
+  unset pypi_token
 
   if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
     git tag -a "$tag" -m "Release $tag"
@@ -322,7 +354,6 @@ publish() {
 
   notes_file="$top/.cache/release-notes-$version.md"
   release_notes > "$notes_file"
-  gh=${GH:-gh}
   if "$gh" release view "$tag" --repo yaml/yamlschema >/dev/null 2>&1; then
     "$gh" release upload "$tag" --repo yaml/yamlschema --clobber \
       "$top"/dist/ysd-*

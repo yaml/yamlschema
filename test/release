@@ -24,6 +24,12 @@ origin="$temporary/origin.git"
 fake_bin="$temporary/bin"
 make_log="$temporary/make.log"
 gh_log="$temporary/gh.log"
+secrets="$temporary/yaml-publish-secrets"
+
+printf '%s\n' \
+  '.python:' \
+  '  token: test-pypi-token' \
+  > "$secrets"
 
 mkdir -p "$repo/lib/ysd" "$repo/man/man1" "$repo/util" "$fake_bin"
 cp "$top/Changes" "$top/Makefile" "$repo/"
@@ -64,9 +70,11 @@ run_release() {
     cd "$repo"
     PATH="$fake_bin:$PATH" \
       PERL="$perl" \
+      YS="$YS" \
       MAKE_LOG="$make_log" \
       GH_LOG="$gh_log" \
       GH="$fake_bin/gh" \
+      YAML_PUBLISH_SECRETS="$secrets" \
       RELEASE_BRANCH="${TEST_RELEASE_BRANCH:-main}" \
       "$release" release "$version"
   )
@@ -82,7 +90,7 @@ expect_failure() {
 }
 
 expect_failure invalid-version \
-  env PERL="$perl" "$release" release invalid
+  env PERL="$perl" YS="$YS" "$release" release invalid
 expect_failure validation-stop run_release
 
 expected=$(printf '%s\n' update test)
@@ -122,6 +130,11 @@ printf '%s\n' \
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'printf "%s\n" "$*" >> "$GH_LOG"' \
+  'if [[ $1 == secret && $2 == set ]]; then' \
+  '  token=' \
+  '  IFS= read -r token || [[ -n $token ]]' \
+  '  [[ $token == test-pypi-token ]]' \
+  'fi' \
   '[[ $1 != release || $2 != view ]]' \
   > "$fake_bin/gh"
 chmod 0755 "$fake_bin/gh"
@@ -136,8 +149,14 @@ expected=$(printf '%s\n' \
   "release-smoke VERSION=$version" \
   publish)
 [[ $(< "$make_log") == "$expected" ]]
+grep -Fqx \
+  'secret set PYPI_API_TOKEN --app actions --repo yaml/yamlschema' \
+  "$gh_log"
 grep -Fqx "release view v$version --repo yaml/yamlschema" "$gh_log"
 grep -Fq "release create v$version --repo yaml/yamlschema" "$gh_log"
+secret_line=$("$perl" -ne 'print $. if /^secret set /' "$gh_log")
+release_line=$("$perl" -ne 'print $. if /^release (?:view|create) /' "$gh_log")
+[[ $secret_line -lt ${release_line%%$'\n'*} ]]
 [[ $(git --git-dir="$origin" rev-parse refs/heads/main) == "$head_before" ]]
 [[ $(git --git-dir="$origin" rev-parse "refs/tags/v$version^{commit}") == \
    "$head_before" ]]

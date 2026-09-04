@@ -112,8 +112,8 @@ test-native-order: build
 test-version: $(YS)
 	test "$$(bin/ysd --version)" = 'ysd $(YSD-VERSION)'
 
-test-release: $(PERL)
-	PERL='$(PERL)' test/release
+test-release: $(PERL) $(YS)
+	PERL='$(PERL)' YS='$(YS)' test/release
 
 test-installer:
 	test/installer
@@ -234,11 +234,11 @@ release-smoke: release-dist $(NODE)
 	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	cd '$(DIST)' && sha256sum -c ysd-checksums.txt
 
-release: $(GH) $(PERL)
+release: $(GH) $(PERL) $(YS)
 	@$(if $(filter command line,$(origin VERSION)),,\
 	  $(error VERSION is required on the command line))
 	$Q RELEASE_BRANCH='$(RELEASE_BRANCH)' \
-	  PERL='$(PERL)' GH='$(GH)' \
+	  PERL='$(PERL)' YS='$(YS)' GH='$(GH)' \
 	  '$(RELEASE)' release '$(VERSION)'
 
 MAKES-CLEAN += \
