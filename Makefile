@@ -223,7 +223,7 @@ release-smoke: release-dist $(NODE)
 	  'ysd $(YSD-VERSION)'
 	native='$(RELEASE-BUILD)/bin/linux_amd64/ysd'; \
 	  output=$$("$$native" '$(RELEASE-SMOKE-INPUT)'); \
-	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
+	  printf '%s\n' "$$output" | grep -Fx -- '--: Person'; \
 	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	go_bin=$$('$(GLOAT)' --which=go); \
 	  go_root=$$("$$go_bin" env GOROOT); \
@@ -231,7 +231,7 @@ release-smoke: release-dist $(NODE)
 	  wasm='$(RELEASE-BUILD)/bin/js_wasm/ysd.wasm'; \
 	  output=$$('$(NODE)' test/wasm-smoke.js \
 	    "$$wasm_exec" "$$wasm" '$(RELEASE-SMOKE-INPUT)'); \
-	  printf '%s\n' "$$output" | grep -Fx '.title: Person'; \
+	  printf '%s\n' "$$output" | grep -Fx -- '--: Person'; \
 	  printf '%s\n' "$$output" | grep -Fx 'name: +Str'
 	cd '$(DIST)' && sha256sum -c ysd-checksums.txt
 
