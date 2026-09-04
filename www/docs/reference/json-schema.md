@@ -250,7 +250,7 @@ Roundtrip notes:
   It renders `[A-Z]` and `[a-z]` as `{upper}` and `{lower}`.
   It renders `\+` as `{plus}`.
   `{digit}` exports as `[0-9]`.
-- In any tight double-quoted body, `:\ ` represents colon-space and ` \#`
+- In any scalar DSL double-quoted body, `:\ ` represents colon-space and ` \#`
   represents space-hash.
   Other backslash sequences remain literal.
 - All regex forms imply string validation.
@@ -883,7 +883,7 @@ Its dependency names are sibling properties that must also be present.
 Multiple names are comma separated, and `:need()` preserves an empty list.
 
 When a property value already needs an explicit block, or a dependency name
-is not safe in a tight scalar, use `.need` with a flow sequence:
+is not safe in a YSD scalar DSL expression, use `.need` with a flow sequence:
 
 ```yaml
 extendedAddress?:

@@ -373,9 +373,9 @@ These mean a list of tuples, one tuple or a list of tuples, and a nullable
 tuple respectively.
 
 
-## Tight Type Expressions
+## YSD Scalar DSL
 
-A tight type expression is a YAML plain scalar.
+A YSD scalar DSL expression is a YAML plain scalar.
 A type reference is normally first, but labeled clauses may appear in any
 order:
 
@@ -417,8 +417,8 @@ anchors are implied.
 `~~"pattern"` searches within the string.
 `find:"pattern"` is an accepted alias.
 The quoted bodies cannot contain `"`.
-In .ysd, use explicit `.match` or `.find` when no tight form can represent the
-pattern.
+In .ysd, use explicit `.match` or `.find` when no scalar DSL form can
+represent the pattern.
 Both imply `+Str`.
 Generated .ysd uses the canonical `~"pattern"` and `~~"pattern"` spellings.
 
@@ -600,7 +600,7 @@ Nullability is a value-side suffix:
 enabled?: +Bool~
 ```
 
-Tight annotations may occur anywhere among the clauses:
+Scalar DSL annotations may occur anywhere among the clauses:
 
 ```yaml
 enabled?: +Bool~ =false --"Enabled" -"Enable the service"
@@ -634,15 +634,15 @@ The obsolete trailing single-quoted description form is an error.
 For compatibility, a final bare `"..."` remains accepted as a description.
 The labeled `title:"..."` and `desc:"..."` forms are also accepted.
 Generated .ysd always uses `-"..."`.
-Generated .ysd uses `--"..."` for tight titles.
-For annotations that cannot use the tight form, use `--:` and `-:` in .ysd,
-or canonical `.title:` and `.desc:` in .ysdc.
+Generated .ysd uses `--"..."` for scalar DSL titles.
+For annotations that cannot use the scalar DSL form, use `--:` and `-:` in
+.ysd, or canonical `.title:` and `.desc:` in .ysdc.
 
 
 ## Hybrid Explicit Types
 
 When one constraint is clearer explicitly, `.type` may contain the complete
-tight expression and sibling directives add the exceptional parts:
+scalar DSL expression and sibling directives add the exceptional parts:
 
 ```yaml
 foo:
@@ -779,14 +779,14 @@ This is the compact form of a mapping whose only pair would be `.type: +Type`.
 An external reference may similarly use `+Ref(...)`; its canonical form is
 `.xref` rather than `.type`.
 When annotations, validation constraints, or shape entries share the mapping,
-the reference or complete tight expression remains under `.type`.
+the reference or complete scalar DSL expression remains under `.type`.
 
 Canonical list types use `.list`, whose value is the item schema.
 An unconstrained canonical list is `.list: +Any`.
 Item constraints are nested under `.list`, while `.size`, `.solo`, and `.uniq`
 remain beside it as list constraints.
-Human-authored `.ysd` still accepts tight forms such as `+Str[]` and the full
-`.list` form.
+Human-authored `.ysd` still accepts scalar DSL forms such as `+Str[]` and the
+full `.list` form.
 Canonical `.ysdc` rejects the retired `.item` directive and old
 `.type: +Str[]` spelling.
 

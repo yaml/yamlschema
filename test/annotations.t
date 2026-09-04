@@ -84,7 +84,7 @@ test::
     .desc: Device description
     name: +Str
 
-- name: preferred-tight-title
+- name: preferred-dsl-title
   cmnd: bin/ysd -f ysd -t ysdc -J -C -
   stdi: |
     name: --"Full name" +Str -"Person name"

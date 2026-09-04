@@ -522,7 +522,7 @@ test::
   stdi: |
     foo: match:"a"b"
   want: |
-    ysd: tight quoted values cannot contain a double quote
+    ysd: YSD scalar DSL quoted values cannot contain a double quote
 
 - name: reject-quote-in-compact-match
   cmnd: |
@@ -530,7 +530,7 @@ test::
   stdi: |
     foo: ~"a"b"
   want: |
-    ysd: tight quoted values cannot contain a double quote
+    ysd: YSD scalar DSL quoted values cannot contain a double quote
 
 - name: reject-old-match-syntax
   cmnd: |
@@ -591,7 +591,7 @@ test::
   want: |
     {"string":{".title":"Title",".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".list":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
 
-- name: reject-renamed-tight-keywords
+- name: reject-renamed-dsl-keywords
   cmnd: |
     sh -c '
       for value in base:+Str titl:Old just:Old only:Old like:Old mini:1 maxi:10; do

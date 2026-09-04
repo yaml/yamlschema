@@ -1375,7 +1375,7 @@ defn expand-type(value):
   block =:
     if map?(value):
       expand-type-map: value
-      expand-tight: value
+      expand-dsl: value
   block =: canonicalize-type-reference(block)
   validate-complete-map-type: block
   =>: block
@@ -1413,7 +1413,7 @@ defn expand-explicit-type(value):
   reference =: value.'.type'
   base =:
     if value.has?('.type') && old-map-marker.!:
-      expand-tight: reference
+      expand-dsl: reference
       omap:
   result =: reduce(expand-explicit-entry base value)
   validate-exclusive-range-directives: result
@@ -1869,17 +1869,17 @@ defn reject-item-keyword():
 defn reject-list-keyword():
   usage: 'unsupported yamlschema keyword: list; use [] on the type'
 
-defn expand-tight(value):
+defn expand-dsl(value):
   if string?(value):
-    expand-tight-string: value
+    expand-dsl-string: value
     else: literal-block(value)
 
-defn expand-tight-string(value):
+defn expand-dsl-string(value):
   when value =~ /\s+'[^']*'$/:
     usage: 'single-quoted descriptions are unsupported; use "description"'
   when value =~ /^\/.*[ \t].*\/(?:\s|$)/:
     usage: 'slash regex syntax is unsupported; use ~~"pattern"'
-  tokens =: tight-tokens(value)
+  tokens =: dsl-tokens(value)
   when tokens:empty?:
     usage: 'empty yamlschema type expression'
   bases =: tokens.filter(base-primary-token?):vec
@@ -1888,11 +1888,11 @@ defn expand-tight-string(value):
       primary =: bases.0
       result =: expand-primary-token(primary)
       rest =: remove-first-token(tokens primary)
-      result =: reduce(expand-tight-token result rest)
+      result =: reduce(expand-dsl-token result rest)
       validate-exclusive-range-directives: result
     else:
       result =: expand-primary-token(tokens.0)
-      result =: reduce(expand-tight-token result vec(tokens:rest))
+      result =: reduce(expand-dsl-token result vec(tokens:rest))
       validate-exclusive-range-directives: result
 
 defn remove-first-token(tokens target):
@@ -1905,19 +1905,19 @@ defn remove-first-token-step(state token target):
     then: state + {'found' true}
     else: state + {'tokens' (state.tokens + token)}
 
-defn tight-tokens(value):
-  tokens =: tight-token-scan(value)
-  bad-quote =: tokens.some(bad-tight-token-quote?)
+defn dsl-tokens(value):
+  tokens =: dsl-token-scan(value)
+  bad-quote =: tokens.some(bad-dsl-token-quote?)
   when bad-quote:
-    usage: 'tight quoted values cannot contain a double quote'
+    usage: 'YSD scalar DSL quoted values cannot contain a double quote'
   =>: tokens
 
-defn tight-token-scan(value):
-  tight-token-loop: value:seq '' [] false 0 0 0
+defn dsl-token-scan(value):
+  dsl-token-loop: value:seq '' [] false 0 0 0
 
-defn tight-token-loop(chars token tokens quoted parens brackets braces):
+defn dsl-token-loop(chars token tokens quoted parens brackets braces):
   if chars:empty?:
-    then: append-tight-token(tokens token)
+    then: append-dsl-token(tokens token)
     else:
       char =: chars.0:S
       rest =: chars:rest
@@ -1925,10 +1925,10 @@ defn tight-token-loop(chars token tokens quoted parens brackets braces):
         parens.! && brackets.! && braces.!
       if boundary:
         then:
-          tight-token-loop:
+          dsl-token-loop:
             rest
             ''
-            append-tight-token(tokens token)
+            append-dsl-token(tokens token)
             quoted
             parens
             brackets
@@ -1937,31 +1937,31 @@ defn tight-token-loop(chars token tokens quoted parens brackets braces):
           was-quoted =: quoted
           quote =: C(34):S
           quoted =: (char == quote).if(quoted.! quoted)
-          tight-token-loop:
+          dsl-token-loop:
             rest
             (token + char)
             tokens
             quoted
-            tight-token-depth(parens char '(' ')' was-quoted)
-            tight-token-depth(brackets char '[' ']' was-quoted)
-            tight-token-depth(braces char '{' '}' was-quoted)
+            dsl-token-depth(parens char '(' ')' was-quoted)
+            dsl-token-depth(brackets char '[' ']' was-quoted)
+            dsl-token-depth(braces char '{' '}' was-quoted)
 
-defn append-tight-token(tokens token):
+defn append-dsl-token(tokens token):
   if token:
     then: tokens + token
     else: tokens
 
-defn tight-token-depth(depth char open close quoted):
+defn dsl-token-depth(depth char open close quoted):
   cond:
     quoted: depth
     char == open: depth.++
     char == close: max(0 depth.--)
     else: depth
 
-defn bad-tight-token-quote?(token):
+defn bad-dsl-token-quote?(token):
   quote =: C(34):S
   quote.in?(token) &&:
-    tight-token-quoted?(token).! &&
+    dsl-token-quoted?(token).! &&
     compact-enum-token?(token).!
 
 defn base-primary-token?(token):
@@ -2092,9 +2092,9 @@ defn tuple-member-loop(chars member members quoted parens brackets braces):
             (member + char)
             members
             quoted
-            tight-token-depth(parens char '(' ')' was-quoted)
-            tight-token-depth(brackets char '[' ']' was-quoted)
-            tight-token-depth(braces char '{' '}' was-quoted)
+            dsl-token-depth(parens char '(' ')' was-quoted)
+            dsl-token-depth(brackets char '[' ']' was-quoted)
+            dsl-token-depth(braces char '{' '}' was-quoted)
 
 defn canonical-tuple-token(info):
   members =:
@@ -2236,27 +2236,27 @@ defn primary-block(token):
       usage: 'unsupported whole-string match syntax; use ~"pattern"'
     token.starts?('~~"'):
       +{'.type' '+Str', '.like'
-        expand-regex-names(tight-string-value(token.replace(/^~~/)))}
+        expand-regex-names(dsl-string-value(token.replace(/^~~/)))}
     token.starts?('~~'):
       usage: 'invalid regex search syntax; use ~~"pattern"'
     token.starts?('~"'):
       +{'.type' '+Str', '.like'
         anchored-pattern(
-          expand-regex-names(tight-string-value(token.replace(/^~/))))}
+          expand-regex-names(dsl-string-value(token.replace(/^~/))))}
     token.starts?('~'):
       usage: 'invalid whole-string match syntax; use ~"pattern"'
     token.starts?('match:'):
       +{'.type' '+Str', '.like'
-        anchored-pattern(tight-label-string(token))}
+        anchored-pattern(dsl-label-string(token))}
     token.starts?('find:'):
-      +{'.type' '+Str', '.like' tight-label-string(token)}
+      +{'.type' '+Str', '.like' dsl-label-string(token)}
     token.starts?('range:'):
-      range-block(tight-label-raw(token) nil)
+      range-block(dsl-label-raw(token) nil)
     exclusive-range-modifier?(token):
       usage: "$token requires a preceding range"
     token.starts?('const:') || token.starts?('=='):
       usage: 'const requires a preceding type reference'
-    old-tight-keyword?(token): reject-old-tight-keyword(token)
+    old-dsl-keyword?(token): reject-old-dsl-keyword(token)
     token == '+Map': +{'.type' '+Map'}
     type-symbol?(token): +{'.type' token}
     slash-delimited-token?(token):
@@ -2274,7 +2274,7 @@ defn primary-block(token):
       usage: "invalid yamlschema type expression: $token"
     else: literal-block(parse-yaml-scalar(token))
 
-defn expand-tight-token(result token):
+defn expand-dsl-token(result token):
   cond:
     type-symbol?(token): append-all-reference(result token)
     need-token?(token):
@@ -2292,7 +2292,7 @@ defn expand-tight-token(result token):
       merge-directives:
         result
         {'.like'
-          expand-regex-names(tight-string-value(token.replace(/^~~/)))}
+          expand-regex-names(dsl-string-value(token.replace(/^~~/)))}
         'find clause'
     token.starts?('~~'):
       usage: 'invalid regex search syntax; use ~~"pattern"'
@@ -2300,7 +2300,7 @@ defn expand-tight-token(result token):
       merge-directives:
         result
         {'.like' anchored-pattern(
-          expand-regex-names(tight-string-value(token.replace(/^~/))))}
+          expand-regex-names(dsl-string-value(token.replace(/^~/))))}
         'match clause'
     token.starts?('~'):
       usage: 'invalid whole-string match syntax; use ~"pattern"'
@@ -2310,39 +2310,39 @@ defn expand-tight-token(result token):
       reject-ambiguous-exclusive-range: token
     range-literal?(token):
       merge-directives:
-        result range-block(token tight-result-base(result)) 'range clause'
+        result range-block(token dsl-result-base(result)) 'range clause'
     compact-enum-token?(token):
       merge-directives:
         result
-        compact-enum-block(token tight-result-base(result))
+        compact-enum-block(token dsl-result-base(result))
         'enum clause'
     token.starts?('=='):
       raw =: token.replace(/^=/).replace(/^=/)
       merge-directives:
-        result const-block(raw tight-result-base(result)) 'const clause'
+        result const-block(raw dsl-result-base(result)) 'const clause'
     token.starts?('='):
       merge-directives:
-        result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
+        result {'.init' dsl-data-value(token.replace(/^=/))} 'default clause'
     token.starts?('--"'):
       merge-directives:
         result
-        {'.title' tight-string-value(token.replace(/^--/))}
+        {'.title' dsl-string-value(token.replace(/^--/))}
         'title clause'
     token.starts?('--'):
       usage: 'invalid title clause; use --"title"'
     token.starts?('-"'):
       merge-directives:
         result
-        {'.desc' tight-string-value(token.replace(/^-/))}
+        {'.desc' dsl-string-value(token.replace(/^-/))}
         'description clause'
     token.starts?('-'):
       usage: 'invalid description clause; use -"description"'
-    tight-quoted?(token):
+    dsl-quoted?(token):
       merge-directives:
-        result {'.desc' tight-string-value(token)} 'description clause'
-    labeled-tight-token?(token):
+        result {'.desc' dsl-string-value(token)} 'description clause'
+    labeled-dsl-token?(token):
       merge-directives:
-        result labeled-tight-block(token result) "$(tight-label(token)) clause"
+        result labeled-dsl-block(token result) "$(dsl-label(token)) clause"
     token =~ /\|/:
       usage: 'pipe enums are unsupported; use +Base [a,b]'
     size-token?(token):
@@ -2351,7 +2351,7 @@ defn expand-tight-token(result token):
     else:
       usage: "invalid or out-of-order yamlschema clause: $token"
 
-defn tight-result-base(result):
+defn dsl-result-base(result):
   list =: result.'.list'
   cond:
     string?(result.'.type'): result.'.type'
@@ -2425,7 +2425,7 @@ defn direct-type-symbol?(token):
   =>: result
 
 defn labeled-type-block(token):
-  type =: tight-label-string(token)
+  type =: dsl-label-string(token)
   when-not type-symbol?(type):
     usage: "invalid yamlschema type reference: $type"
   =>: +{'.type' type}
@@ -2433,20 +2433,20 @@ defn labeled-type-block(token):
 defn compact-enum-token?(token):
   token =~ /^(?:enum:)?\[[^\]]*\]$/
 
-defn labeled-tight-token?(token):
+defn labeled-dsl-token?(token):
   token =~ /^[A-Za-z]+:/
 
-defn tight-label(token):
+defn dsl-label(token):
   token.replace(/:.*$/)
 
-defn tight-label-raw(token):
+defn dsl-label-raw(token):
   token.replace(/^[^:]+:/)
 
-defn tight-quoted?(value):
+defn dsl-quoted?(value):
   text =: value:S
   text =~: /^"[^"]*"$/
 
-defn tight-token-quoted?(token):
+defn dsl-token-quoted?(token):
   raw =:
     cond:
       token.starts?('--"'): token.replace(/^--/)
@@ -2456,29 +2456,29 @@ defn tight-token-quoted?(token):
       token.starts?('~'): token.replace(/^~/)
       token.starts?('=='): token.replace(/^=/).replace(/^=/)
       token.starts?('='): token.replace(/^=/)
-      labeled-tight-token?(token): tight-label-raw(token)
+      labeled-dsl-token?(token): dsl-label-raw(token)
       else: token
-  tight-quoted?: raw
+  dsl-quoted?: raw
 
-defn tight-string-value(raw):
-  if tight-quoted?(raw):
-    decode-tight-string(raw.replace(/^./).replace(/.$/)) raw
+defn dsl-string-value(raw):
+  if dsl-quoted?(raw):
+    decode-dsl-string(raw.replace(/^./).replace(/.$/)) raw
 
-defn tight-data-value(raw):
-  if tight-quoted?(raw):
-    tight-string-value: raw
+defn dsl-data-value(raw):
+  if dsl-quoted?(raw):
+    dsl-string-value: raw
     parse-yaml-scalar: raw
 
-defn tight-label-string(token):
-  tight-string-value: tight-label-raw(token)
+defn dsl-label-string(token):
+  dsl-string-value: dsl-label-raw(token)
 
-defn old-tight-keyword?(token):
-  labeled-tight-token?(token) &&
-  tight-label(token).in?(
+defn old-dsl-keyword?(token):
+  labeled-dsl-token?(token) &&
+  dsl-label(token).in?(
     qw(base titl just only like mini maxi pick oneof anyof allof))
 
-defn reject-old-tight-keyword(token):
-  key =: tight-label(token)
+defn reject-old-dsl-keyword(token):
+  key =: dsl-label(token)
   replacements =: +{'base' 'type', 'titl' 'title', 'just' 'const',
                     'only' 'const', 'like' 'match',
                     'mini' 'range', 'maxi' 'range',
@@ -2486,48 +2486,48 @@ defn reject-old-tight-keyword(token):
                     'anyof' 'any', 'allof' 'all'}
   usage: "unsupported yamlschema keyword: $key; use $(replacements.$key)"
 
-defn labeled-tight-block(token result):
-  when old-tight-keyword?(token):
-    reject-old-tight-keyword: token
-  name =: tight-label(token)
-  raw =: tight-label-raw(token)
+defn labeled-dsl-block(token result):
+  when old-dsl-keyword?(token):
+    reject-old-dsl-keyword: token
+  name =: dsl-label(token)
+  raw =: dsl-label-raw(token)
   key =: ".$name"
   case name:
     'type': labeled-type-block(token)
     'match':
       +{'.like' anchored-pattern(
-        expand-regex-names(tight-string-value(raw)))}
-    'find': +{'.like' expand-regex-names(tight-string-value(raw))}
-    'const': const-block(raw tight-result-base(result))
+        expand-regex-names(dsl-string-value(raw)))}
+    'find': +{'.like' expand-regex-names(dsl-string-value(raw))}
+    'const': const-block(raw dsl-result-base(result))
     'enum': usage('enum requires a bracketed value list')
-    'range': range-block(raw tight-result-base(result))
-    'size': +{key normalize-size(tight-string-value(raw))}
+    'range': range-block(raw dsl-result-base(result))
+    'size': +{key normalize-size(dsl-string-value(raw))}
     'list': reject-list-keyword()
     'item': reject-item-keyword()
     'solo': boolean-label-block(key raw)
     'uniq': boolean-label-block(key raw)
     'null': boolean-label-block(key raw)
-    'init': +{key tight-data-value(raw)}
-    'title': +{key tight-string-value(raw)}
-    'desc': +{key tight-string-value(raw)}
-    'also': +{key tight-string-value(raw)}
-    'one': structural-tight-label-error(name)
-    'any': structural-tight-label-error(name)
-    'all': structural-tight-label-error(name)
-    'not': structural-tight-label-error(name)
-    'with': structural-tight-label-error(name)
+    'init': +{key dsl-data-value(raw)}
+    'title': +{key dsl-string-value(raw)}
+    'desc': +{key dsl-string-value(raw)}
+    'also': +{key dsl-string-value(raw)}
+    'one': structural-dsl-label-error(name)
+    'any': structural-dsl-label-error(name)
+    'all': structural-dsl-label-error(name)
+    'not': structural-dsl-label-error(name)
+    'with': structural-dsl-label-error(name)
     'need':
       usage('unsupported yamlschema keyword:\ need; use :need(...)')
-    'when': structural-tight-label-error(name)
+    'when': structural-dsl-label-error(name)
     else: usage("unsupported yamlschema keyword $name")
 
 defn boolean-label-block(key raw):
-  value =: tight-data-value(raw)
+  value =: dsl-data-value(raw)
   when-not boolean?(value):
     usage: "yamlschema $key requires true or false"
   =>: +{key value}
 
-defn structural-tight-label-error(name):
+defn structural-dsl-label-error(name):
   usage: "yamlschema $name requires an explicit structural value"
 
 defn const-block(raw base):
@@ -2535,9 +2535,9 @@ defn const-block(raw base):
     usage: 'const requires a preceding type reference'
   when raw.empty?:
     usage: 'const requires a value'
-  text =: tight-string-value(raw)
+  text =: dsl-string-value(raw)
   value =:
-    if base.eq('+Str') || tight-quoted?(raw):
+    if base.eq('+Str') || dsl-quoted?(raw):
       text parse-yaml-scalar(text)
   =>: +{'.const' value}
 
@@ -3788,7 +3788,7 @@ defn convert(schema strict=false):
   doc =: build-doc(schema strict)
   text =: ys::yaml/dump(doc)
   text =: format-ysd-annotation-directives(text)
-  text =: format-ysd-tight-scalars(text)
+  text =: format-ysd-dsl-scalars(text)
   text =: format-ysd-document(text)
   post-process: text
 
@@ -4097,7 +4097,7 @@ defn add-list-description(value description):
       ordered-directives: value + {'.desc' description}
 
 defn append-list-suffix(type suffix):
-  tokens =: tight-tokens(type)
+  tokens =: dsl-tokens(type)
   tokens =: assoc(tokens 0 "$(tokens.0)$suffix")
   joins: tokens
 
@@ -4207,24 +4207,24 @@ defn succinct-default-scalar(schema strict=false):
         then: marked
         else:
           scalar =: succinct-scalar(dissoc(schema 'default') strict)
-          token =: tight-default-token(schema.'default')
+          token =: dsl-default-token(schema.'default')
           when scalar && token.?:
             =>: "$scalar =$token"
     else: succinct-scalar(schema strict)
 
-defn tight-default-token(value):
+defn dsl-default-token(value):
   cond:
-    string?(value): tight-string-default-token(value)
+    string?(value): dsl-string-default-token(value)
     boolean?(value): value:S
     number?(value): value:S
     nil?(value): 'null'
 
-defn tight-string-default-token(value):
+defn dsl-string-default-token(value):
   cond:
-    tight-plain-default?(value): value
-    tight-string-body?(value): "\"$(encode-tight-string(value))\""
+    dsl-plain-default?(value): value
+    dsl-string-body?(value): "\"$(encode-dsl-string(value))\""
 
-defn tight-plain-default?(value):
+defn dsl-plain-default?(value):
   (value =~ /^[A-Za-z0-9_][A-Za-z0-9_.\/-]*$/) &&
   (parse-yaml-scalar(value) == value)
 
@@ -4234,10 +4234,10 @@ defn succinct-description?(schema):
   plain-description-safe?(schema.description)
 
 defn plain-description-safe?(description):
-  tight-string-body?: description
+  dsl-string-body?: description
 
 defn annotated-scalar(scalar description):
-  body =: encode-tight-string(description)
+  body =: encode-dsl-string(description)
   =>: "$scalar -\"$body\""
 
 defn succinct-array-scalar(schema strict=false):
@@ -4615,7 +4615,7 @@ defn native-tuple-block-schema?(schema strict=false):
 
 defn native-tuple-block(schema strict=false):
   when native-tuple-block-schema?(schema strict):
-    expand-tight: succinct-tuple-scalar(tuple-core-schema(schema) strict)
+    expand-dsl: succinct-tuple-scalar(tuple-core-schema(schema) strict)
 
 defn tuple-core-schema(schema):
   schema =:
@@ -4835,8 +4835,8 @@ defn compact-const-token(value):
   cond:
     string?(value):
       cond:
-        tight-plain-default?(value): value
-        tight-string-body?(value): "\"$(encode-tight-string(value))\""
+        dsl-plain-default?(value): value
+        dsl-string-body?(value): "\"$(encode-dsl-string(value))\""
     boolean?(value): value:S
     number?(value): value:S
     nil?(value): 'null'
@@ -4873,7 +4873,7 @@ defn string-constraints-only?(schema):
 
 defn string-constraints-scalar(schema):
   has-pattern =: schema.has?('pattern')
-  token =: has-pattern.when(tight-pattern-token(schema.pattern))
+  token =: has-pattern.when(dsl-pattern-token(schema.pattern))
   if has-pattern:
     when token:
       finish-string-constraints: schema ['+Str' token]
@@ -4886,23 +4886,23 @@ defn finish-string-constraints(schema parts):
   parts =: size.if(parts.conj(size) parts)
   joins: parts
 
-defn tight-pattern-token(pattern):
+defn dsl-pattern-token(pattern):
   directive =: pattern-directive(pattern)
   if directive.has?('.match'):
-    tight-match-token: directive.'.match'
-    tight-find-token: directive.'.find'
+    dsl-match-token: directive.'.match'
+    dsl-find-token: directive.'.find'
 
-defn tight-match-token(pattern):
-  when tight-string-body?(pattern):
-    body =: encode-tight-string(compact-regex-names(pattern))
+defn dsl-match-token(pattern):
+  when dsl-string-body?(pattern):
+    body =: encode-dsl-string(compact-regex-names(pattern))
     =>: "~\"$body\""
 
-defn tight-find-token(pattern):
-  when tight-string-body?(pattern):
-    body =: encode-tight-string(compact-regex-names(pattern))
+defn dsl-find-token(pattern):
+  when dsl-string-body?(pattern):
+    body =: encode-dsl-string(compact-regex-names(pattern))
     =>: "~~\"$body\""
 
-defn tight-string-body?(value):
+defn dsl-string-body?(value):
   colon-escape =: str(':' C(92) ' ')
   hash-escape =: str(' ' C(92) '#')
   string?(value) &&:
@@ -4910,7 +4910,7 @@ defn tight-string-body?(value):
     colon-escape.in?(value).! &&
     hash-escape.in?(value).!
 
-defn encode-tight-string(value):
+defn encode-dsl-string(value):
   colon-space =: str(':' ' ')
   space-hash =: str(' ' '#')
   colon-escape =: str(':' C(92) ' ')
@@ -4919,7 +4919,7 @@ defn encode-tight-string(value):
     .replace(colon-space colon-escape)
     .replace(space-hash hash-escape)
 
-defn decode-tight-string(value):
+defn decode-dsl-string(value):
   colon-space =: str(':' ' ')
   space-hash =: str(' ' '#')
   colon-escape =: str(':' C(92) ' ')
@@ -5174,11 +5174,11 @@ defn format-ysd-annotation-line(state line):
   raw-indent :if (key && passthrough-directive?(key)) =: indent
   state +: +{'lines' state.lines.conj(output), 'raw-indent' raw-indent}
 
-# Wrap generated .ysd tight scalars and annotation pairs without changing their
-# folded YAML values. When a complete tight-scalar line exceeds 80 columns,
+# Wrap generated .ysd dsl scalars and annotation pairs without changing their
+# folded YAML values. When a complete dsl-scalar line exceeds 80 columns,
 # the enum and annotation clauses each start on their own continuation line.
-defn format-ysd-tight-scalars(text):
-  lines =: reduce(format-ysd-tight-line [] text:lines)
+defn format-ysd-dsl-scalars(text):
+  lines =: reduce(format-ysd-dsl-line [] text:lines)
   join "\n": lines
 
 defn format-ysd-document(text):
@@ -5221,11 +5221,11 @@ defn insert-before-def-step(result line):
   result :if should-insert .=: conj('')
   result: .conj(line)
 
-defn format-ysd-tight-line(result line):
-  formatted =: wrapped-ysd-tight-line(line)
+defn format-ysd-dsl-line(result line):
+  formatted =: wrapped-ysd-dsl-line(line)
   result: .into(formatted)
 
-defn wrapped-ysd-tight-line(line):
+defn wrapped-ysd-dsl-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
   match =: re-matches(pattern line)
   annotation-pattern =:
@@ -5245,9 +5245,9 @@ defn wrapped-ysd-tight-line(line):
     match.!: +[line]
     match.1 =~ /^\s*\./: +[line]
     else:
-      clauses =: ysd-tight-line-clauses(match.2)
+      clauses =: ysd-dsl-line-clauses(match.2)
       if clauses:
-        then: ysd-tight-clause-lines(match.1 clauses)
+        then: ysd-dsl-clause-lines(match.1 clauses)
         else: +[line]
 
 defn wrappable-ysd-annotation?(value):
@@ -5275,8 +5275,8 @@ defn append-ysd-annotation-token(state token):
       'lines' state.lines.conj(state.line),
       'line' "$(state.continuation)$token", 'has-token' true}
 
-defn ysd-tight-line-clauses(value):
-  tokens =: tight-tokens(value)
+defn ysd-dsl-line-clauses(value):
+  tokens =: dsl-tokens(value)
   title =: first(tokens.filter(marked-title-token?))
   description =: first(tokens.filter(marked-description-token?))
   enum =: first(tokens.filter(compact-enum-token?))
@@ -5289,7 +5289,7 @@ defn ysd-tight-line-clauses(value):
       =>: +{'head' head.join(' '), 'enum' enum,
             'title' title, 'description' description}
 
-defn ysd-tight-clause-lines(prefix clauses):
+defn ysd-dsl-clause-lines(prefix clauses):
   indent =: "$(line-indent(prefix))  "
   lines =: +["$prefix$(clauses.head)"]
   lines :if clauses.enum .=:

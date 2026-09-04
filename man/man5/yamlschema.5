@@ -416,8 +416,8 @@ maybeRow: +Tup{+Str,+Num}~
 These mean a list of tuples, one tuple or a list of tuples, and a nullable
 tuple respectively.
 
-.SH Tight Type Expressions
-A tight type expression is a YAML plain scalar.
+.SH YSD Scalar DSL
+A YSD scalar DSL expression is a YAML plain scalar.
 A type reference is normally first, but labeled clauses may appear in any
 order:
 
@@ -463,8 +463,8 @@ anchors are implied.
 \fB~~"pattern"\fR searches within the string.
 \fBfind:"pattern"\fR is an accepted alias.
 The quoted bodies cannot contain \fB"\fR\&.
-In .ysd, use explicit \fB\&.match\fR or \fB\&.find\fR when no tight form can represent the
-pattern.
+In .ysd, use explicit \fB\&.match\fR or \fB\&.find\fR when no scalar DSL form can
+represent the pattern.
 Both imply \fB+Str\fR\&.
 Generated .ysd uses the canonical \fB~"pattern"\fR and \fB~~"pattern"\fR spellings.
 
@@ -668,7 +668,7 @@ enabled?: +Bool~
 .EE
 
 .PP
-Tight annotations may occur anywhere among the clauses:
+Scalar DSL annotations may occur anywhere among the clauses:
 
 .EX
 enabled?: +Bool~ =false --"Enabled" -"Enable the service"
@@ -711,13 +711,13 @@ The obsolete trailing single-quoted description form is an error.
 For compatibility, a final bare \fB"..."\fR remains accepted as a description.
 The labeled \fBtitle:"..."\fR and \fBdesc:"..."\fR forms are also accepted.
 Generated .ysd always uses \fB-"..."\fR\&.
-Generated .ysd uses \fB--"..."\fR for tight titles.
-For annotations that cannot use the tight form, use \fB--:\fR and \fB-:\fR in .ysd,
-or canonical \fB\&.title:\fR and \fB\&.desc:\fR in .ysdc.
+Generated .ysd uses \fB--"..."\fR for scalar DSL titles.
+For annotations that cannot use the scalar DSL form, use \fB--:\fR and \fB-:\fR in
+\&.ysd, or canonical \fB\&.title:\fR and \fB\&.desc:\fR in .ysdc.
 
 .SH Hybrid Explicit Types
 When one constraint is clearer explicitly, \fB\&.type\fR may contain the complete
-tight expression and sibling directives add the exceptional parts:
+scalar DSL expression and sibling directives add the exceptional parts:
 
 .EX
 foo:
@@ -863,15 +863,15 @@ This is the compact form of a mapping whose only pair would be \fB\&.type: +Type
 An external reference may similarly use \fB+Ref(...)\fR; its canonical form is
 \fB\&.xref\fR rather than \fB\&.type\fR\&.
 When annotations, validation constraints, or shape entries share the mapping,
-the reference or complete tight expression remains under \fB\&.type\fR\&.
+the reference or complete scalar DSL expression remains under \fB\&.type\fR\&.
 
 .PP
 Canonical list types use \fB\&.list\fR, whose value is the item schema.
 An unconstrained canonical list is \fB\&.list: +Any\fR\&.
 Item constraints are nested under \fB\&.list\fR, while \fB\&.size\fR, \fB\&.solo\fR, and \fB\&.uniq\fR
 remain beside it as list constraints.
-Human-authored \fB\&.ysd\fR still accepts tight forms such as \fB+Str[]\fR and the full
-\fB\&.list\fR form.
+Human-authored \fB\&.ysd\fR still accepts scalar DSL forms such as \fB+Str[]\fR and the
+full \fB\&.list\fR form.
 Canonical \fB\&.ysdc\fR rejects the retired \fB\&.item\fR directive and old
 \fB\&.type: +Str[]\fR spelling.
 

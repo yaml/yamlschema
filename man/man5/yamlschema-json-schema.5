@@ -267,7 +267,7 @@ It renders \fB[A-Z]\fR and \fB[a-z]\fR as \fB{upper}\fR and \fB{lower}\fR\&.
 It renders \fB\\+\fR as \fB{plus}\fR\&.
 \fB{digit}\fR exports as \fB[0-9]\fR\&.
 .IP \(bu 2
-In any tight double-quoted body, \fB:\\\fR represents colon-space and \fB\\#\fR
+In any scalar DSL double-quoted body, \fB:\\\fR represents colon-space and \fB\\#\fR
 represents space-hash.
 Other backslash sequences remain literal.
 .IP \(bu 2
@@ -959,7 +959,7 @@ Multiple names are comma separated, and \fB:need()\fR preserves an empty list.
 
 .PP
 When a property value already needs an explicit block, or a dependency name
-is not safe in a tight scalar, use \fB\&.need\fR with a flow sequence:
+is not safe in a YSD scalar DSL expression, use \fB\&.need\fR with a flow sequence:
 
 .EX
 extendedAddress?:

@@ -285,8 +285,8 @@ The preferred .ysd spellings for the annotations above are \fB--"Title"\fR and
 The labeled \fBtitle:\fR and \fBdesc:\fR forms remain accepted.
 The old names \fBtitl\fR, \fBjust\fR, and \fBonly\fR are errors with diagnostics naming
 \fBtitle\fR and \fBconst\fR\&.
-The tight \fBlike:\fR label is also rejected in favor of .ysd \fBmatch:\fR or \fBfind:\fR;
-canonical .ysdc \fB\&.like\fR stores the resulting raw pattern.
+The scalar DSL \fBlike:\fR label is also rejected in favor of .ysd \fBmatch:\fR or
+\fBfind:\fR; canonical .ysdc \fB\&.like\fR stores the resulting raw pattern.
 
 .SS Descriptions
 A schema scalar may contain a marked double-quoted description clause:
@@ -322,7 +322,8 @@ Inside them, \fB:\\\fR represents colon-space and \fB\\#\fR represents space-has
 the containing YAML value can remain a plain scalar.
 These are exact triplets: \fBfoo\\ bar\fR, \fB\\n\fR, and \fB\\t\fR remain literal.
 Internal double quotes are not representable.
-The description clause may occur before, after, or between other tight clauses.
+The description clause may occur before, after, or between other scalar DSL
+clauses.
 Generated .ysd conventionally puts the type expression first.
 
 .PP
@@ -334,8 +335,8 @@ repository?: +Str
 .EE
 
 .PP
-Generated .ysd keeps a tight scalar on one physical line when that line is at
-most 80 columns.
+Generated .ysd keeps a scalar DSL expression on one physical line when that
+line is at most 80 columns.
 When the complete line is longer, its base expression, compact enum, and
 description are placed on separate lines.
 Long enums wrap after commas and long descriptions wrap at safe spaces.
@@ -607,8 +608,8 @@ token?:
 .EE
 
 .PP
-The compact form is used when every dependency name is safe in a tight
-scalar.
+The compact form is used when every dependency name is safe in a YSD scalar
+DSL expression.
 The explicit form supports arbitrary property names.
 An empty dependency list is valid, and dependency targets do not need to be
 declared in the same mapping.
@@ -775,7 +776,7 @@ integers.
 .PP
 Emit an unrefined built-in or named reference as a \fB+Type\fR scalar when it is
 the type's entire value.
-Use \fB\&.type\fR when the reference or complete tight type expression shares a
+Use \fB\&.type\fR when the reference or complete scalar DSL expression shares a
 mapping with annotations, constraints, or shape entries.
 Emit an external reference as \fB+Ref(reference)\fR when its exact string is
 non-empty and contains neither whitespace nor \fB)\fR\&.

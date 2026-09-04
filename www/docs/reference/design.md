@@ -229,8 +229,8 @@ The preferred .ysd spellings for the annotations above are `--"Title"` and
 The labeled `title:` and `desc:` forms remain accepted.
 The old names `titl`, `just`, and `only` are errors with diagnostics naming
 `title` and `const`.
-The tight `like:` label is also rejected in favor of .ysd `match:` or `find:`;
-canonical .ysdc `.like` stores the resulting raw pattern.
+The scalar DSL `like:` label is also rejected in favor of .ysd `match:` or
+`find:`; canonical .ysdc `.like` stores the resulting raw pattern.
 
 ### Descriptions
 
@@ -265,7 +265,8 @@ Inside them, `:\ ` represents colon-space and ` \#` represents space-hash so
 the containing YAML value can remain a plain scalar.
 These are exact triplets: `foo\ bar`, `\n`, and `\t` remain literal.
 Internal double quotes are not representable.
-The description clause may occur before, after, or between other tight clauses.
+The description clause may occur before, after, or between other scalar DSL
+clauses.
 Generated .ysd conventionally puts the type expression first.
 
 YAML plain-scalar folding is allowed:
@@ -275,8 +276,8 @@ repository?: +Str
   -"Repository path without registry host"
 ```
 
-Generated .ysd keeps a tight scalar on one physical line when that line is at
-most 80 columns.
+Generated .ysd keeps a scalar DSL expression on one physical line when that
+line is at most 80 columns.
 When the complete line is longer, its base expression, compact enum, and
 description are placed on separate lines.
 Long enums wrap after commas and long descriptions wrap at safe spaces.
@@ -537,8 +538,8 @@ token?:
   .need: [expires, issuer]
 ```
 
-The compact form is used when every dependency name is safe in a tight
-scalar.
+The compact form is used when every dependency name is safe in a YSD scalar
+DSL expression.
 The explicit form supports arbitrary property names.
 An empty dependency list is valid, and dependency targets do not need to be
 declared in the same mapping.
@@ -694,7 +695,7 @@ Implicit typing applies where possible:
 
 Emit an unrefined built-in or named reference as a `+Type` scalar when it is
 the type's entire value.
-Use `.type` when the reference or complete tight type expression shares a
+Use `.type` when the reference or complete scalar DSL expression shares a
 mapping with annotations, constraints, or shape entries.
 Emit an external reference as `+Ref(reference)` when its exact string is
 non-empty and contains neither whitespace nor `)`.

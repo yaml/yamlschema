@@ -69,7 +69,7 @@
   - Fix release smoke test fixture
   - Add native .ysd build target
   - Fix initial editor scroll sync
-  - Parse nested tight DSL tokens
+  - Parse nested YSD scalar DSL tokens
   - Harden portable release smoke tests
   - Link homepage schema to demo
   - Add editor sync and sharing
