@@ -1159,6 +1159,9 @@ if (
   ) ||
   !indexHTML.includes('G-EFBDLGET7X') ||
   !indexHTML.includes('id="gdpr-cookie-banner"') ||
+  !indexHTML.includes('window.location.hostname === "localhost"') ||
+  !indexHTML.includes('window.location.hostname === "127.0.0.1"') ||
+  !indexHTML.includes('window.location.hostname === "::1"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
   !indexHTML.includes('/assets/editor/app.js?v=24') ||

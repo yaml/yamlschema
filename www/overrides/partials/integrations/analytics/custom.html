@@ -98,6 +98,12 @@
 (function() {
   var gaMeasurementId = "{{ config.extra.analytics.property }}";
 
+  function isLocalDevelopment() {
+    return window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1";
+  }
+
   function loadGoogleAnalytics() {
     if (!gaMeasurementId || window.gtag) {
       return;
@@ -118,6 +124,10 @@
   }
 
   document.addEventListener("DOMContentLoaded", function() {
+    if (isLocalDevelopment()) {
+      return;
+    }
+
     var consent = localStorage.getItem("cookie_consent");
 
     if (consent === "accepted") {
