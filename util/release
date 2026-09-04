@@ -336,6 +336,7 @@ publish() {
   fi
   pypi_token=$(load_pypi_token)
 
+  make clean
   make test
   make release-smoke VERSION="$version"
 

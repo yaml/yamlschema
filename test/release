@@ -61,6 +61,7 @@ printf '%s\n' \
   "  printf 'generated manual\\n' > man/man1/ysd.1" \
   '  exit 0' \
   'fi' \
+  '[[ ${1-} != clean ]] || exit 0' \
   'exit 1' \
   > "$fake_bin/make"
 chmod 0755 "$fake_bin/make"
@@ -93,7 +94,7 @@ expect_failure invalid-version \
   env PERL="$perl" YS="$YS" "$release" release invalid
 expect_failure validation-stop run_release
 
-expected=$(printf '%s\n' update test)
+expected=$(printf '%s\n' update clean test)
 [[ $(< "$make_log") == "$expected" ]]
 [[ $(git --git-dir="$origin" rev-parse refs/heads/main) == \
    "$remote_before" ]]
@@ -145,6 +146,7 @@ expect_failure default-release-branch run_release
 TEST_RELEASE_BRANCH=install-issues run_release >/dev/null
 
 expected=$(printf '%s\n' \
+  clean \
   test \
   "release-smoke VERSION=$version" \
   publish)
