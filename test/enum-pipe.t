@@ -94,7 +94,7 @@ test::
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
     logLevel?: +Str [debug,=info,warning,error,fatal]
-      --"Log level for all components"
+      -"Log level for all components"
     count?: +Int [1,=2,3]
   want: |
     {

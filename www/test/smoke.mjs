@@ -1696,7 +1696,7 @@ for (const name of exampleFiles) {
       !converted.value.includes('+Tup{+Str?,+Any...}') ||
       !converted.value.includes(
         '/^\\.[a-z0-9_]+$/: +Map{} ' +
-        '--"Definitions that can be re-used"',
+        '-"Definitions that can be re-used"',
       ) ||
       !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
     ) {

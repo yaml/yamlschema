@@ -42,7 +42,7 @@ test::
   want: |
     # Converted from JSON Schema
     .title: Open rules
-    --: Open object test
+    -: Open object test
 
     +person:
       name?: +Str

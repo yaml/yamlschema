@@ -34,14 +34,14 @@ test::
     # Converted from JSON Schema
     .ysid: https://example.com/arrays.ysd.yaml
     .title: Arrays
-    --: Arrays of strings and objects
+    -: Arrays of strings and objects
     .open: true
     name:
-      --: Display name.
+      -: Display name.
       .type: +Str
       .title: Full name
     profile?:
-      --: Profile settings.
+      -: Profile settings.
       visible?: +Bool
 
 - name: json-schema-id-to-ysdc

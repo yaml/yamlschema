@@ -78,7 +78,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    /^\.[a-z0-9_]+$/: +Map{} --"Definitions that can be re-used"
+    /^\.[a-z0-9_]+$/: +Map{} -"Definitions that can be re-used"
 
 - name: empty-pattern-properties-normalize-away
   cmnd: bin/ysd -R -f jsc -

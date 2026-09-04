@@ -1,13 +1,13 @@
 # Converted from JSON Schema
 .open: true
-version?: +Num --"The EE schema version number"
+version?: +Num -"The EE schema version number"
 build_arg_defaults?:
   .open: false
   ANSIBLE_GALAXY_CLI_COLLECTION_OPTS?: +Str
   ANSIBLE_GALAXY_CLI_ROLE_OPTS?: +Str
   PKGMGR_PRESERVE_CACHE?: +Str
 dependencies?:
-  --: The dependency stuff
+  -: The dependency stuff
   .open: false
   python?:
     .any:
@@ -23,20 +23,20 @@ dependencies?:
     - +Str
     - +Str[]
   python_interpreter?:
-    --: Python package name and path
+    -: Python package name and path
     package_system?: +Str
-      --"The python package to install via system package manager"
-    python_path?: +Str --"Path to the python interpreter"
+      -"The python package to install via system package manager"
+    python_path?: +Str -"Path to the python interpreter"
   ansible_core?:
-    --: Ansible package installation
-    package_pip?: +Str --"Ansible package to install via pip"
+    -: Ansible package installation
+    package_pip?: +Str -"Ansible package to install via pip"
   ansible_runner?:
-    --: Ansible Runner package installation
-    package_pip?: +Str --"Ansible Runner package to install via pip"
+    -: Ansible Runner package installation
+    package_pip?: +Str -"Ansible Runner package to install via pip"
   exclude?:
-    python?: +Str[] --"A list of python package names"
-    system?: +Str[] --"A list of system package names"
-    all_from_collections?: +Str[] --"A list of collection names"
+    python?: +Str[] -"A list of python package names"
+    system?: +Str[] -"A list of system package names"
+    all_from_collections?: +Str[] -"A list of collection names"
 images?:
   .open: false
   base_image?:
@@ -78,28 +78,28 @@ additional_build_steps?:
     - +Str
     - +Str[]
 additional_build_files?:
-  --: Describes files to add to the build context
+  -: Describes files to add to the build context
   .type: +Map[]
   .open: false
-  src: +Str --"File to add to build context"
-  dest: +Str --"Relative subdirectory under build context to place file"
+  src: +Str -"File to add to build context"
+  dest: +Str -"Relative subdirectory under build context to place file"
 options?:
-  --: Options that affect the runtime behavior
+  -: Options that affect the runtime behavior
   .open: false
   relax_passwd_permissions?: +Bool
-    --"allows GID0 write access to /etc/passwd; currently necessary for many uses"
+    -"allows GID0 write access to /etc/passwd; currently necessary for many uses"
   skip_ansible_check?: +Bool
-    --"Disables the check for Ansible/Runner in final image"
-  skip_pip_install?: +Bool --"Disables the installation of pip in the base image"
+    -"Disables the check for Ansible/Runner in final image"
+  skip_pip_install?: +Bool -"Disables the installation of pip in the base image"
   workdir?: +Str~
-    --"Default working directory, also often the homedir for ephemeral UIDs"
-  package_manager_path?: +Str --"Path to the system package manager to use"
-  user?: +Str --"Sets the username or UID"
+    -"Default working directory, also often the homedir for ephemeral UIDs"
+  package_manager_path?: +Str -"Path to the system package manager to use"
+  user?: +Str -"Sets the username or UID"
   container_init?:
-    --: Customize container startup behavior
-    package_pip?: +Str --"package to install via pip for entrypoint support"
-    entrypoint?: +Str --"literal value for ENTRYPOINT Containerfile directive"
-    cmd?: +Str --"literal value for CMD Containerfile directive"
+    -: Customize container startup behavior
+    package_pip?: +Str -"package to install via pip for entrypoint support"
+    entrypoint?: +Str -"literal value for ENTRYPOINT Containerfile directive"
+    cmd?: +Str -"literal value for CMD Containerfile directive"
   tags?: +Str[]
-    --"A list of names to assign to the resulting image if build process completes
+    -"A list of names to assign to the resulting image if build process completes
     successfully"

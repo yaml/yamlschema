@@ -1196,10 +1196,10 @@ defn normalize-description-directives(value source):
 defn normalize-description-entry(result entry source):
   key =: entry.0:S
   canonical =:
-    if key == '--':
+    if key == '-':
       then:
         when source == 'ysdc':
-          usage: 'unsupported .ysdc directive: --; use .desc'
+          usage: 'unsupported .ysdc directive: -; use .desc'
         =>: '.desc'
       else: key
   when canonical.eq('.desc') && result.has?('.desc'):
@@ -2219,7 +2219,9 @@ defn typed-map-block(value-type):
 
 defn primary-block(token):
   cond:
-    token.starts?('--'):
+    token.starts?('--"'):
+      usage: 'invalid description clause; use -"description"'
+    token.starts?('-"'):
       usage: 'description clause requires a type expression'
     token.starts?('+Ref'):
       usage: 'invalid external reference; use +Ref(reference) or .xref'
@@ -2315,13 +2317,13 @@ defn expand-tight-token(result token):
     token.starts?('='):
       merge-directives:
         result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
-    token.starts?('--"'):
+    token.starts?('-"'):
       merge-directives:
         result
-        {'.desc' tight-string-value(token.replace(/^--/))}
+        {'.desc' tight-string-value(token.replace(/^-/))}
         'description clause'
-    token.starts?('--'):
-      usage: 'invalid description clause; use --"description"'
+    token.starts?('-'):
+      usage: 'invalid description clause; use -"description"'
     tight-quoted?(token):
       merge-directives:
         result {'.desc' tight-string-value(token)} 'description clause'
@@ -2437,7 +2439,8 @@ defn tight-quoted?(value):
 defn tight-token-quoted?(token):
   raw =:
     cond:
-      token.starts?('--'): token.replace(/^--/)
+      token.starts?('--"'): token.replace(/^--/)
+      token.starts?('-"'): token.replace(/^-/)
       token.starts?('=~'): token.replace(/^=~/)
       token.starts?('~~'): token.replace(/^~~/)
       token.starts?('~'): token.replace(/^~/)
@@ -4309,7 +4312,7 @@ defn plain-description-safe?(description):
 
 defn annotated-scalar(scalar description):
   body =: encode-tight-string(description)
-  =>: "$scalar --\"$body\""
+  =>: "$scalar -\"$body\""
 
 defn succinct-array-scalar(schema strict=false):
   is-array =: json-type(schema).eq('array')
@@ -5251,12 +5254,12 @@ defn format-ysd-description-line(state line):
   marker =: sequence-match.if('- ' '')
   output =:
     if key == '.desc':
-      then: "$(match.1)$marker--:$(match.3)"
+      then: "$(match.1)$marker-:$(match.3)"
       else: line
   raw-indent :if (key && passthrough-directive?(key)) =: indent
   state +: +{'lines' state.lines.conj(output), 'raw-indent' raw-indent}
 
-# Wrap generated .ysd tight scalars and `--` pairs without changing their
+# Wrap generated .ysd tight scalars and `-` pairs without changing their
 # folded YAML values. When a complete tight-scalar line exceeds 80 columns,
 # the enum and description clauses each start on their own continuation line.
 defn format-ysd-tight-scalars(text):
@@ -5287,9 +5290,9 @@ defn format-ysd-tight-line(result line):
 defn wrapped-ysd-tight-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
   match =: re-matches(pattern line)
-  desc-pattern =: re-pattern(str('^([ ]*)--' ':' ' (.*)$'))
+  desc-pattern =: re-pattern(str('^([ ]*)-' ':' ' (.*)$'))
   desc =: re-matches(desc-pattern line)
-  item-desc-pattern =: re-pattern(str('^([ ]*)- --' ':' ' (.*)$'))
+  item-desc-pattern =: re-pattern(str('^([ ]*)- -' ':' ' (.*)$'))
   item-desc =: re-matches(item-desc-pattern line)
   cond:
     line.# <= 80: +[line]
@@ -5313,7 +5316,7 @@ defn wrappable-ysd-desc?(value):
 defn ysd-desc-pair-lines(indent item value):
   tokens =: split-wrappable-spaces(value isolated-space?)
   marker =: item.if('- ' '')
-  prefix =: "$indent$marker--$(C(58)) "
+  prefix =: "$indent$marker-$(C(58)) "
   continuation =: item.if("$indent    " "$indent  ")
   state =: +{
     'lines' [], 'line' prefix,
@@ -5365,7 +5368,7 @@ defn ysd-enum-member-token(index member count):
     else: "$member,"
 
 defn ysd-description-clause-lines(indent clause):
-  body =: clause.replace(/^--"/).replace(/"$/)
+  body =: clause.replace(/^-"/).replace(/"$/)
   words =:
     if body:empty?:
       then: +['']
@@ -5373,10 +5376,10 @@ defn ysd-description-clause-lines(indent clause):
   count =: words.#
   tokens =:
     map-indexed(\(ysd-description-word-token(_1 _2 count)) words):vec
-  wrap-ysd-clause-tokens: indent '--"' tokens
+  wrap-ysd-clause-tokens: indent '-"' tokens
 
 defn marked-description-token?(token):
-  token.starts?('--"') && token.ends?('"')
+  token.starts?('-"') && token.ends?('"')
 
 defn split-wrappable-spaces(value break?):
   loop index 0, tokens [], token '':

@@ -275,7 +275,7 @@ test::
 - name: nullable-default-title-description
   cmnd: bin/ysd -t ysdc -J -
   stdi: |
-    flag?: --"Whether it is enabled" +Bool~ =false title:"Flag"
+    flag?: -"Whether it is enabled" +Bool~ =false title:"Flag"
     label?: +Str ="pretty good"
     level?: type:+Str enum:[debug,info] init:info desc:"Log level"
   want: |
@@ -318,7 +318,7 @@ test::
     +named: +Str
     plain: +Str
     named: +named
-    annotated: +Float --"A number" =1.5 title:"Number"
+    annotated: +Float -"A number" =1.5 title:"Number"
     refined:
       .type: +Str
       .enum: [foo, bar]

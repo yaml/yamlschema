@@ -93,7 +93,7 @@ test::
       .xref: ''
     unsafe?:
       .xref: https://example.com/a)b schema.json
-    annotated?: +Ref(https://x.io/p.json) --"External profile"
+    annotated?: +Ref(https://x.io/p.json) -"External profile"
 
 - name: external-refs-to-json-schema
   cmnd: bin/ysd -f ysd -t jsc -

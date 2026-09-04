@@ -126,7 +126,7 @@ the reference has sibling constraints:
 
 .EX
 author:
-  --: An externally defined author
+  -: An externally defined author
   .xref: https://example.com/user-profile.schema.json
 empty:
   .xref: ''
@@ -418,7 +418,7 @@ order:
 
 .EX
 +Base [(alternatives)] [list-suffix] [~] [pattern-or-range]
-      [enum] [size] [constant] [default] [title] [--"description"]
+      [enum] [size] [constant] [default] [title] [-"description"]
 .EE
 
 .PP
@@ -666,7 +666,7 @@ enabled?: +Bool~
 Tight annotations follow all constraints:
 
 .EX
-enabled?: +Bool~ =false title:"Enabled" --"Enable the service"
+enabled?: +Bool~ =false title:"Enabled" -"Enable the service"
 label?: +Str ="pretty good"
 mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .EE
@@ -678,7 +678,7 @@ mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .IP \(bu 2
 \fBtitle:"..."\fR is \fB\&.title\fR\&.
 .IP \(bu 2
-\fB--"..."\fR is \fB\&.desc\fR and may occur anywhere among the clauses.
+\fB-"..."\fR is \fB\&.desc\fR and may occur anywhere among the clauses.
 .IP \(bu 2
 Labeled scalar clauses may occur in any order.
 They are \fBtype\fR, \fBmatch\fR, \fBfind\fR, \fBconst\fR, \fBrange\fR, \fBsize\fR, \fBitem\fR, \fBsolo\fR,
@@ -702,8 +702,8 @@ A scalar consisting entirely of a YAML-quoted string is a literal value, not
 an annotation, because YAML does not preserve its original quote style.
 The obsolete trailing single-quoted description form is an error.
 For compatibility, a final bare \fB"..."\fR and \fBdesc:"..."\fR are still accepted.
-Generated .ysd always uses \fB--"..."\fR\&.
-For a description that cannot use the tight form, use \fB--:\fR in .ysd or
+Generated .ysd always uses \fB-"..."\fR\&.
+For a description that cannot use the tight form, use \fB-:\fR in .ysd or
 canonical \fB\&.desc:\fR in .ysdc.
 
 .SH Hybrid Explicit Types

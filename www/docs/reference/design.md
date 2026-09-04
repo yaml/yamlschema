@@ -224,7 +224,7 @@ foo: desc:"Words" size:1-3 ~"a b" title:"Title" type:+Str
 ```
 
 The canonical explicit form uses the period-prefixed directive names.
-The preferred .ysd spelling for the description above is `--"Words"`.
+The preferred .ysd spelling for the description above is `-"Words"`.
 The old names `titl`, `just`, and `only` are errors with diagnostics naming
 `title` and `const`.
 The tight `like:` label is also rejected in favor of .ysd `match:` or `find:`;
@@ -235,9 +235,9 @@ canonical .ysdc `.like` stores the resulting raw pattern.
 A schema scalar may contain a marked double-quoted description clause:
 
 ```yaml
-repository?: +Str --"Repository path without registry host"
-right: --"This isn't wrong" +Str
-dbRepository?: +Str[] --"Repositories for the vulnerability DB"
+repository?: +Str -"Repository path without registry host"
+right: -"This isn't wrong" +Str
+dbRepository?: +Str[] -"Repositories for the vulnerability DB"
 ```
 
 This expands to:
@@ -256,7 +256,7 @@ dbRepository?:
 
 The whole value is a YAML plain scalar.
 The quote characters are YAMLSchema syntax, not YAML quoting syntax.
-The description starts after the `--` marker and opening double quote.
+The description starts after the `-` marker and opening double quote.
 It ends at the scalar's final double quote.
 The marker and two outer quote characters are removed.
 Inside them, `:\ ` represents colon-space and ` \#` represents space-hash so
@@ -270,7 +270,7 @@ YAML plain-scalar folding is allowed:
 
 ```yaml
 repository?: +Str
-  --"Repository path without registry host"
+  -"Repository path without registry host"
 ```
 
 Generated .ysd keeps a tight scalar on one physical line when that line is at
@@ -284,24 +284,24 @@ reconstructs the original single scalar:
 ```yaml
 mode?: +Str
   [debug, info, warning, error, fatal]
-  --"The logging mode used by every component in this deployment."
+  -"The logging mode used by every component in this deployment."
 ```
 
 A YAML-quoted scalar such as `"Description"` loses its quote style when loaded
 and therefore is not this shorthand.
 Descriptions that cannot be safely represented in a YAML plain scalar use
-`--:` in .ysd:
+`-:` in .ysd:
 
 ```yaml
 repository?:
-  --: Repository path without registry host
+  -: Repository path without registry host
   .type: +Str
 ```
 
 Canonical .ysdc uses `.desc:` and emits it before `.type:`.
 For compatibility, .ysd also accepts a final bare `"..."`, `desc:"..."`, and
 `.desc:`.
-Generated .ysd always uses `--"..."` or `--:`.
+Generated .ysd always uses `-"..."` or `-:`.
 
 
 ### Regex
@@ -948,7 +948,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | `items` | List value type under `.list` |
 | `const` | Literal value constraint |
 | `default` | `.init` |
-| `description` | `--"description"` or `--:` in .ysd; `.desc` in .ysdc |
+| `description` | `-"description"` or `-:` in .ysd; `.desc` in .ysdc |
 | `title` | `.title` |
 | `$id` or Draft 4 root `id` | `.ysid` |
 | `$anchor` | `.name` |

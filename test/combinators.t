@@ -212,7 +212,7 @@ test::
     choice?:
       .one:
       - +Str
-      - +Tup{+Str?,+Any...} --"Tuple"
+      - +Tup{+Str?,+Any...} -"Tuple"
 
 - name: invalid-tuple-combinator-member
   cmnd: |
@@ -254,7 +254,7 @@ test::
       shared?: +Str
 
     component?:
-      --: Component
+      -: Component
       .type: +base
       local?: +Int
     alias?: +base

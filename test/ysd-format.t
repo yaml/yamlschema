@@ -42,7 +42,7 @@ test::
     .open: true
     mode?: +Str
       [debug mode, =info mode, warning mode, error mode, fatal mode]
-      --"Component logging mode."
+      -"Component logging mode."
 
 - name: long-enum-wraps-only-after-commas
   cmnd: bin/ysd -t ysd -
@@ -66,7 +66,7 @@ test::
     mode?: +Str
       [debug, info, warning, error, fatal, extremely-long-alpha-setting,
       extremely-long-beta-setting]
-      --"Select the logging behavior used by every component in this deployment."
+      -"Select the logging behavior used by every component in this deployment."
 
 - name: nested-description-wraps-at-physical-column-80
   cmnd: bin/ysd -t ysd -
@@ -90,7 +90,7 @@ test::
     .open: true
     harborComponent?:
       config?: +Map{}
-        --"Primary component config. For env-driven components (core, exporter,
+        -"Primary component config. For env-driven components (core, exporter,
         trivy) it is flattened to env vars via toEnvVars. For file-driven components
         (registry, jobservice) it is the config file body passed through verbatim."
 
@@ -112,7 +112,7 @@ test::
     # Converted from JSON Schema
     .open: true
     storageCredentials?:
-      --: BYO Secret references for storage credentials. The chart injects
+      -: BYO Secret references for storage credentials. The chart injects
         REGISTRY_STORAGE_<BACKEND>_<KEY> env vars on both the registry and
         registryctl containers (distribution honors these env overrides).
       s3?: +Map{}
@@ -144,7 +144,7 @@ test::
     values?:
       .one[]:
       - +Str
-      - --: A structured value with enough descriptive text to wrap cleanly onto a
+      - -: A structured value with enough descriptive text to wrap cleanly onto a
           continuation line
         name?: +Str
 
@@ -174,16 +174,16 @@ test::
     # Converted from JSON Schema
     .open: true
     x?:
-      --: 'BYO Secret references:  the chart injects many registry storage
-        credential environment variables on both the registry and registryctl
-        containers without changing their values.'
+      -: 'BYO Secret references:  the chart injects many registry storage credential
+        environment variables on both the registry and registryctl containers
+        without changing their values.'
       y?: +Str
     BYO Secret references:  the chart injects many registry storage credential environment variables on both the registry and registryctl containers without changing their values.
 
 - name: desc-pair-wrap-boundary-is-over-80
   cmnd: |
     sh -c '
-      for width in 13 14; do
+      for width in 14 15; do
         first=$(printf "%060d" 0 | tr 0 a)
         last=$(printf "%0${width}d" 0 | tr 0 b)
         printf "%s%s\n" \
@@ -191,13 +191,13 @@ test::
           "\"description\":\"$first $last\"}}}" |
           bin/ysd -t ysd - |
           perl -ne \
-            "chomp; print qq($width ), length, qq(\\n) if /^  --:|^    b/"
+            "chomp; print qq($width ), length, qq(\\n) if /^  -:|^    b/"
       done
     '
   want: |
-    13 80
-    14 66
-    14 18
+    14 80
+    15 65
+    15 19
 
 - name: line-wrap-boundary-is-over-80
   cmnd: |
@@ -215,11 +215,11 @@ test::
     69 28
     69 11
     69 8
-    69 75
+    69 74
     70 28
     70 11
     70 8
-    70 76
+    70 75
 
 - name: wrapped-description-preserves-escapes-and-spacing
   cmnd: |
@@ -246,8 +246,8 @@ test::
     # Converted from JSON Schema
     .open: true
     escaped?: +Str
-      --"this:\ that \# the other foo\ bar and  two spaces plus enough ordinary
-      words to force wrapping safely"
+      -"this:\ that \# the other foo\ bar and  two spaces plus enough ordinary words
+      to force wrapping safely"
     this: that # the other foo\ bar and  two spaces plus enough ordinary words to force wrapping safely
 
 - name: indivisible-enum-member-may-exceed-80

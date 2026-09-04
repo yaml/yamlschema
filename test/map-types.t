@@ -94,7 +94,7 @@ test::
 
     +flag: +Bool
 
-    config?: +Map{} --"Primary component config."
+    config?: +Map{} -"Primary component config."
     labels?: +Map{+Str}
     custom?: +Map{+flag}
     hybrid?:
@@ -278,7 +278,7 @@ test::
     .open: true
     startup?: +Map{}~
     probes?:
-      --: Container probes.
+      -: Container probes.
       .null: true
       liveness?: +Map{}~
 
