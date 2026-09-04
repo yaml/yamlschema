@@ -253,6 +253,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     implicit?: +Map{}
     explicit?: +Map{}
     closed?:
@@ -276,6 +277,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     startup?: +Map{}~
     probes?:
       -: Container probes.

@@ -19,6 +19,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     s: +Str
     i: +Int
     n: +Num
@@ -40,6 +41,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     testsuite?: +Str~ ~"[\p{Word} _*.+-]+" -"Optional test suite name"
 
 - name: unconstrained-and-closed-schemas
@@ -117,6 +119,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     decimal: +Num [1.5, 2.5]
     mixed: +Num [1, 2.5]
     constant: +Num ==1.5

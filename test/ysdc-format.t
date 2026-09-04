@@ -212,6 +212,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     value?:
       .type: +Str
       .enum:

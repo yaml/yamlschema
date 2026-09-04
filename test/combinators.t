@@ -176,6 +176,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     one?: +One(+Str,+Int)
     any?: +Any(+foo,+bar)
     all?: +All(+foo,+bar)
@@ -209,6 +210,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     choice?:
       .one:
       - +Str
@@ -296,6 +298,7 @@ test::
   cmnd: bin/ysd -f ysd -t jsc -C -
   stdi: |
     .open: true
+
     +base:
       shared?: +Str
     component?:
@@ -329,6 +332,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     artifactPullAsyncFlushDuration?: +Any(+Str,+Int)
     nullable?: +Any(+Str,+Int)~
 
@@ -350,6 +354,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     choice?:
       .one:
       - +Str 1+

@@ -104,6 +104,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     dbRepository?: +Str[] -"Repositories for the vulnerability DB"
     enabled?: +Bool -"Pod-level TLS"
     repository?: +Str -"Repository path without registry host"
@@ -180,6 +181,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     value?:
       -: Schema description
       .type: +Map{}

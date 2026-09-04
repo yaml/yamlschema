@@ -27,6 +27,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     tags: +Str[]
     names: +Str[1+]
     triple: +Int[3]
@@ -58,6 +59,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     imagePullSecrets?:
       -: List of image pull secrets
       .one[]:
@@ -82,6 +84,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     extraManifests?: +Any[] -"Extra static manifests to deploy"
     extraTemplateManifests?: +Any[] -"Extra templated manifests to deploy"
 
@@ -106,6 +109,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     openTuple?: +Tup{+Str?,+Any...}
     closedTuple?: +Tup{+Int?,+Str?}
 
@@ -180,6 +184,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     open?: +Tup{+Str?,+Any...}
     bounded?: +Tup{+Str,+Num...} 3-5
     annotated?:
@@ -325,6 +330,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     value?:
       --: Values
       -: One or many

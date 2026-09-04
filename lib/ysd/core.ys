@@ -5182,8 +5182,31 @@ defn format-ysd-tight-scalars(text):
   join "\n": lines
 
 defn format-ysd-document(text):
-  lines =: insert-blank-before-defs(text:lines)
+  lines =: insert-blank-after-document-preamble(text:lines)
+  lines =: insert-blank-before-defs(lines)
   join "\n": +['# Converted from JSON Schema'].into(lines)
+
+defn insert-blank-after-document-preamble(lines):
+  first:
+    reduce(insert-document-preamble-blank-step
+           initial-document-preamble-blank-state() lines)
+
+defn initial-document-preamble-blank-state()::
+- []
+- false
+- false
+
+defn insert-document-preamble-blank-step(state line):
+  result saw-preamble inserted =: state
+  is-preamble =: line =~ /^(?:--|-|\.id|\.open):/
+  is-top-level =: line =~ /^\S/
+  should-insert =:
+    saw-preamble && inserted.! && is-top-level && is-preamble.!
+  result :if should-insert .=: conj('')
+  result =: result.conj(line)
+  saw-preamble ||=: is-preamble
+  inserted ||=: should-insert || (saw-preamble && line:empty?)
+  vector: result saw-preamble inserted
 
 defn insert-blank-before-defs(lines):
   =>: reduce(insert-before-def-step [] lines)

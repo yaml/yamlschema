@@ -48,6 +48,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     foo?: +Str
     {".open":true,"foo?":"+Str"}
 
@@ -303,6 +304,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     foo?: +Str
 
 - name: json-schema-input-extension-inference

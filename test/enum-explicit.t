@@ -18,6 +18,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     label: +Str [has space, ok]
     symbol:
       .type: +Str

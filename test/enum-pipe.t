@@ -17,6 +17,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     role: +Str [admin, user, guest]
     level: +Str [LOW, MED, HIGH]
 
@@ -31,6 +32,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     type?: +Str [8p8c, 8p6c, 8p4c]
 
 - name: dotted-compact-enum
@@ -47,6 +49,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     type?: +Str [ieee802.11a, 1.6tbase-cr8]
 
 - name: list-compact-enum
@@ -67,6 +70,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     tags?: +Str[] [good, bad, ugly]
 
 - name: list-compact-enum-default
@@ -88,6 +92,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     tags?: +Str[] [=good, bad, ugly]
 
 - name: compact-enum-default-expansion

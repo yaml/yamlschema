@@ -19,6 +19,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     mode?: +Str [debug, =info, warning, error, fatal]
 
 - name: overlong-enum-and-description-use-separate-clauses
@@ -40,6 +41,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     mode?: +Str
       [debug mode, =info mode, warning mode, error mode, fatal mode]
       -"Component logging mode."
@@ -63,6 +65,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     mode?: +Str
       [debug, info, warning, error, fatal, extremely-long-alpha-setting,
       extremely-long-beta-setting]
@@ -88,6 +91,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     harborComponent?:
       config?: +Map{}
         -"Primary component config. For env-driven components (core, exporter,
@@ -111,6 +115,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     storageCredentials?:
       -: BYO Secret references for storage credentials. The chart injects
         REGISTRY_STORAGE_<BACKEND>_<KEY> env vars on both the registry and
@@ -141,6 +146,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     values?:
       .one[]:
       - +Str
@@ -173,6 +179,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     x?:
       -: 'BYO Secret references:  the chart injects many registry storage credential
         environment variables on both the registry and registryctl containers
@@ -214,10 +221,12 @@ test::
   want: |
     69 28
     69 11
+    69 0
     69 8
     69 74
     70 28
     70 11
+    70 0
     70 8
     70 75
 
@@ -245,6 +254,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     escaped?: +Str
       -"this:\ that \# the other foo\ bar and  two spaces plus enough ordinary words
       to force wrapping safely"
@@ -263,6 +273,7 @@ test::
   want: |
     28
     11
+    0
     8
     94
 

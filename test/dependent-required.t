@@ -21,6 +21,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     first?: +Str :need(second,third)
     second?: +Int :need()
 
@@ -49,6 +50,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     first?:
       .type: +Str
       .need: [a b, other]

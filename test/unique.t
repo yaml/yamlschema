@@ -40,6 +40,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     tags: +Str[!]
     names: +Str[!1+]
     triple: +Int[!3]

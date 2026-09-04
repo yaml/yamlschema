@@ -19,6 +19,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     version: +Str ==v1
     kind: +Str ==User
     fixed: +Str ==User =User

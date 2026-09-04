@@ -33,6 +33,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     auth:
       .one:
       - token: +Str
@@ -113,6 +114,7 @@ test::
     # Converted from JSON Schema
     .id: https://example.com/device.ysd.yaml
     .open: true
+
     deviceType: +Str
     .one:
     - .xref: https://example.com/smartphone.schema.json

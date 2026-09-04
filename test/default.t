@@ -32,6 +32,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     port: +Int =8080
     ratio: +Num =1.5
     create: +Bool =true

@@ -21,6 +21,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     auth:
       .any:
       - token?: +Str

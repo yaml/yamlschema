@@ -95,6 +95,7 @@ test::
   cmnd: bin/ysd -f ysd -t jsc -C -
   stdi: |
     .open: true
+
     root?: +Str
     /^x-/: +Any
     closed:

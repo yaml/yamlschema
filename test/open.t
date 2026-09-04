@@ -60,6 +60,7 @@ test::
   cmnd: bin/ysd -t ysdc -
   stdi: |
     .open: true
+
     +person:
       name: +Str
     closed:

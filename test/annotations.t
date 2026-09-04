@@ -36,6 +36,7 @@ test::
     -: Arrays of strings and objects
     .id: https://example.com/arrays.ysd.yaml
     .open: true
+
     name:
       --: Full name
       -: Display name.

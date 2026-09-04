@@ -174,12 +174,13 @@ test::
   cmnd: |
     sh -c '
       bin/ysd www/docs/assets/editor/examples/device-type.schema.json |
-        perl -ne "print if $. <= 4"
+        perl -ne "print if $. <= 5"
     '
   want: |
     # Converted from JSON Schema
     .id: https://example.com/device.ysd.yaml
     .open: true
+
     deviceType: +Str
 
 - name: yamlschema-files-default-to-json-schema
@@ -424,6 +425,7 @@ test::
   stdi: |
     --: Person
     .open: true
+
     age?: +Int 0..
     name: +Str
   want: |
@@ -599,6 +601,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     name: +Str
 
 - name: json-schema-def-order-to-ysdc

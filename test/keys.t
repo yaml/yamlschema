@@ -41,6 +41,7 @@ test::
   want: |
     # Converted from JSON Schema
     .open: true
+
     harborAdminPassword?: +Str
     existingSecretAdminPassword?: +Str
     .keys:
