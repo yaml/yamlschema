@@ -1,4 +1,4 @@
-VERSION =: '0.1.9'
+VERSION =: '0.1.10'
 JSON-SCHEMA-DIALECT =: 'https://json-schema.org/draft/2020-12/schema'
 WILDCARD-KEY =: '+Str'
 BUILT-IN-TYPE-NAMES =:

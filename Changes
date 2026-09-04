@@ -1,5 +1,37 @@
 # YAMLSchema release history
 
+- version: 0.1.10
+  date:    Fri Sep  4 04:05:12 PM EDT 2026
+  changes:
+  - Update release smoke title checks
+  - Clean artifacts before release tests
+  - Fix interpreted upgrade test
+  - Publish PyPI token during release
+  - Rename tight syntax terminology
+  - Preserve YAML editor formatting
+  - Hide consent banner on localhost
+  - Separate YSD document preambles
+  - Simplify YAMLSchema format example
+  - Remove unreachable core helpers
+  - Add YSD title and ID syntax
+  - Shorten YSD description markers
+  - Redesign canonical list schemas
+  - Adopt marked YSD descriptions
+  - Use a random site serve port
+  - Support tuple combinator branches
+  - Preserve YAML schema serialization
+  - Normalize map syntax and schema order
+  - Add native tuple schema syntax
+  - Normalize required property order
+  - Add openQA schema demo
+  - Expand interactive demo help
+  - Fix legacy schema conversion
+  - Accept YAML schemas in Python
+  - Support YAML JSON Schema input
+  - Add native and Python ysd bindings
+  - Fix responsive site navigation
+  - Improve demo settings and mobile layout
+
 - version: 0.1.9
   date:    Sun Aug 30 01:02:44 PM EDT 2026
   changes:
