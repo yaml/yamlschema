@@ -171,7 +171,7 @@ The design keeps directive names short and regular.
 | `.const` | The one exact allowed value; JSON Schema `const` |
 | `.range` | Inclusive numeric range, with either bound optional |
 | `.size` | Number, string, list, or map size |
-| `.item` | Explicit sequence item type |
+| `.list` | List item type or item constraint block |
 | `.one` | Exactly one alternative must match |
 | `.any` | One or more alternatives must match |
 | `.all` | Every alternative must match |
@@ -251,7 +251,7 @@ right:
   .type: +Str
 dbRepository?:
   .desc: Repositories for the vulnerability DB
-  .type: +Str[]
+  .list: +Str
 ```
 
 The whole value is a YAML plain scalar.
@@ -632,10 +632,28 @@ email:
   .like: ^\S+@\S+$
 
 tags:
-  .type: +Str[]
+  .list: +Str
   .size: [1]
   .uniq: true
 ```
+
+`.list` contains the item schema.
+A simple item type may be its scalar value.
+A constrained item uses a nested canonical block:
+
+```yaml
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: [1, 3]
+```
+
+List constraints such as `.size`, `.solo`, and `.uniq` remain siblings of
+`.list` because they constrain the list rather than each item.
+The human-authored `.ysd` form may spell the example above as `.any[1-3]:`.
+Canonical `.ysdc` always uses the nested `.list` form.
 
 The document root may also use `.size` when its root value is the implicit
 mapping formed by top-level property and pattern keys.
@@ -927,7 +945,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | `minItems` / `maxItems` | List suffix or `.size` |
 | `minProperties` / `maxProperties` | `.size` on maps |
 | `uniqueItems` | `!` list suffix or `.uniq` |
-| `items` | List value type or `.item` |
+| `items` | List value type under `.list` |
 | `const` | Literal value constraint |
 | `default` | `.init` |
 | `description` | `--"description"` or `--:` in .ysd; `.desc` in .ysdc |

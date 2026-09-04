@@ -214,6 +214,11 @@ If `postOfficeBox` is present, `streetAddress` must also be present.
 value: +One(+Str,+Int)
 choice: +Any(+Str,+Bool)
 
+values:
+  .any[]:
+  - +Str
+  - +Int
+
 .one:
 - kind?: +Str ==person
 - kind?: +Str ==company

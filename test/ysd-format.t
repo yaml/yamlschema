@@ -117,6 +117,37 @@ test::
         registryctl containers (distribution honors these env overrides).
       s3?: +Map{}
 
+- name: long-list-item-description-wraps
+  cmnd: bin/ysd -t ysd -
+  stdi: |
+    {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "description": "A structured value with enough descriptive text to wrap cleanly onto a continuation line",
+                "properties": {"name": {"type": "string"}}
+              }
+            ]
+          }
+        }
+      }
+    }
+  want: |
+    # Converted from JSON Schema
+    .open: true
+    values?:
+      .one[]:
+      - +Str
+      - --: A structured value with enough descriptive text to wrap cleanly onto a
+          continuation line
+        name?: +Str
+
 - name: wrapped-desc-pairs-retain-quoted-and-spaced-values
   cmnd: |
     sh -c '

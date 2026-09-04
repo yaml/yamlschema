@@ -20,8 +20,8 @@ test::
   want: |
     {"empty":{"+Str":"+Any"},"any":{"+Str":"+Any"},"explicit":{"+Str":"+Any"
     },"strings":{".null":true,"+Str":"+Str"},"explicitStrings":{"+Str":"+Str
-    "},"custom":{"+Str":"+types\/value"},"many":{".type":"+Map[]","+Str":"+S
-    tr"},"hybrid":{"fixed?":"+Str","+Str":"+Str"}}
+    "},"custom":{"+Str":"+types\/value"},"many":{".list":{"+Str":"+Str"}},"h
+    ybrid":{"fixed?":"+Str","+Str":"+Str"}}
 
 - name: open-map-modifiers
   cmnd: sh -c 'bin/ysd -t ysdc -J -C - | fold -w 72'
@@ -31,9 +31,9 @@ test::
     oneOrMany: +Map{}[$]
     described: +Map{} "Open values"
   want: |
-    {"nullable":{".null":true,"+Str":"+Any"},"many":{".type":"+Map[]","+Str"
-    :"+Any"},"oneOrMany":{".type":"+Map[]",".solo":true,"+Str":"+Any"},"desc
-    ribed":{".desc":"Open values","+Str":"+Any"}}
+    {"nullable":{".null":true,"+Str":"+Any"},"many":{".list":{"+Str":"+Any"}
+    },"oneOrMany":{".list":{"+Str":"+Any"},".solo":true},"described":{".desc
+    ":"Open values","+Str":"+Any"}}
 
 - name: typed-map-to-json-schema
   cmnd: sh -c 'bin/ysd -t jsc -C - | fold -w 72'
@@ -206,8 +206,8 @@ test::
       value?: +Str
       valueFrom?: +Map{+Any}
   want: |
-    {"extraEnv?":{".type":"+Map[]",".size":[1,10],".solo":true,".uniq":true,
-    "name":"+Str","value?":"+Str","valueFrom?":{"+Str":"+Any"}}}
+    {"extraEnv?":{".list":{"name":"+Str","value?":"+Str","valueFrom?":{"+Str
+    ":"+Any"}},".size":[1,10],".solo":true,".uniq":true}}
 
 - name: old-shaped-map-marker-normalizes-away
   cmnd: bin/ysd -t ysdc -J -

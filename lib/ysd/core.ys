@@ -80,12 +80,12 @@ defn json-schema-to-ysd-strict(text):
 
 defn json-schema-to-ysdc-json(text):
   schema =: load-json-schema(text false)
-  data =: canonical-ysdc-data(build-doc(schema) 'ysdc')
+  data =: canonical-ysdc-data(build-doc(schema) 'ysd')
   canonical-json-output: data {}
 
 defn json-schema-to-ysdc-json-strict(text):
   schema =: load-json-schema(text false)
-  data =: canonical-ysdc-data(build-doc(schema true) 'ysdc')
+  data =: canonical-ysdc-data(build-doc(schema true) 'ysd')
   canonical-json-output: data {}
 
 defn json-schema-to-ysdc(text):
@@ -93,7 +93,7 @@ defn json-schema-to-ysdc(text):
 
 defn json-schema-to-ysdc-strict(text):
   schema =: load-json-schema(text false)
-  canonical-ysdc-text: build-doc(schema true) 'ysdc'
+  canonical-ysdc-text: build-doc(schema true) 'ysd'
 
 defn json-schema-roundtrip-works(text):
   boolean: json-schema-roundtrip-result(text false).works
@@ -699,7 +699,7 @@ defn ysd-to-ysdc-text(text):
 
 defn json-schema-to-ysdc-text(text):
   schema =: load-json-schema(text false)
-  canonical-ysdc-text: build-doc(schema) 'ysdc'
+  canonical-ysdc-text: build-doc(schema) 'ysd'
 
 defn canonical-ysdc-text(data source):
   data =: canonical-ysdc-data(data source)
@@ -769,7 +769,19 @@ defn normalize-json-map(value root?):
   if root?:
     then:
       result =: normalize-root-json-id(result)
-      ordered-put: result '$schema' JSON-SCHEMA-DIALECT
+      result =: ordered-put(result '$schema' JSON-SCHEMA-DIALECT)
+      normalize-root-defs-order: result value
+    else: result
+
+defn normalize-root-defs-order(result original):
+  if contains?(result '$defs'):
+    then:
+      defs =: result.'$defs'
+      rest =: result.del('$defs')
+      if defs-follow-body?(original):
+        ordered-put: rest '$defs' defs
+        merge-ordered-maps:
+          ordered-put(omap() '$defs' defs) rest
     else: result
 
 defn normalize-inferred-json-type(result):
@@ -1165,6 +1177,7 @@ defn expand-ysdc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
   doc =: normalize-description-directives(doc source)
+  validate-list-forms: doc source
   validate-regex-directives: doc source
   validate-pattern-property-forms: doc
   expanded =: reduce(expand-doc-entry omap() doc)
@@ -1196,6 +1209,33 @@ defn normalize-description-entry(result entry source):
       then: entry.1
       else: normalize-description-directives(entry.1 source)
   ordered-put: result canonical value
+
+defn validate-list-forms(value source):
+  cond:
+    map?(value):
+      each entry value:
+        validate-list-entry: entry source
+    sequential?(value):
+      each item value:
+        validate-list-forms: item source
+
+defn validate-list-entry(entry source):
+  key value =: entry
+  key =: key:S
+  when key == '.item':
+    usage: 'unsupported yamlschema directive: .item; use .list'
+  when (key == '.list') && boolean?(value):
+    usage: 'yamlschema .list requires an item schema'
+  canonical =: source == 'ysdc'
+  type-directive =: key == '.type'
+  list-type =: string?(value) && value-list-scalar?(value)
+  old-list-type =: canonical && type-directive && list-type
+  when old-list-type:
+    usage: 'unsupported .ysdc list type; use .list'
+  when (source == 'ysdc') && list-combinator-key?(key):
+    usage: "unsupported .ysdc directive: $key; use .list"
+  when passthrough-directive?(key).!:
+    validate-list-forms: value source
 
 defn validate-regex-directives(value source):
   cond:
@@ -1378,13 +1418,15 @@ defn expand-explicit-entry(result entry):
   key =: key:S
   cond:
     key == '.type': result
-    key == '.list': reject-list-directive()
+    key == '.item': reject-item-directive()
     key == '.Name': reject-title-directive(key)
     renamed-directive?(key): reject-renamed-directive(key)
     key == '.additionalProperties': reject-additional-properties(key)
     legacy-directive?(key): reject-legacy-directive(key)
     passthrough-directive?(key):
       ordered-put: result key val
+    list-combinator-key?(key):
+      expand-list-combinator-directive: result key val
     key =~ /^\./:
       expand-explicit-directive: result key val
     key == WILDCARD-KEY:
@@ -1398,7 +1440,7 @@ defn type-directive?(key):
   directives =:
     +['.name', '.type', '.xref', '.like', '.match',
       '.find', '.enum', '.const', '.range', '.xmin', '.xmax', '.size',
-      '.list', '.item', '.solo', '.uniq', '.null',
+      '.list', '.solo', '.uniq', '.null',
       '.init', '.one', '.any', '.all', '.not',
       '.title', '.desc', '.open', '.need', '.also',
       '.with', '.when']
@@ -1415,10 +1457,23 @@ defn expand-explicit-directive(result key value):
   normalized =: add-implied-directive-base(normalized key value result)
   merge-directives: result normalized "directive $key"
 
+defn list-combinator-key?(key):
+  key:S =~ /^\.(?:one|any|all|not)\[[^\]]*\]$/
+
+defn list-combinator-key-info(key):
+  match =: re-matches(/^(\.(?:one|any|all|not))(\[[^\]]*\])$/ key:S)
+  =>: +{'directive' match.1, 'suffix' match.2}
+
+defn expand-list-combinator-directive(result key value):
+  info =: list-combinator-key-info(key)
+  item =: normalize-directive(info.directive value)
+  list =: canonical-list-block(item info.suffix)
+  merge-directives: result list "directive $key"
+
 defn add-implied-directive-base(normalized key value result):
   missing =: result.has?('.type').! && normalized.has?('.type').!
   bases =:
-    +{'.like' '+Str', '.match' '+Str', '.find' '+Str', '.list' '+Any'}
+    +{'.like' '+Str', '.match' '+Str', '.find' '+Str'}
   base =: missing.when(bases.$key)
   if base:
     then: normalized + {'.type' base}
@@ -1434,7 +1489,7 @@ defn normalize-directive(key value):
     '.xmin': +{key validate-exclusive-range-value(key value)}
     '.xmax': +{key validate-exclusive-range-value(key value)}
     '.size': +{key normalize-size(value)}
-    '.item': +{key expand-type(value)}
+    '.list': +{key canonical-list-item-value(expand-type(value))}
     '.one': +{key expand-combinator-sequence(key value)}
     '.any': +{key expand-combinator-sequence(key value)}
     '.all': +{key expand-combinator-sequence(key value)}
@@ -1491,7 +1546,7 @@ defn validate-schema-name-child(entry seen):
     key.in?(['.one', '.any', '.all']) && sequential?(value):
       each child value:
         validate-schema-name-tree: child seen
-    key.in?(['.item', '.not']):
+    key.in?(['.list', '.not']):
       validate-schema-name-tree: value seen
     key =~ /^\./: nil
     else: validate-schema-name-tree(value seen)
@@ -1626,7 +1681,11 @@ defn resolve-open-entry(result entry source-open output-open):
       key.in?(['.one', '.any', '.all']):
         vec: value.map(
           \(resolve-open-type(_ source-open output-open)))
-      key.in?(['.item', '.not']):
+      key == '.list':
+        map?(value).if(
+          resolve-open-type(value source-open output-open)
+          value)
+      key == '.not':
         resolve-open-type: value source-open output-open
       key =~ /^\./: value
       else: resolve-open-type(value source-open output-open)
@@ -1654,8 +1713,9 @@ defn merge-directives(left right context):
 defn ordered-directives(value):
   order =:
     +['.desc', '.name', '.type', '.xref', '.open', '.need',
-      '.list', '.item', '.one', '.any', '.all',
-      '.not', '.like', '.enum', '.const', '.range', '.xmin', '.xmax',
+      '.list', '.one', '.any', '.all',
+      '.not', '.match', '.find', '.like', '.enum', '.const',
+      '.range', '.xmin', '.xmax',
       '.size', '.solo', '.uniq', '.null', '.init',
       '.title', '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
@@ -1665,21 +1725,51 @@ defn ordered-directives(value):
     else: result
 
 defn canonicalize-type-reference(value):
-  value =: fold-list-type(value)
-  value =: canonicalize-solo-list-any(value)
-  ordered-directives: value
+  value =: canonicalize-list-item-directives(value)
+  ordered-directives: canonicalize-solo-list-any(value)
 
-defn fold-list-type(value):
-  if value.'.list':
+defn canonicalize-list-item-directives(value):
+  if contains?(value '.list'):
     then:
-      shaped =: value:keys.some(\(_ !~ /^\./))
-      inferred =: shaped.if('+Map' '+Any')
-      reference =: value.get('.type' inferred)
-      reference =: reference.ends?('[]').if(reference "$reference[]")
-      result =: dissoc(value '.list')
-      result =: dissoc(result '.type')
-      ordered-put: result '.type' reference
+      keys =: vec(value:keys.filter(list-item-key?))
+      moved =: select-keys(value keys)
+      item =: canonicalize-list-item(value.'.list' moved)
+      remaining =: reduce(remove-list-item-key value keys)
+      ordered-directives: ordered-put(remaining '.list' item)
     else: value
+
+defn remove-list-item-key(value key):
+  value.del(key)
+
+defn list-item-key?(key):
+  key =: key:S
+  directives =:
+    +['.type', '.xref', '.open', '.one', '.any', '.all', '.not',
+      '.like', '.enum', '.const', '.range', '.xmin', '.xmax']
+  if key !~ /^\./:
+    true
+    key.in?(directives)
+
+defn canonicalize-list-item(item moved):
+  cond:
+    moved:empty?: item
+    string?(item): canonicalize-string-list-item(item moved)
+    map?(item): merge-directives(item moved 'list item')
+    else: item
+
+defn canonicalize-string-list-item(item moved):
+  moved =: without-list-item-duplicate-type(moved item)
+  if moved:empty?:
+    then: item
+    else:
+      generic =: item.in?(['+Any', '+Map'])
+      base =: generic.if(omap() ordered-put(omap() '.type' item))
+      merge-directives: base moved 'list item'
+
+defn without-list-item-duplicate-type(moved item):
+  if moved.'.type' == item:
+    moved.del('.type')
+    moved
 
 defn canonicalize-solo-list-any(value):
   info =: ysdc-solo-list-info(value)
@@ -1711,13 +1801,11 @@ defn ysdc-solo-list-info(value):
         +{'list' right}
 
 defn ysdc-solo-list-branch?(value):
-  reference =: value.'.type'
   forbidden =:
     set(['.solo' '.null' '.name' '.init' '.title' '.desc'])
   and:
     map?(value)
-    string?(reference)
-    reference.ends?('[]')
+    contains?(value '.list')
     value:keys.every?(\(forbidden.has?(_:S).!))
 
 defn ysdc-list-item-equal?(list item):
@@ -1744,7 +1832,7 @@ defn put-non-directive(result entry):
     else:
       if key =~ /^\./:
         then:
-          if passthrough-directive?(key):
+          if passthrough-directive?(key) || list-combinator-key?(key):
             then: ordered-put(result key entry.1)
             else: result
         else: ordered-put(result key entry.1)
@@ -1766,8 +1854,11 @@ defn reject-unknown-directive(key):
 defn reject-misplaced-need-directive():
   usage: 'yamlschema .need is only valid on a property definition'
 
-defn reject-list-directive():
-  usage: 'unsupported yamlschema directive: .list; use [] on the type'
+defn reject-item-directive():
+  usage: 'unsupported yamlschema directive: .item; use .list'
+
+defn reject-item-keyword():
+  usage: 'unsupported yamlschema keyword: item; use .list'
 
 defn reject-list-keyword():
   usage: 'unsupported yamlschema keyword: list; use [] on the type'
@@ -1886,9 +1977,7 @@ defn expand-primary-token(token):
   result =: primary.block
   result =:
     if primary.suffix:
-      then:
-        suffix =: list-directives(primary.suffix)
-        merge-directives: result suffix 'value list suffix'
+      then: canonical-list-block(result primary.suffix)
       else: result
   if primary.null:
     then: merge-directives(result {'.null' true} 'nullable suffix')
@@ -2212,14 +2301,17 @@ defn expand-tight-token(result token):
     ambiguous-exclusive-range?(token):
       reject-ambiguous-exclusive-range: token
     range-literal?(token):
-      merge-directives: result range-block(token result.'.type') 'range clause'
+      merge-directives:
+        result range-block(token tight-result-base(result)) 'range clause'
     compact-enum-token?(token):
       merge-directives:
-        result compact-enum-block(token result.'.type') 'enum clause'
+        result
+        compact-enum-block(token tight-result-base(result))
+        'enum clause'
     token.starts?('=='):
       raw =: token.replace(/^=/).replace(/^=/)
       merge-directives:
-        result const-block(raw result.'.type') 'const clause'
+        result const-block(raw tight-result-base(result)) 'const clause'
     token.starts?('='):
       merge-directives:
         result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
@@ -2243,6 +2335,13 @@ defn expand-tight-token(result token):
         result {'.size' normalize-size(token)} 'size clause'
     else:
       usage: "invalid or out-of-order yamlschema clause: $token"
+
+defn tight-result-base(result):
+  list =: result.'.list'
+  cond:
+    string?(result.'.type'): result.'.type'
+    string?(list): list
+    map?(list): list.'.type'
 
 defn need-token?(token):
   token =~ /^:need\([^\)]*\)$/
@@ -2386,12 +2485,12 @@ defn labeled-tight-block(token result):
       +{'.like' anchored-pattern(
         expand-regex-names(tight-string-value(raw)))}
     'find': +{'.like' expand-regex-names(tight-string-value(raw))}
-    'const': const-block(raw result.'.type')
+    'const': const-block(raw tight-result-base(result))
     'enum': usage('enum requires a bracketed value list')
-    'range': range-block(raw result.'.type')
+    'range': range-block(raw tight-result-base(result))
     'size': +{key normalize-size(tight-string-value(raw))}
     'list': reject-list-keyword()
-    'item': +{key expand-type(tight-string-value(raw))}
+    'item': reject-item-keyword()
     'solo': boolean-label-block(key raw)
     'uniq': boolean-label-block(key raw)
     'null': boolean-label-block(key raw)
@@ -2585,9 +2684,19 @@ defn range-number-type(range):
     'integer'
     'number'
 
-defn list-directives(suffix):
+defn canonical-list-block(item suffix):
+  result =:
+    ordered-put: omap() '.list' canonical-list-item-value(item)
+  merge-ordered-maps: result list-modifiers(suffix)
+
+defn canonical-list-item-value(item):
+  if key-set(item).eq(\{'.type'}):
+    then: item.'.type'
+    else: ordered-directives(item)
+
+defn list-modifiers(suffix):
   props =: parse-list-suffix(suffix)
-  result =: +{'.list' true}
+  result =: omap()
   result =: map-put-if(result props.uniq '.uniq' true)
   result =: map-put-if(result props.solo '.solo' true)
   if props.size.?:
@@ -3028,17 +3137,19 @@ defn ysdc-block-to-schema(value inherited-open=false):
   when contains?(value '.need'):
     reject-misplaced-need-directive()
   reject-unexportable-directives: value
-  list =: canonical-list-type?(value)
+  list =: contains?(value '.list')
   local-open =: value.get('.open' inherited-open)
   native-value =: without-passthrough-directives(value)
-  item-value =: list.if(canonical-list-item(native-value) native-value)
-  item =: canonical-item-schema(item-value local-open)
-  shape =: canonical-shape-schema(item-value inherited-open)
-  item =: shape.if(merge(item shape) item)
   result =:
     if list:
-      then: canonical-list-schema(item value)
-      else: canonical-sized-schema(item value.'.size')
+      then:
+        item =: ysdc-list-item-to-schema(value.'.list' local-open)
+        canonical-list-schema: item value
+      else:
+        item =: canonical-item-schema(native-value local-open)
+        shape =: canonical-shape-schema(native-value inherited-open)
+        item =: shape.if(merge(item shape) item)
+        canonical-sized-schema: item value.'.size'
   result =:
     map-put-if:
       result (result.type.eq('array') && value.'.uniq')
@@ -3047,6 +3158,11 @@ defn ysdc-block-to-schema(value inherited-open=false):
   result =: add-canonical-annotations(result value)
   add-null-schema: result value.'.null'
 
+defn ysdc-list-item-to-schema(value inherited-open=false):
+  if string?(value):
+    then: ysdc-bare-scalar-to-schema(value)
+    else: ysdc-value-to-schema(value inherited-open)
+
 defn without-passthrough-directives(value):
   reduce remove-passthrough-directive: omap() value
 
@@ -3054,14 +3170,6 @@ defn remove-passthrough-directive(result entry):
   if passthrough-directive?(entry.0:S):
     then: result
     else: ordered-put(result entry.0 entry.1)
-
-defn canonical-list-type?(value):
-  reference =: value.'.type'
-  string?(reference) &&: reference.ends?('[]')
-
-defn canonical-list-item(value):
-  reference =: value.'.type'.replace(/\[\]$/)
-  value +: +{'.type' reference}
 
 defn reject-unexportable-directives(value):
   unsupported =: +['.also', '.with', '.when']
@@ -3076,10 +3184,6 @@ defn canonical-item-schema(value inherited-open=false):
       else: +{}
   result =: map-put-if(result contains?(value '.xref')
     '$ref' value.'.xref')
-  result =:
-    if contains?(value '.item'):
-      ysdc-value-to-schema: value.'.item' inherited-open
-      else: result
   result =: map-put-if(result contains?(value '.like')
     'pattern' value.'.like')
   result =: map-put-if(result contains?(value '.enum')
@@ -3266,7 +3370,8 @@ defn ysdc-block-step(state entry):
       state + {'result' (result + {'enum' val})}
     '.init':
       state + {'result' (result + {'default' val})}
-    '.list': reject-list-directive()
+    '.list':
+      state + {'item' ysdc-value-to-schema(val)}
     '.uniq':
       state + {'result' (result + {'uniqueItems' val})}
     '.title':
@@ -3275,8 +3380,6 @@ defn ysdc-block-step(state entry):
       reject-title-directive: key
     '.desc':
       state + {'result' (result + {'description' val})}
-    '.item':
-      state + {'item' ysdc-value-to-schema(val)}
     '.size':
       state + {'result' add-size(result val)}
     '.range':
@@ -3469,7 +3572,7 @@ defn scalar-number(s):
   ys::json/load: s
 
 defn wrap-array-schema(item suffix):
-  canonical-list-schema: item list-directives(suffix)
+  canonical-list-schema: item list-modifiers(suffix)
 
 defn unsupported-json-schema-keywords():
   +[
@@ -3640,8 +3743,8 @@ defn warn-yamlschema-child(key value path root):
         map-indexed(
           \(warn-yamlschema-passthrough(_2 "$child-path/$_1" false))
           value):vec
-    key.in?(['.item', '.not']):
-      keyword =: key.eq('.item').if('items' 'not')
+    key.in?(['.list', '.not']):
+      keyword =: key.eq('.list').if('items' 'not')
       warn-yamlschema-passthrough:
         value json-pointer-child(path keyword) false
     key =~ /^\./: nil
@@ -3705,10 +3808,14 @@ defn warn-yamlschema-float-child(key value path root):
           \(warn-yamlschema-float-export(
             _2 json-pointer-child(child-path _1) false))
           value):vec
-    key.in?(['.item', '.not']):
-      keyword =: key.eq('.item').if('items' 'not')
+    key == '.list':
+      child-path =: json-pointer-child(path 'items')
+      if string?(value):
+        then: warn-float-reference(value child-path)
+        else: warn-yamlschema-float-export(value child-path false)
+    key == '.not':
       warn-yamlschema-float-export:
-        value json-pointer-child(path keyword) false
+        value json-pointer-child(path 'not') false
     key =~ /^\./: nil
     else:
       child-path =: yamlschema-schema-child-path(path key root)
@@ -4038,17 +4145,14 @@ defn build-root-key-branch-entry(result entry required open strict=false):
 
 defn build-list-value(schema inherited-open solo=false strict=false):
   item =: array-item-schema(schema)
-  item-scalar =: empty?(item).if('+Any' succinct-scalar(item strict))
+  item-scalar =: succinct-list-item(item strict)
   suffix =: list-suffix(schema solo)
   value =:
     if item-scalar:
       then: append-list-suffix(item-scalar suffix)
       else:
         item-value =: build-value(item inherited-open strict)
-        list-value =: list-directives(suffix)
-        merged =:
-          merge-directives: item-value list-value 'array item type'
-        canonicalize-type-reference: merged
+        generated-list-block: item-value suffix
   if schema.description.?:
     add-list-description: value schema.description
     else: value
@@ -4067,6 +4171,44 @@ defn append-list-suffix(type suffix):
   tokens =: tight-tokens(type)
   tokens =: assoc(tokens 0 "$(tokens.0)$suffix")
   joins: tokens
+
+defn succinct-list-item(item strict=false):
+  cond:
+    item == true: '+Any'
+    item == false: '+Not(+Any)'
+    empty?(item): '+Any'
+    else: succinct-scalar(item strict)
+
+defn generated-list-block(item suffix):
+  combinator =: generated-list-combinator(item)
+  if combinator:
+    then:
+      key =: "$(combinator.key)$suffix"
+      ordered-put: omap() key combinator.value
+    else:
+      list =: ordered-put(omap() '.list' item)
+      merge-ordered-maps: list generated-list-modifiers(suffix)
+
+defn generated-list-modifiers(suffix):
+  props =: parse-list-suffix(suffix)
+  result =: omap()
+  result =: map-put-if(result props.uniq '.uniq' true)
+  result =: map-put-if(result props.solo '.solo' true)
+  if props.size.?:
+    then:
+      size =: generated-size-value(props.size)
+      ordered-directives: result + {'.size' size}
+    else: ordered-directives(result)
+
+defn generated-size-value(value):
+  (value =~ /^[0-9]+$/).if(scalar-number(value) value)
+
+defn generated-list-combinator(item):
+  when map?(item) && item.#.eq(1):
+    entry =: first(item)
+    key =: entry.0:S
+    when key.in?(['.one', '.any', '.all', '.not']):
+      =>: +{'key' key, 'value' entry.1}
 
 # Return the value side of a property (or def), either a scalar in
 # succinct form, or a nested map (object with properties / expanded
@@ -4246,7 +4388,6 @@ defn add-block(result schema inherited-open=true strict=false):
           else: result
       else: result
   result =: map-put-if(result has-type '.type' ts)
-  result =: map-put-if(result (is-array && tuple.!) '.type' '+Any[]')
   result =: add-external-ref-directive(result schema)
   result =: map-put-if(result nullable-json-schema?(schema) '.null' true)
   result =:
@@ -4271,7 +4412,6 @@ defn add-block(result schema inherited-open=true strict=false):
             else: ordered-put(result '.type' json-base-for-value(schema.const))
         ordered-put: result '.const' literal-value(schema.const)
       else: result
-  result =: map-put-if(result schema.uniqueItems '.uniq' true)
   result =:
     if contains?(schema 'default'):
       then: ordered-put(result '.init' literal-value(schema.'default'))
@@ -4293,9 +4433,10 @@ defn add-block(result schema inherited-open=true strict=false):
     .add-numeric-range-directive(schema)
     .add-exclusive-range-directives(schema)
     .add-size-directive(schema.minLength schema.maxLength)
-    .add-size-directive(schema.minItems schema.maxItems)
     .add-size-directive(schema.minProperties schema.maxProperties)
     .add-array-items((is-array && tuple.!) schema child-open strict)
+  result =:
+    map-put-if(result (is-array && tuple && schema.uniqueItems) '.uniq' true)
   result =:
     if t == 'object':
       then:
@@ -4343,15 +4484,16 @@ defn native-exclusive-range-keyword?(schema key):
     else: false
 
 defn add-array-items(result is-array schema inherited-open strict=false):
-  if is-array && schema.items.?:
+  if is-array:
     then:
-      items =: schema.items
-      item-scalar =: succinct-scalar(items strict)
-      if item-scalar:
-        then: ordered-put(result '.type' "$item-scalar[]")
-        else:
-          ordered-put:
-            result '.item' build-block-map(items inherited-open strict)
+      items =: array-item-schema(schema)
+      item-scalar =: succinct-list-item(items strict)
+      item =:
+        if item-scalar:
+          then: item-scalar
+          else: build-value(items inherited-open strict)
+      list =: generated-list-block(item list-suffix(schema))
+      merge-directives: result list 'array item type'
     else: result
 
 defn additional-properties-value(schema inherited-open strict=false):
@@ -4871,7 +5013,7 @@ defn strip-pattern-anchors(pattern):
 
 defn size-scalar(lo hi):
   cond:
-    lo == hi: lo:S
+    lo == hi: lo
     lo:nil?: "0-$hi"
     hi:nil?: "$lo+"
     else: "$lo-$hi"
@@ -4924,7 +5066,9 @@ defn array-suffix-keys?(schema):
     \(_.in?(qw(type items minItems maxItems uniqueItems description)))
 
 defn array-item-schema(schema):
-  schema.items || {}
+  if contains?(schema 'items'):
+    then: schema.items
+    else: +{}
 
 defn key-for(name is-required):
   opt =: is-required.if('' '?')
@@ -5096,13 +5240,18 @@ defn format-ysd-description-line(state line):
       ((indent > raw-indent) ||
        ((indent == raw-indent) && stripped.starts?('-')))
   raw-indent :if raw?.! =: nil
-  match =:
+  sequence-match =:
     when raw?.!:
+      re-matches: /^([ ]*)- (\.[A-Za-z][A-Za-z0-9]*):(.*)$/ line
+  plain-match =:
+    when raw?.! && sequence-match.!:
       re-matches: /^([ ]*)(\.[A-Za-z][A-Za-z0-9]*):(.*)$/ line
+  match =: sequence-match || plain-match
   key =: match.when(match.2)
+  marker =: sequence-match.if('- ' '')
   output =:
     if key == '.desc':
-      then: "$(match.1)--:$(match.3)"
+      then: "$(match.1)$marker--:$(match.3)"
       else: line
   raw-indent :if (key && passthrough-directive?(key)) =: indent
   state +: +{'lines' state.lines.conj(output), 'raw-indent' raw-indent}
@@ -5140,10 +5289,14 @@ defn wrapped-ysd-tight-line(line):
   match =: re-matches(pattern line)
   desc-pattern =: re-pattern(str('^([ ]*)--' ':' ' (.*)$'))
   desc =: re-matches(desc-pattern line)
+  item-desc-pattern =: re-pattern(str('^([ ]*)- --' ':' ' (.*)$'))
+  item-desc =: re-matches(item-desc-pattern line)
   cond:
     line.# <= 80: +[line]
+    item-desc && wrappable-ysd-desc?(item-desc.2):
+      ysd-desc-pair-lines: item-desc.1 true item-desc.2
     desc && wrappable-ysd-desc?(desc.2):
-      ysd-desc-pair-lines: desc.1 desc.2
+      ysd-desc-pair-lines: desc.1 false desc.2
     match.!: +[line]
     match.1 =~ /^\s*\./: +[line]
     else:
@@ -5157,12 +5310,14 @@ defn wrappable-ysd-desc?(value):
   single =: value.starts?("'") && value.ends?("'")
   plain ||: single
 
-defn ysd-desc-pair-lines(indent value):
+defn ysd-desc-pair-lines(indent item value):
   tokens =: split-wrappable-spaces(value isolated-space?)
-  prefix =: "$indent--$(C(58)) "
+  marker =: item.if('- ' '')
+  prefix =: "$indent$marker--$(C(58)) "
+  continuation =: item.if("$indent    " "$indent  ")
   state =: +{
     'lines' [], 'line' prefix,
-    'continuation' "$indent  ", 'has-token' false}
+    'continuation' continuation, 'has-token' false}
   state =: reduce(append-ysd-desc-token state tokens)
   state.lines: .conj(state.line)
 

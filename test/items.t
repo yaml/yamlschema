@@ -60,8 +60,7 @@ test::
     .open: true
     imagePullSecrets?:
       --: List of image pull secrets
-      .type: +Any[]
-      .one:
+      .one[]:
       - +Str 1+
       - name: +Str 1+
 
@@ -196,9 +195,10 @@ test::
     nullable: +Tup{+Str,+Num?}~
     nested: +Tup{+Tup{+Str},+Map{+Any}}
   want: |
-    list: +Tup{+Str,+Num}[]
+    list:
+      .list: +Tup{+Str,+Num}
     solo:
-      .type: +Tup{+Str,+Num}[]
+      .list: +Tup{+Str,+Num}
       .solo: true
     nullable:
       .type: +Tup{+Str,+Num?}

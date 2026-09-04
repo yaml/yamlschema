@@ -37,9 +37,9 @@ test::
     --: Arrays of strings and objects
     .open: true
     name:
+      --: Display name.
       .type: +Str
       .title: Full name
-      --: Display name.
     profile?:
       --: Profile settings.
       visible?: +Bool

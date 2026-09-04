@@ -14,16 +14,20 @@ test::
   want: |
     {
       "succinct": {
-        ".type": "+Str[]",
-        ".like": "a.*b",
+        ".list": {
+          ".type": "+Str",
+          ".like": "a.*b"
+        },
         ".size": [
           10,
           20
         ]
       },
       "hybrid": {
-        ".type": "+Str[]",
-        ".like": "a.*b",
+        ".list": {
+          ".type": "+Str",
+          ".like": "a.*b"
+        },
         ".size": [
           10,
           20
@@ -139,14 +143,14 @@ test::
   want: |
     {
       "key?": {
-        ".type": "+Str[]",
+        ".list": "+Str",
         ".size": [
           1
         ],
         ".uniq": true
       },
       "value?": {
-        ".type": "+Str[]",
+        ".list": "+Str",
         ".size": [
           0,
           3
@@ -154,7 +158,7 @@ test::
         ".solo": true
       },
       "alias?": {
-        ".type": "+Str[]",
+        ".list": "+Str",
         ".size": [
           1
         ]
@@ -191,8 +195,10 @@ test::
   want: |
     {
       "value": {
-        ".type": "+Str[]",
-        ".like": "^x$",
+        ".list": {
+          ".type": "+Str",
+          ".like": "^x$"
+        },
         ".size": [
           1
         ],
@@ -201,12 +207,14 @@ test::
       "mismatch": {
         ".any": [
           "+Str",
-          "+Int[]"
+          {
+            ".list": "+Int"
+          }
         ]
       },
       "annotated": {
         ".desc": "Accept one integer or a list",
-        ".type": "+Int[]",
+        ".list": "+Int",
         ".solo": true,
         ".title": "Number or numbers"
       }
@@ -220,10 +228,34 @@ test::
     spaced: +Str[1-10 $ !]
     compact: +Str[1-10$!]
   want: |
-    {"canonical":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true}
-    ,"split":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"sp
-    aced":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true},"compa
-    ct":{".type":"+Str[]",".size":[1,10],".solo":true,".uniq":true}}
+    {"canonical":{".list":"+Str",".size":[1,10],".solo":true,".uniq":true},"
+    split":{".list":"+Str",".size":[1,10],".solo":true,".uniq":true},"spaced
+    ":{".list":"+Str",".size":[1,10],".solo":true,".uniq":true},"compact":{"
+    .list":"+Str",".size":[1,10],".solo":true,".uniq":true}}
+
+- name: explicit-list-full-form
+  cmnd: bin/ysd -t ysdc -Y -
+  stdi: |
+    simple:
+      .list: +Str
+    constrained:
+      .list:
+        .type: +Str
+        .match: word
+      .size: 1
+    enumerated: +Str[] [a, b]
+  want: |
+    simple:
+      .list: +Str
+    constrained:
+      .list:
+        .type: +Str
+        .like: ^word$
+      .size: [1, 1]
+    enumerated:
+      .list:
+        .type: +Str
+        .enum: [a, b]
 
 - name: reject-invalid-list-properties
   cmnd: |
@@ -278,7 +310,7 @@ test::
       .match: a.*b
       .type: +Str[]
   want: |
-    {"foo":{".type":"+Str[]",".like":"^a.*b$",".size":[10,20]}}
+    {"foo":{".list":{".type":"+Str",".like":"^a.*b$"},".size":[10,20]}}
 
 - name: direct-and-refined-type-directives
   cmnd: bin/ysd -t ysdc -J -
@@ -401,8 +433,26 @@ test::
         bin/ysd -t ysdc -J -C - 2>&1 | sed -n 1p
     '
   want: |
-    ysd: unsupported yamlschema directive: .list; use [] on the type
+    ysd: yamlschema .list requires an item schema
     ysd: unsupported yamlschema keyword: list; use [] on the type
+
+- name: reject-retired-item-and-canonical-list-forms
+  cmnd: |
+    sh -c '
+      printf "foo:\n  .item: +Str\n" |
+        bin/ysd -t ysdc -C - 2>&1 | sed -n 1p
+      printf "foo: +Any item:+Str\n" |
+        bin/ysd -t ysdc -C - 2>&1 | sed -n 1p
+      printf "foo:\n  .type: +Str[]\n" |
+        bin/ysd -f ysdc -t jsc -C - 2>&1 | sed -n 1p
+      printf "foo:\n  .any[]: [+Str, +Int]\n" |
+        bin/ysd -f ysdc -t jsc -C - 2>&1 | sed -n 1p
+    '
+  want: |
+    ysd: unsupported yamlschema directive: .item; use .list
+    ysd: unsupported yamlschema keyword: item; use .list
+    ysd: unsupported .ysdc list type; use .list
+    ysd: unsupported .ysdc directive: .any[]; use .list
 
 - name: reject-key-side-list-syntax
   cmnd: |
@@ -535,12 +585,11 @@ test::
     string: desc:"Words" size:1-3 ~"a b" title:"Title" init:x type:+Str
     search: ~~"a/b c" type:+Str
     number: range:1..10 type:+Int
-    sequence: null:true uniq:true solo:true size:1+ item:+Str
-      type:+Any[]
+    sequence: null:true uniq:true solo:true size:1+ type:+Str[]
     alternate: also:former type:+Str
     choice: enum:[a,b c] type:+Str
   want: |
-    {"string":{".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".type":"+Any[]",".item":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
+    {"string":{".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".list":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |
@@ -585,7 +634,7 @@ test::
       done
     '
   want: |
-    {"foo":{".type":"+Str[]",".size":[1]}}
+    {"foo":{".list":"+Str",".size":[1]}}
     ysd: unsupported yamlschema directive: .base; use .type
     ysd: unsupported yamlschema directive: .base; use .type
 

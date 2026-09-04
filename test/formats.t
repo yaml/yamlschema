@@ -21,7 +21,7 @@ test::
     namespace?:
       .type: +Str
     topologySpreadConstraints?:
-      .type: +Any[]
+      .list: +Any
     labels?:
       +Str:
         .type: +Str
@@ -30,7 +30,8 @@ test::
       .type: +Str
   want: |
     namespace?: +Str
-    topologySpreadConstraints?: +Any[]
+    topologySpreadConstraints?:
+      .list: +Any
     labels?:
       +Str: +Str
     annotated?:

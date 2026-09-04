@@ -80,11 +80,11 @@ test::
       .uniq: true
       .solo: true
       .size: [1, 3]
-      .item: +Str
-      .match: word
-      .type: +Str[]
+      .list:
+        .type: +Str
+        .match: word
   want: |
-    .desc .type .item .like .size .solo .uniq .null .init .title
+    .desc .list .size .solo .uniq .null .init .title
 
 - name: json-schema-definition-and-property-order
   cmnd: |

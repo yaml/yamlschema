@@ -527,8 +527,9 @@ names?: +Str[1+]
 .EE
 
 .PP
-This expands to \fB\&.type: +Str[]\fR and \fB\&.size: [1]\fR\&.
-The \fB[]\fR is part of the list type; \fB\&.size\fR carries its bounds.
+This expands to \fB\&.list: +Str\fR and \fB\&.size: [1]\fR\&.
+The \fB[]\fR is part of the succinct list expression; \fB\&.list\fR contains the item
+schema and \fB\&.size\fR carries the list bounds in canonical \fB\&.ysdc\fR\&.
 Key-side list suffixes are rejected.
 
 .TS
@@ -594,6 +595,23 @@ Generated DSL uses the canonical \fB[size,$!]\fR order.
 \fB[+]\fR is an input alias for \fB[1+]\fR\&.
 The former \fB|\fR separator is rejected.
 Multiple sizes or repeated \fB$\fR and \fB!\fR flags are errors.
+
+.PP
+Use \fB\&.list\fR when an item schema is clearer in full form:
+
+.EX
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: 1
+.EE
+
+.PP
+Canonical \fB\&.ysdc\fR uses \fB\&.list\fR for every list, including \fB\&.list: +Str\fR for a
+simple list.
+It does not use \fB\&.item\fR or append \fB[]\fR to \fB\&.type\fR\&.
 
 .PP
 A size clause also works after string, list, or mapping constraints:
@@ -703,8 +721,9 @@ This is equivalent to:
 
 .EX
 foo:
-  .type: +Str[]
-  .like: a.*b
+  .list:
+    .type: +Str
+    .like: a.*b
   .size: [10, 20]
   .title: The "Good" Parts
 .EE
@@ -748,6 +767,31 @@ value:
   .one:
   - +Str 1+
   - name: +Str
+.EE
+
+.PP
+To apply a combinator to every item in a list, append the list suffix to its
+directive in \fB\&.ysd\fR:
+
+.EX
+values:
+  .any[1-3,!]:
+  - +Str
+  - +Int
+.EE
+
+.PP
+The same suffix grammar works with \fB\&.one\fR, \fB\&.any\fR, \fB\&.all\fR, and \fB\&.not\fR\&.
+The canonical \fB\&.ysdc\fR expansion is:
+
+.EX
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: [1, 3]
+  .uniq: true
 .EE
 
 .PP
@@ -798,7 +842,7 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 .EX
-\&.desc .name .type .xref .open .need .item .one .any .all .not .like
+\&.desc .name .type .xref .open .need .list .one .any .all .not .like
 \&.enum .const .range .size .solo .uniq .null .init .title
 \&.also .with .when
 .EE
@@ -813,11 +857,14 @@ When annotations, validation constraints, or shape entries share the mapping,
 the reference or complete tight expression remains under \fB\&.type\fR\&.
 
 .PP
-List types append \fB[]\fR to the reference.
-An unconstrained list is therefore emitted as a scalar such as \fB+Any[]\fR;
-constrained lists use forms such as \fB\&.type: +Str[]\fR with \fB\&.size\fR or \fB\&.uniq\fR\&.
-\fB\&.list\fR is currently rejected and reserved for a possible future
-list-constraint model; it does not mean "convert this type into a list."
+Canonical list types use \fB\&.list\fR, whose value is the item schema.
+An unconstrained canonical list is \fB\&.list: +Any\fR\&.
+Item constraints are nested under \fB\&.list\fR, while \fB\&.size\fR, \fB\&.solo\fR, and \fB\&.uniq\fR
+remain beside it as list constraints.
+Human-authored \fB\&.ysd\fR still accepts tight forms such as \fB+Str[]\fR and the full
+\fB\&.list\fR form.
+Canonical \fB\&.ysdc\fR rejects the retired \fB\&.item\fR directive and old
+\fB\&.type: +Str[]\fR spelling.
 
 .PP
 Unknown directives are errors.

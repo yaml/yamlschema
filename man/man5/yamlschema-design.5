@@ -199,7 +199,9 @@ T}
 \fB\&.size\fR	T{
 Number, string, list, or map size
 T}
-\fB\&.item\fR	Explicit sequence item type
+\fB\&.list\fR	T{
+List item type or item constraint block
+T}
 \fB\&.one\fR	T{
 Exactly one alternative must match
 T}
@@ -305,7 +307,7 @@ right:
   .type: +Str
 dbRepository?:
   .desc: Repositories for the vulnerability DB
-  .type: +Str[]
+  .list: +Str
 .EE
 
 .PP
@@ -703,10 +705,30 @@ email:
   .like: ^\\S+@\\S+$
 
 tags:
-  .type: +Str[]
+  .list: +Str
   .size: [1]
   .uniq: true
 .EE
+
+.PP
+\fB\&.list\fR contains the item schema.
+A simple item type may be its scalar value.
+A constrained item uses a nested canonical block:
+
+.EX
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: [1, 3]
+.EE
+
+.PP
+List constraints such as \fB\&.size\fR, \fB\&.solo\fR, and \fB\&.uniq\fR remain siblings of
+\fB\&.list\fR because they constrain the list rather than each item.
+The human-authored \fB\&.ysd\fR form may spell the example above as \fB\&.any[1-3]:\fR\&.
+Canonical \fB\&.ysdc\fR always uses the nested \fB\&.list\fR form.
 
 .PP
 The document root may also use \fB\&.size\fR when its root value is the implicit
@@ -1007,7 +1029,7 @@ constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
 \fBminItems\fR / \fBmaxItems\fR	List suffix or \fB\&.size\fR
 \fBminProperties\fR / \fBmaxProperties\fR	\fB\&.size\fR on maps
 \fBuniqueItems\fR	\fB!\fR list suffix or \fB\&.uniq\fR
-\fBitems\fR	List value type or \fB\&.item\fR
+\fBitems\fR	List value type under \fB\&.list\fR
 \fBconst\fR	Literal value constraint
 \fBdefault\fR	\fB\&.init\fR
 \fBdescription\fR	\fB--"description"\fR or \fB--:\fR in .ysd; \fB\&.desc\fR in .ysdc

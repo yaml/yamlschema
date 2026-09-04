@@ -20,7 +20,7 @@ test::
     all":["+foo","+bar"]},"composed":{".type":"+base",".all":["+constraint",
     "+other"]},"not-one":{".not":"+foo"},"not-many":{".not":{".any":["+Str",
     "+Int"]}},"namespaced":{".any":["+net\/port","+contact\/email"]},"values
-    ":{".type":"+Any[]",".any":["+foo","+bar"]}}
+    ":{".list":{".any":["+foo","+bar"]}}}
 
 - name: compact-combinators-to-json-schema
   cmnd: bin/ysd -t jsc -
@@ -109,6 +109,46 @@ test::
         }
       }
     }
+
+- name: list-combinator-directives
+  cmnd: bin/ysd -t ysdc -Y -
+  stdi: |
+    one:
+      .one[]:
+      - +Str
+      - +Int
+    any:
+      .any[1-3,!]:
+      - +Str
+      - +Int
+    all:
+      .all[$]:
+      - +foo
+      - +bar
+    not:
+      .not[]: +Str
+  want: |
+    one:
+      .list:
+        .one:
+        - +Str
+        - +Int
+    any:
+      .list:
+        .any:
+        - +Str
+        - +Int
+      .size: [1, 3]
+      .uniq: true
+    all:
+      .list:
+        .all:
+        - +foo
+        - +bar
+      .solo: true
+    not:
+      .list:
+        .not: +Str
 
 - name: json-schema-to-compact-combinators
   cmnd: bin/ysd -t ysd -
@@ -379,7 +419,7 @@ test::
     any: +Any[]
     exact: +Any[2]
   want: |
-    {"any":"+Any[]","exact":{".type":"+Any[]",".size":[2,2]}}
+    {"any":{".list":"+Any"},"exact":{".list":"+Any",".size":[2,2]}}
 
 - name: base-plus-one-all-roundtrip
   cmnd: |

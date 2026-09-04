@@ -476,8 +476,9 @@ List suffixes are part of the value-side type expression:
 names?: +Str[1+]
 ```
 
-This expands to `.type: +Str[]` and `.size: [1]`.
-The `[]` is part of the list type; `.size` carries its bounds.
+This expands to `.list: +Str` and `.size: [1]`.
+The `[]` is part of the succinct list expression; `.list` contains the item
+schema and `.size` carries the list bounds in canonical `.ysdc`.
 Key-side list suffixes are rejected.
 
 | Suffix | Meaning |
@@ -532,6 +533,21 @@ Generated DSL uses the canonical `[size,$!]` order.
 `[+]` is an input alias for `[1+]`.
 The former `|` separator is rejected.
 Multiple sizes or repeated `$` and `!` flags are errors.
+
+Use `.list` when an item schema is clearer in full form:
+
+```yaml
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: 1
+```
+
+Canonical `.ysdc` uses `.list` for every list, including `.list: +Str` for a
+simple list.
+It does not use `.item` or append `[]` to `.type`.
 
 A size clause also works after string, list, or mapping constraints:
 
@@ -630,8 +646,9 @@ This is equivalent to:
 
 ```yaml
 foo:
-  .type: +Str[]
-  .like: a.*b
+  .list:
+    .type: +Str
+    .like: a.*b
   .size: [10, 20]
   .title: The "Good" Parts
 ```
@@ -673,6 +690,29 @@ value:
   .one:
   - +Str 1+
   - name: +Str
+```
+
+To apply a combinator to every item in a list, append the list suffix to its
+directive in `.ysd`:
+
+```yaml
+values:
+  .any[1-3,!]:
+  - +Str
+  - +Int
+```
+
+The same suffix grammar works with `.one`, `.any`, `.all`, and `.not`.
+The canonical `.ysdc` expansion is:
+
+```yaml
+values:
+  .list:
+    .any:
+    - +Str
+    - +Int
+  .size: [1, 3]
+  .uniq: true
 ```
 
 At the document root, `.one` constrains the root value in addition to its
@@ -720,7 +760,7 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.desc .name .type .xref .open .need .item .one .any .all .not .like
+.desc .name .type .xref .open .need .list .one .any .all .not .like
 .enum .const .range .size .solo .uniq .null .init .title
 .also .with .when
 ```
@@ -733,11 +773,14 @@ An external reference may similarly use `+Ref(...)`; its canonical form is
 When annotations, validation constraints, or shape entries share the mapping,
 the reference or complete tight expression remains under `.type`.
 
-List types append `[]` to the reference.
-An unconstrained list is therefore emitted as a scalar such as `+Any[]`;
-constrained lists use forms such as `.type: +Str[]` with `.size` or `.uniq`.
-`.list` is currently rejected and reserved for a possible future
-list-constraint model; it does not mean "convert this type into a list."
+Canonical list types use `.list`, whose value is the item schema.
+An unconstrained canonical list is `.list: +Any`.
+Item constraints are nested under `.list`, while `.size`, `.solo`, and `.uniq`
+remain beside it as list constraints.
+Human-authored `.ysd` still accepts tight forms such as `+Str[]` and the full
+`.list` form.
+Canonical `.ysdc` rejects the retired `.item` directive and old
+`.type: +Str[]` spelling.
 
 Unknown directives are errors.
 `.need` is valid only in a property definition and contains a sequence of
