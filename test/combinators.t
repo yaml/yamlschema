@@ -534,7 +534,7 @@ test::
       b?: +Int
     annotated?:
       .one:
-      - .title: Branch
+      - --: Branch
         .required:
         - a
       a?: +Str

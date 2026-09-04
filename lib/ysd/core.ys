@@ -129,7 +129,7 @@ defn convert-to(target encoding text opts):
       data =: canonical-input(text opts)
       warn-canonical-input-passthrough: data opts
       expanded =: expand-ysdc(data expansion-source(opts))
-      expanded =: canonicalize-document-ysid(expanded)
+      expanded =: canonicalize-document-meta(expanded)
       serialize-ysdc: collapse-direct-types(expanded) encoding opts
     else:
       usage: "unsupported output format: $target"
@@ -707,7 +707,7 @@ defn canonical-ysdc-text(data source):
 
 defn canonical-ysdc-data(data source):
   expanded =: expand-ysdc(data source)
-  expanded =: canonicalize-document-ysid(expanded)
+  expanded =: canonicalize-document-meta(expanded)
   collapse-direct-types: expanded
 
 defn roundtrip-match(opts):
@@ -827,18 +827,20 @@ defn normalize-root-json-id(result):
       result: .put('$id' id)
     else: result
 
-defn canonicalize-document-ysid(doc):
-  if doc.has?('.ysid'):
-    then:
-      id =: canonical-document-id(doc.'.ysid' 'ysd' '.ysid')
-      first =: +{'.ysid' id}
-      rest =:
-        reduce remove-document-ysid: omap() doc
-      merge-ordered-maps: first rest
-    else: doc
+defn canonicalize-document-meta(doc):
+  result =: omap()
+  result =:
+    if doc.has?('.id'):
+      then:
+        id =: canonical-document-id(doc.'.id' 'ysd' '.id')
+        ordered-put: result '.id' id
+      else: result
+  result =: put-present(result '.title' doc)
+  result =: put-present(result '.desc' doc)
+  reduce remove-document-meta: result doc
 
-defn remove-document-ysid(result entry):
-  if entry.0:S == '.ysid':
+defn remove-document-meta(result entry):
+  if entry.0:S.in?(['.id', '.title', '.desc']):
     then: result
     else: ordered-put(result entry.0 entry.1)
 
@@ -1176,38 +1178,42 @@ defn indent(width):
 defn expand-ysdc(doc source='ysd'):
   when-not map?(doc):
     usage: 'expected yamlschema mapping'
-  doc =: normalize-description-directives(doc source)
+  doc =: normalize-annotation-directives(doc source)
   validate-list-forms: doc source
   validate-regex-directives: doc source
   validate-pattern-property-forms: doc
   expanded =: reduce(expand-doc-entry omap() doc)
-  expanded =: canonicalize-document-ysid(expanded)
+  expanded =: canonicalize-document-meta(expanded)
   validate-schema-names: expanded
   resolve-open-doc: expanded
 
-defn normalize-description-directives(value source):
+defn normalize-annotation-directives(value source):
   cond:
     map?(value):
-      reduce \(normalize-description-entry(_1 _2 source)): omap() value
+      reduce \(normalize-annotation-entry(_1 _2 source)): omap() value
     sequential?(value):
-      vec: value.map(\(normalize-description-directives(_ source)))
+      vec: value.map(\(normalize-annotation-directives(_ source)))
     else: value
 
-defn normalize-description-entry(result entry source):
+defn normalize-annotation-entry(result entry source):
   key =: entry.0:S
   canonical =:
-    if key == '-':
-      then:
+    case key:
+      '--':
+        when source == 'ysdc':
+          usage: 'unsupported .ysdc directive: --; use .title'
+        =>: '.title'
+      '-':
         when source == 'ysdc':
           usage: 'unsupported .ysdc directive: -; use .desc'
         =>: '.desc'
       else: key
-  when canonical.eq('.desc') && result.has?('.desc'):
-    usage: 'duplicate yamlschema directive: .desc in description aliases'
+  when canonical.in?(['.title', '.desc']) && result.has?(canonical):
+    usage: "duplicate yamlschema directive: $canonical in annotation aliases"
   value =:
     if passthrough-directive?(key):
       then: entry.1
-      else: normalize-description-directives(entry.1 source)
+      else: normalize-annotation-directives(entry.1 source)
   ordered-put: result canonical value
 
 defn validate-list-forms(value source):
@@ -1285,7 +1291,7 @@ defn expand-doc-entry(result entry):
 
 defn top-directive?(key):
   key.in?([
-    '.ysid', '.from', '.name', '.root', '.title',
+    '.id', '.from', '.name', '.root', '.title',
     '.desc', '.open', '.one', '.keys', '.size'])
 
 defn expand-top-directive(result key value):
@@ -1293,7 +1299,7 @@ defn expand-top-directive(result key value):
     reject-unknown-directive: key
   normalized =:
     case key:
-      '.ysid': canonical-document-id(value 'ysd' '.ysid')
+      '.id': canonical-document-id(value 'ysd' '.id')
       '.name': validate-schema-name(value)
       '.root': expand-type(value)
       '.open': validate-open-value(value)
@@ -1712,12 +1718,12 @@ defn merge-directives(left right context):
 
 defn ordered-directives(value):
   order =:
-    +['.desc', '.name', '.type', '.xref', '.open', '.need',
+    +['.title', '.desc', '.name', '.type', '.xref', '.open', '.need',
       '.list', '.one', '.any', '.all',
       '.not', '.match', '.find', '.like', '.enum', '.const',
       '.range', '.xmin', '.xmax',
       '.size', '.solo', '.uniq', '.null', '.init',
-      '.title', '.also', '.with', '.when']
+      '.also', '.with', '.when']
   result =: reduce(\(put-present(_1 _2 value)) omap() order)
   result =: reduce(put-non-directive result value)
   if contains?(value WILDCARD-KEY):
@@ -2220,7 +2226,7 @@ defn typed-map-block(value-type):
 defn primary-block(token):
   cond:
     token.starts?('--"'):
-      usage: 'invalid description clause; use -"description"'
+      usage: 'title clause requires a type expression'
     token.starts?('-"'):
       usage: 'description clause requires a type expression'
     token.starts?('+Ref'):
@@ -2317,6 +2323,13 @@ defn expand-tight-token(result token):
     token.starts?('='):
       merge-directives:
         result {'.init' tight-data-value(token.replace(/^=/))} 'default clause'
+    token.starts?('--"'):
+      merge-directives:
+        result
+        {'.title' tight-string-value(token.replace(/^--/))}
+        'title clause'
+    token.starts?('--'):
+      usage: 'invalid title clause; use --"title"'
     token.starts?('-"'):
       merge-directives:
         result
@@ -2844,7 +2857,7 @@ defn named-type-key?(key):
     (text != WILDCARD-KEY)
 
 defn initial-ysdc-doc-state(doc):
-  result =: add-ysid-meta(omap() doc.'.ysid')
+  result =: add-id-meta(omap() doc.'.id')
   =>::
     result:: result + {'$schema' JSON-SCHEMA-DIALECT}
     defs:: omap()
@@ -2921,7 +2934,7 @@ defn remove-property-need(result entry):
 
 defn add-schema-meta(result key value inherited-open=false):
   case key:
-    '.ysid': result
+    '.id': result
     '.name': result + {'$anchor' validate-schema-name(value)}
     '.title': result + {'title' value}
     '.Name': reject-title-directive(key)
@@ -3024,25 +3037,25 @@ defn reject-title-directive(key):
   usage: "unsupported yamlschema directive: $key; use .title"
 
 defn reject-json-meta():
-  usage: 'unsupported yamlschema directive: .json; use .ysid'
+  usage: 'unsupported yamlschema directive: .json; use .id'
 
 defn renamed-directive?(key):
-  key.in?(['.base', '.titl', '.just', '.only', '.mini', '.maxi',
+  key.in?(['.ysid', '.base', '.titl', '.just', '.only', '.mini', '.maxi',
            '.pick', '.oneof', '.anyof', '.allof'])
 
 defn reject-renamed-directive(key):
   replacements =:
-    +{'.base' '.type', '.titl' '.title', '.just' '.const',
+    +{'.ysid' '.id', '.base' '.type', '.titl' '.title', '.just' '.const',
       '.only' '.const',
       '.mini' '.range', '.maxi' '.range', '.pick' '.one',
       '.oneof' '.one', '.anyof' '.any', '.allof' '.all'}
   usage: "unsupported yamlschema directive: $key; use $(replacements.$key)"
 
-defn add-ysid-meta(result value):
+defn add-id-meta(result value):
   if value:nil?:
     then: result
     else:
-      id =: canonical-document-id(value 'jsc' '.ysid')
+      id =: canonical-document-id(value 'jsc' '.id')
       result +: +{'$id' id}
 
 defn parse-property-key(key):
@@ -3861,7 +3874,7 @@ defn json-pointer-child(path key):
 defn convert(schema strict=false):
   doc =: build-doc(schema strict)
   text =: ys::yaml/dump(doc)
-  text =: format-ysd-description-directives(text)
+  text =: format-ysd-annotation-directives(text)
   text =: format-ysd-tight-scalars(text)
   text =: format-ysd-document(text)
   post-process: text
@@ -3907,8 +3920,8 @@ defn build-object-doc(schema strict=false):
           omap()
   root-open =: json-unconstrained-open?(schema)
   result =: omap()
-    .add-document-ysid(schema)
     .add-root-annotations(schema)
+    .add-document-id(schema)
     .add-root-pattern-properties-passthrough(schema)
     .add-import-open-default(root-open strict)
     .add-root-map-size(schema)
@@ -3917,14 +3930,14 @@ defn build-object-doc(schema strict=false):
     .add-root-key-rules(schema root-open strict)
   validate-schema-names: result
 
-defn add-document-ysid(result schema):
+defn add-document-id(result schema):
   modern =: schema.has?('$id')
   legacy =: draft4-json-schema?(schema) && schema.has?('id')
   if modern || legacy:
     then:
       value =: modern.if(schema.'$id' schema.id)
       id =: canonical-document-id(value 'ysd' 'JSON Schema $id')
-      ordered-put: result '.ysid' id
+      ordered-put: result '.id' id
     else: result
 
 defn add-root-annotations(result schema):
@@ -5226,15 +5239,15 @@ defn literal-value(v): v
 # Post-processing the dumped YAML.
 # --------------------------------------------------------------------
 
-# Rename generated `.desc` directives without rebuilding ordered maps.
+# Rename generated annotation directives without rebuilding ordered maps.
 # Values under passthrough directives are raw JSON Schema data, so leave their
 # keys unchanged.
-defn format-ysd-description-directives(text):
+defn format-ysd-annotation-directives(text):
   initial =: +{'lines' [], 'raw-indent' nil}
-  state =: reduce(format-ysd-description-line initial text:lines)
+  state =: reduce(format-ysd-annotation-line initial text:lines)
   join "\n": state.lines
 
-defn format-ysd-description-line(state line):
+defn format-ysd-annotation-line(state line):
   stripped =: line.replace(/^ */)
   indent =: line.# - stripped.#
   raw-indent =: state.raw-indent
@@ -5253,15 +5266,16 @@ defn format-ysd-description-line(state line):
   key =: match.when(match.2)
   marker =: sequence-match.if('- ' '')
   output =:
-    if key == '.desc':
-      then: "$(match.1)$marker-:$(match.3)"
+    case key:
+      '.title': "$(match.1)$marker--:$(match.3)"
+      '.desc': "$(match.1)$marker-:$(match.3)"
       else: line
   raw-indent :if (key && passthrough-directive?(key)) =: indent
   state +: +{'lines' state.lines.conj(output), 'raw-indent' raw-indent}
 
-# Wrap generated .ysd tight scalars and `-` pairs without changing their
+# Wrap generated .ysd tight scalars and annotation pairs without changing their
 # folded YAML values. When a complete tight-scalar line exceeds 80 columns,
-# the enum and description clauses each start on their own continuation line.
+# the enum and annotation clauses each start on their own continuation line.
 defn format-ysd-tight-scalars(text):
   lines =: reduce(format-ysd-tight-line [] text:lines)
   join "\n": lines
@@ -5290,16 +5304,20 @@ defn format-ysd-tight-line(result line):
 defn wrapped-ysd-tight-line(line):
   pattern =: re-pattern(str('^(.*' ':' ' )(.*)$'))
   match =: re-matches(pattern line)
-  desc-pattern =: re-pattern(str('^([ ]*)-' ':' ' (.*)$'))
-  desc =: re-matches(desc-pattern line)
-  item-desc-pattern =: re-pattern(str('^([ ]*)- -' ':' ' (.*)$'))
-  item-desc =: re-matches(item-desc-pattern line)
+  annotation-pattern =:
+    re-pattern(str('^([ ]*)(--|-)' ':' ' (.*)$'))
+  annotation =: re-matches(annotation-pattern line)
+  item-annotation-pattern =:
+    re-pattern(str('^([ ]*)- (--|-)' ':' ' (.*)$'))
+  item-annotation =: re-matches(item-annotation-pattern line)
   cond:
     line.# <= 80: +[line]
-    item-desc && wrappable-ysd-desc?(item-desc.2):
-      ysd-desc-pair-lines: item-desc.1 true item-desc.2
-    desc && wrappable-ysd-desc?(desc.2):
-      ysd-desc-pair-lines: desc.1 false desc.2
+    item-annotation && wrappable-ysd-annotation?(item-annotation.3):
+      ysd-annotation-pair-lines:
+        item-annotation.1 true item-annotation.2 item-annotation.3
+    annotation && wrappable-ysd-annotation?(annotation.3):
+      ysd-annotation-pair-lines:
+        annotation.1 false annotation.2 annotation.3
     match.!: +[line]
     match.1 =~ /^\s*\./: +[line]
     else:
@@ -5308,23 +5326,23 @@ defn wrapped-ysd-tight-line(line):
         then: ysd-tight-clause-lines(match.1 clauses)
         else: +[line]
 
-defn wrappable-ysd-desc?(value):
+defn wrappable-ysd-annotation?(value):
   plain =: value !~ /^["|>]/
   single =: value.starts?("'") && value.ends?("'")
   plain ||: single
 
-defn ysd-desc-pair-lines(indent item value):
+defn ysd-annotation-pair-lines(indent item annotation value):
   tokens =: split-wrappable-spaces(value isolated-space?)
   marker =: item.if('- ' '')
-  prefix =: "$indent$marker-$(C(58)) "
+  prefix =: "$indent$marker$annotation$(C(58)) "
   continuation =: item.if("$indent    " "$indent  ")
   state =: +{
     'lines' [], 'line' prefix,
     'continuation' continuation, 'has-token' false}
-  state =: reduce(append-ysd-desc-token state tokens)
+  state =: reduce(append-ysd-annotation-token state tokens)
   state.lines: .conj(state.line)
 
-defn append-ysd-desc-token(state token):
+defn append-ysd-annotation-token(state token):
   separator =: state.has-token.if(' ' '')
   candidate =: "$(state.line)$separator$token"
   if (candidate.# <= 80) || state.has-token.!:
@@ -5335,21 +5353,25 @@ defn append-ysd-desc-token(state token):
 
 defn ysd-tight-line-clauses(value):
   tokens =: tight-tokens(value)
+  title =: first(tokens.filter(marked-title-token?))
   description =: first(tokens.filter(marked-description-token?))
   enum =: first(tokens.filter(compact-enum-token?))
-  when enum || description:
+  when enum || title || description:
     head =: tokens
     head =: enum.if(remove-first-token(head enum) head)
+    head =: title.if(remove-first-token(head title) head)
     head =: description.if(remove-first-token(head description) head)
     when head:seq:
       =>: +{'head' head.join(' '), 'enum' enum,
-            'description' description}
+            'title' title, 'description' description}
 
 defn ysd-tight-clause-lines(prefix clauses):
   indent =: "$(line-indent(prefix))  "
   lines =: +["$prefix$(clauses.head)"]
   lines :if clauses.enum .=:
     into(ysd-enum-clause-lines(indent clauses.enum))
+  lines :if clauses.title .=:
+    into(ysd-title-clause-lines(indent clauses.title))
   lines :if clauses.description .=:
     into(ysd-description-clause-lines(indent clauses.description))
   =>: lines
@@ -5367,16 +5389,26 @@ defn ysd-enum-member-token(index member count):
     then: "$member]"
     else: "$member,"
 
+defn ysd-title-clause-lines(indent clause):
+  body =: clause.replace(/^--"/).replace(/"$/)
+  ysd-annotation-clause-lines: indent '--"' body
+
 defn ysd-description-clause-lines(indent clause):
   body =: clause.replace(/^-"/).replace(/"$/)
+  ysd-annotation-clause-lines: indent '-"' body
+
+defn ysd-annotation-clause-lines(indent opening body):
   words =:
     if body:empty?:
       then: +['']
       else: split-wrappable-spaces(body description-break?)
   count =: words.#
   tokens =:
-    map-indexed(\(ysd-description-word-token(_1 _2 count)) words):vec
-  wrap-ysd-clause-tokens: indent '-"' tokens
+    map-indexed(\(ysd-annotation-word-token(_1 _2 count)) words):vec
+  wrap-ysd-clause-tokens: indent opening tokens
+
+defn marked-title-token?(token):
+  token.starts?('--"') && token.ends?('"')
 
 defn marked-description-token?(token):
   token.starts?('-"') && token.ends?('"')
@@ -5414,7 +5446,7 @@ defn description-break?(value index):
       (value.nth(index + 2) == hash)
   isolated-space?(value index) &&: escaped-colon.! && escaped-hash.!
 
-defn ysd-description-word-token(index word count):
+defn ysd-annotation-word-token(index word count):
   if index == (count - 1):
     then: "$word\""
     else: word

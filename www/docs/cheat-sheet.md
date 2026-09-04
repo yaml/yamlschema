@@ -231,7 +231,7 @@ values:
 ## Annotations
 
 ```yaml
-.title: Person
+--: Person
 -: A person record
 
 name: +Str -"Display name"

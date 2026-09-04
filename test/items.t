@@ -183,9 +183,9 @@ test::
     open?: +Tup{+Str?,+Any...}
     bounded?: +Tup{+Str,+Num...} 3-5
     annotated?:
+      --: Value
       .type: +Tup{+Str?,+Any...}
       .uniq: true
-      .title: Value
 
 - name: tuple-list-suffixes
   cmnd: bin/ysd -t ysdc -Y -
@@ -326,10 +326,10 @@ test::
     # Converted from JSON Schema
     .open: true
     value?:
+      --: Values
       -: One or many
       .name: values
       .type: +Str[$]
       .init: x
-      .title: Values
 
 done:

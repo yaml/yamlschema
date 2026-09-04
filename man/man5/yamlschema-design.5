@@ -250,7 +250,7 @@ T}
 \fB\&.root\fR	T{
 Explicit root type when a document also has named types
 T}
-\fB\&.ysid\fR	T{
+\fB\&.id\fR	T{
 Representation-aware document identity
 T}
 \fB\&.title\fR	Human-facing display title
@@ -275,12 +275,14 @@ Structural \fB\&.one\fR, \fB\&.any\fR, \fB\&.all\fR, \fB\&.not\fR, \fB\&.with\fR
 explicit.
 
 .EX
-foo: desc:"Words" size:1-3 ~"a b" title:"Title" type:+Str
+foo: -"Words" size:1-3 ~"a b" --"Title" type:+Str
 .EE
 
 .PP
 The canonical explicit form uses the period-prefixed directive names.
-The preferred .ysd spelling for the description above is \fB-"Words"\fR\&.
+The preferred .ysd spellings for the annotations above are \fB--"Title"\fR and
+\fB-"Words"\fR\&.
+The labeled \fBtitle:\fR and \fBdesc:\fR forms remain accepted.
 The old names \fBtitl\fR, \fBjust\fR, and \fBonly\fR are errors with diagnostics naming
 \fBtitle\fR and \fBconst\fR\&.
 The tight \fBlike:\fR label is also rejected in favor of .ysd \fBmatch:\fR or \fBfind:\fR;
@@ -1000,7 +1002,7 @@ The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The \fB$schema\fR keyword is implied by the target and is not encoded in
 YAMLSchema.
-Draft 4 root \fBid\fR imports as \fB\&.ysid\fR and normalizes to \fB$id\fR\&.
+Draft 4 root \fBid\fR imports as \fB\&.id\fR and normalizes to \fB$id\fR\&.
 
 .TS
 allbox;
@@ -1034,7 +1036,7 @@ constrained \fBadditionalProperties\fR	\fB+Str: schema\fR
 \fBdefault\fR	\fB\&.init\fR
 \fBdescription\fR	\fB-"description"\fR or \fB-:\fR in .ysd; \fB\&.desc\fR in .ysdc
 \fBtitle\fR	\fB\&.title\fR
-\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.ysid\fR
+\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.id\fR
 \fB$anchor\fR	\fB\&.name\fR
 known string \fBformat\fR	\fB+JSON-Schema/format\fR
 \fB$defs\fR / \fBdefinitions\fR	Top-level \fB+name\fR definitions

@@ -564,7 +564,7 @@ The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
 dialect identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by `.schema.json` output and is not encoded
 in YAMLSchema.
-Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
+Draft 4 root `id` imports as `.id` and normalizes to `$id`.
 
 When the input is a file, generated JSON Schema also has a root `$comment`:
 
@@ -582,13 +582,15 @@ schema metadata.
 
 | JSON Schema | YAMLSchema |
 | --- | --- |
-| `$id` or Draft 4 root `id` | `.ysid` |
+| `$id` or Draft 4 root `id` | `.id` |
 | `$anchor` | `.name` |
-| `title` | `.title` |
+| `title` | `--"title"` or `--:` in .ysd; `.title` in .ysdc |
 | `description` | `-"description"` or `-:` in .ysd; `.desc` in .ysdc |
 | Known string `format` | `+JSON-Schema/format` |
 
-`.ysid` is the first mapping entry in generated YAMLSchema.
+Generated .ysd places `--:` and `-:` before `.id` when the corresponding
+annotations are present.
+Canonical .ysdc places `.id`, `.title`, and `.desc` first, in that order.
 `$anchor` becomes `.name` on the same schema node and exports back unchanged.
 The definition key and anchor name remain independent, so `$defs.product`
 with `$anchor: ProductSchema` becomes `+product` with

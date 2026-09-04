@@ -112,13 +112,13 @@ test::
 - name: annotations-to-schema.json
   cmnd: bin/ysd -t jsc -C -
   stdi: |
-    .ysid: https://example.com/arrays.ysd.yaml
-    .title: Arrays
-    .desc: Arrays of strings and objects
+    --: Arrays
+    -: Arrays of strings and objects
+    .id: https://example.com/arrays.ysd.yaml
     name:
+      --: Full name
+      -: Display name.
       .type: +Str
-      .title: Full name
-      .desc: Display name.
   want: |
     {"$id":"https:\/\/example.com\/arrays.schema.json","$schema":"https:\/\/json-schema.org\/draft\/2020-12\/schema","title":"Arrays","description":"Arrays of strings and objects","type":"object","additionalProperties":false,"required":["name"],"properties":{"name":{"title":"Full name","description":"Display name.","type":"string"}}}
 

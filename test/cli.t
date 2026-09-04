@@ -178,7 +178,7 @@ test::
     '
   want: |
     # Converted from JSON Schema
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
 
@@ -422,7 +422,7 @@ test::
 - name: roundtrip-detects-ysd-content
   cmnd: bin/ysd --roundtrip -
   stdi: |
-    .title: Person
+    --: Person
     .open: true
     age?: +Int 0..
     name: +Str
@@ -433,7 +433,7 @@ test::
   cmnd: |
     sh -c '
       file=$(mktemp --suffix=.schema.json)
-      printf "%s\n" ".title: Person" ".open: true" \
+      printf "%s\n" "--: Person" ".open: true" \
         "name: +Str" > "$file"
       bin/ysd -R "$file"
       status=$?

@@ -84,7 +84,7 @@ test::
         .type: +Str
         .match: word
   want: |
-    .desc .list .size .solo .uniq .null .init .title
+    .title .desc .list .size .solo .uniq .null .init
 
 - name: json-schema-definition-and-property-order
   cmnd: |
@@ -123,7 +123,7 @@ test::
       }
     }
   want: |
-    .ysid
+    .id
     .title
     .open
     +d1

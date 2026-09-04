@@ -200,7 +200,7 @@ Meta directives are top-level schema metadata:
 | `.from` | Import schemas or namespaces |
 | `.name` | JSON Schema anchor name for the root schema |
 | `.root` | Explicit root type when a document also has named types |
-| `.ysid` | Representation-aware document identity |
+| `.id` | Representation-aware document identity |
 | `.title` | Human-facing display title |
 | `.desc` | JSON Schema `description` annotation |
 | `.open` | Lexical default for mapping types defined in the document |
@@ -220,11 +220,13 @@ Structural `.one`, `.any`, `.all`, `.not`, `.with`, and `.when` values remain
 explicit.
 
 ```yaml
-foo: desc:"Words" size:1-3 ~"a b" title:"Title" type:+Str
+foo: -"Words" size:1-3 ~"a b" --"Title" type:+Str
 ```
 
 The canonical explicit form uses the period-prefixed directive names.
-The preferred .ysd spelling for the description above is `-"Words"`.
+The preferred .ysd spellings for the annotations above are `--"Title"` and
+`-"Words"`.
+The labeled `title:` and `desc:` forms remain accepted.
 The old names `titl`, `just`, and `only` are errors with diagnostics naming
 `title` and `const`.
 The tight `like:` label is also rejected in favor of .ysd `match:` or `find:`;
@@ -921,7 +923,7 @@ The converter accepts recognized Draft 4, 6, 7, 2019-09, and 2020-12 dialect
 identifiers for the direct mappings it supports.
 The `$schema` keyword is implied by the target and is not encoded in
 YAMLSchema.
-Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
+Draft 4 root `id` imports as `.id` and normalizes to `$id`.
 
 | JSON Schema | YAMLSchema |
 | --- | --- |
@@ -950,7 +952,7 @@ Draft 4 root `id` imports as `.ysid` and normalizes to `$id`.
 | `default` | `.init` |
 | `description` | `-"description"` or `-:` in .ysd; `.desc` in .ysdc |
 | `title` | `.title` |
-| `$id` or Draft 4 root `id` | `.ysid` |
+| `$id` or Draft 4 root `id` | `.id` |
 | `$anchor` | `.name` |
 | known string `format` | `+JSON-Schema/format` |
 | `$defs` / `definitions` | Top-level `+name` definitions |

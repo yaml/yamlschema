@@ -155,15 +155,15 @@ test::
       printf "foo: +Str -broken\n" |
         bin/ysd -t jsc -C - 2>&1 |
         perl -ne "print if \$. == 1"
-      printf "foo: +Str --\"Old marker\"\n" |
+      printf "foo: +Str --broken\n" |
         bin/ysd -t jsc -C - 2>&1 |
         perl -ne "print if \$. == 1"
     '
   want: |
     ysd: unsupported .ysdc directive: -; use .desc
-    ysd: duplicate yamlschema directive: .desc in description aliases
+    ysd: duplicate yamlschema directive: .desc in annotation aliases
     ysd: invalid description clause; use -"description"
-    ysd: invalid description clause; use -"description"
+    ysd: invalid title clause; use --"title"
 
 - name: description-marker-skips-passthrough-data
   cmnd: sh -c 'bin/ysd -f jsc -t ysd - 2>/dev/null'

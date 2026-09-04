@@ -1876,7 +1876,7 @@ const toYSD = globalThis.gloat.exports['json-schema-to-ysd'](json);
 if (!toYSD.ok ||
     !toYSD.value.startsWith(
       '# Converted from JSON Schema\n' +
-      '.ysid: https://example.com/person.ysd.yaml\n',
+      '.id: https://example.com/person.ysd.yaml\n',
     ) ||
     !toYSD.value.includes('name:')) {
   throw new Error(`JSON to .ysd failed: ${JSON.stringify(toYSD)}`);
@@ -1895,14 +1895,14 @@ const toJSONYSDC = globalThis.gloat.exports[
   'json-schema-to-ysdc-json'
 ](json);
 const expectedYSDC =
-  '.ysid: https://example.com/person.ysd.yaml\n' +
+  '.id: https://example.com/person.ysd.yaml\n' +
   '.open: true\nname: +Str';
 if (!toYSDC.ok || toYSDC.value !== expectedYSDC) {
   throw new Error(`JSON to .ysdc failed: ${JSON.stringify(toYSDC)}`);
 }
 const parsedJSONYSDC = toJSONYSDC.ok && JSON.parse(toJSONYSDC.value);
 if (!parsedJSONYSDC ||
-    parsedJSONYSDC['.ysid'] !==
+    parsedJSONYSDC['.id'] !==
       'https://example.com/person.ysd.yaml' ||
     parsedJSONYSDC['.open'] !== true ||
     parsedJSONYSDC.name !== '+Str') {

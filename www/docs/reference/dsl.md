@@ -5,17 +5,22 @@ canonical `.ysdc` model, serialized as `.ysdc.yaml` or `.ysdc.json`.
 A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
-The optional top-level `.ysid` is a non-empty document identity string:
+Top-level titles and descriptions use annotation markers, followed by the
+optional non-empty `.id` document identity string:
 
 ```yaml
-.ysid: https://example.com/contact.ysd.yaml
+--: Contact schema
+-: Contact information for a person
+.id: https://example.com/contact.ysd.yaml
 ```
 
-Generated output places `.ysid` first, although input may place it anywhere.
+Generated .ysd places the title and description before `.id`.
+Canonical .ysdc orders `.id`, `.title`, and `.desc` before other entries.
+Input may place these directives anywhere.
 .ysd and .ysdc use `.ysd.yaml`, while JSON Schema uses `.schema.json`.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
-JSON Schema `$id` and Draft 4 root `id` both import as `.ysid`.
+JSON Schema `$id` and Draft 4 root `id` both import as `.id`.
 
 The optional `.name` directive gives a schema node an externally addressable
 name:
@@ -595,18 +600,19 @@ Nullability is a value-side suffix:
 enabled?: +Bool~
 ```
 
-Tight annotations follow all constraints:
+Tight annotations may occur anywhere among the clauses:
 
 ```yaml
-enabled?: +Bool~ =false title:"Enabled" -"Enable the service"
+enabled?: +Bool~ =false --"Enabled" -"Enable the service"
 label?: +Str ="pretty good"
 mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 ```
 
 - `=value` is a single YAML scalar default.
 - `="..."` is a string default that may contain spaces.
-- `title:"..."` is `.title`.
+- `--"..."` is `.title`.
 - `-"..."` is `.desc` and may occur anywhere among the clauses.
+- `title:"..."` and `desc:"..."` remain accepted aliases.
 - Labeled scalar clauses may occur in any order.
   They are `type`, `match`, `find`, `const`, `range`, `size`, `item`, `solo`,
   `uniq`, `null`, `init`, `title`, `desc`, and scalar `also`.
@@ -625,10 +631,12 @@ Use the explicit directive when that is needed.
 A scalar consisting entirely of a YAML-quoted string is a literal value, not
 an annotation, because YAML does not preserve its original quote style.
 The obsolete trailing single-quoted description form is an error.
-For compatibility, a final bare `"..."` and `desc:"..."` are still accepted.
+For compatibility, a final bare `"..."` remains accepted as a description.
+The labeled `title:"..."` and `desc:"..."` forms are also accepted.
 Generated .ysd always uses `-"..."`.
-For a description that cannot use the tight form, use `-:` in .ysd or
-canonical `.desc:` in .ysdc.
+Generated .ysd uses `--"..."` for tight titles.
+For annotations that cannot use the tight form, use `--:` and `-:` in .ysd,
+or canonical `.title:` and `.desc:` in .ysdc.
 
 
 ## Hybrid Explicit Types
@@ -639,18 +647,18 @@ tight expression and sibling directives add the exceptional parts:
 ```yaml
 foo:
   .type: +Str[] ~~"a.*b" 10-20
-  .title: The "Good" Parts
+  --: The "Good" Parts
 ```
 
 This is equivalent to:
 
 ```yaml
 foo:
+  .title: The "Good" Parts
   .list:
     .type: +Str
     .like: a.*b
   .size: [10, 20]
-  .title: The "Good" Parts
 ```
 
 Directive order is insignificant.
@@ -760,8 +768,8 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 ```text
-.desc .name .type .xref .open .need .list .one .any .all .not .like
-.enum .const .range .size .solo .uniq .null .init .title
+.title .desc .name .type .xref .open .need .list .one .any .all .not
+.like .enum .const .range .size .solo .uniq .null .init
 .also .with .when
 ```
 

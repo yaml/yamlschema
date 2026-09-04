@@ -24,6 +24,7 @@ test::
         ]
       },
       "hybrid": {
+        ".title": "The \"Good\" Parts",
         ".list": {
           ".type": "+Str",
           ".like": "a.*b"
@@ -31,8 +32,7 @@ test::
         ".size": [
           10,
           20
-        ],
-        ".title": "The \"Good\" Parts"
+        ]
       }
     }
 
@@ -213,10 +213,10 @@ test::
         ]
       },
       "annotated": {
+        ".title": "Number or numbers",
         ".desc": "Accept one integer or a list",
         ".list": "+Int",
-        ".solo": true,
-        ".title": "Number or numbers"
+        ".solo": true
       }
     }
 
@@ -281,11 +281,11 @@ test::
   want: |
     {
       "flag?": {
+        ".title": "Flag",
         ".desc": "Whether it is enabled",
         ".type": "+Bool",
         ".null": true,
-        ".init": false,
-        ".title": "Flag"
+        ".init": false
       },
       "label?": {
         ".type": "+Str",
@@ -328,10 +328,10 @@ test::
       "plain": "+Str",
       "named": "+named",
       "annotated": {
+        ".title": "Number",
         ".desc": "A number",
         ".type": "+Float",
-        ".init": 1.5,
-        ".title": "Number"
+        ".init": 1.5
       },
       "refined": {
         ".type": "+Str",
@@ -589,7 +589,7 @@ test::
     alternate: also:former type:+Str
     choice: enum:[a,b c] type:+Str
   want: |
-    {"string":{".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x",".title":"Title"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".list":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
+    {"string":{".title":"Title",".desc":"Words",".type":"+Str",".like":"^a b$",".size":[1,3],".init":"x"},"search":{".type":"+Str",".like":"a\/b c"},"number":{".type":"+Int",".range":[1,10]},"sequence":{".list":"+Str",".size":[1],".solo":true,".uniq":true,".null":true},"alternate":{".type":"+Str",".also":"former"},"choice":{".type":"+Str",".enum":["a","b c"]}}
 
 - name: reject-renamed-tight-keywords
   cmnd: |

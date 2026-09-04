@@ -32,14 +32,14 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .ysid: https://example.com/arrays.ysd.yaml
-    .title: Arrays
+    --: Arrays
     -: Arrays of strings and objects
+    .id: https://example.com/arrays.ysd.yaml
     .open: true
     name:
+      --: Full name
       -: Display name.
       .type: +Str
-      .title: Full name
     profile?:
       -: Profile settings.
       visible?: +Bool
@@ -49,7 +49,7 @@ test::
   stdi: |
     {"$id":"https://example.com/device.schema.json","type":"object"}
   want: |
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .open: true
 
 - name: json-schema-id-to-ysdc-json
@@ -57,23 +57,60 @@ test::
   stdi: |
     {"$id":"https://example.com/device.schema.json","type":"object"}
   want: |
-    {".ysid":"https:\/\/example.com\/device.ysd.yaml",".open":true}
+    {".id":"https:\/\/example.com\/device.ysd.yaml",".open":true}
 
-- name: ysid-is-first-in-canonical-output
+- name: id-is-first-in-canonical-output
   cmnd: bin/ysd -f ysd -t ysdc -
   stdi: |
     .title: Device
     name: +Str
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
   want: |
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .title: Device
     name: +Str
 
-- name: ysid-query-and-fragment-to-json-schema
+- name: preferred-ysd-document-annotations
+  cmnd: bin/ysd -f ysd -t ysdc -
+  stdi: |
+    -: Device description
+    name: +Str
+    --: Device title
+    .id: https://example.com/device.ysd.yaml
+  want: |
+    .id: https://example.com/device.ysd.yaml
+    .title: Device title
+    .desc: Device description
+    name: +Str
+
+- name: preferred-tight-title
+  cmnd: bin/ysd -f ysd -t ysdc -J -C -
+  stdi: |
+    name: --"Full name" +Str -"Person name"
+  want: |
+    {"name":{".title":"Full name",".desc":"Person name",".type":"+Str"}}
+
+- name: title-aliases-cannot-be-duplicated
+  cmnd: |
+    sh -c 'bin/ysd -f ysd -t ysdc - 2>&1 | perl -ne "print if \$. == 1"'
+  stdi: |
+    --: Device
+    .title: Duplicate
+  want: |
+    ysd: duplicate yamlschema directive: .title in annotation aliases
+
+- name: ysd-title-marker-is-rejected-in-ysdc
+  cmnd: |
+    sh -c 'bin/ysd -f ysdc -t jsc - 2>&1 | perl -ne "print if \$. == 1"'
+  stdi: |
+    --: Device
+  want: |
+    ysd: unsupported .ysdc directive: --; use .title
+
+- name: id-query-and-fragment-to-json-schema
   cmnd: bin/ysd -t jsc -
   stdi: |
-    .ysid: https://example.com/device.ysdc.yaml?view=full#root
+    .id: https://example.com/device.ysdc.yaml?view=full#root
     name: +Str
   want: |
     {
@@ -119,7 +156,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .open: true
 
 - name: draft4-json-id-is-canonicalized
@@ -171,15 +208,23 @@ test::
     .json:
       $id: https://example.com/device.schema.json
   want: |
-    ysd: unsupported yamlschema directive: .json; use .ysid
+    ysd: unsupported yamlschema directive: .json; use .id
 
-- name: invalid-ysid-is-rejected
+- name: invalid-id-is-rejected
   cmnd: |
     sh -c 'bin/ysd -t jsc - 2>&1 | perl -ne "print if \$. == 1"'
   stdi: |
-    .ysid: 42
+    .id: 42
   want: |
-    ysd: .ysid must be a non-empty string
+    ysd: .id must be a non-empty string
+
+- name: old-ysid-directive-is-rejected
+  cmnd: |
+    sh -c 'bin/ysd -t jsc - 2>&1 | perl -ne "print if \$. == 1"'
+  stdi: |
+    .ysid: https://example.com/device.ysd.yaml
+  want: |
+    ysd: unsupported yamlschema directive: .ysid; use .id
 
 - name: unsupported.json-schema-dialect
   cmnd: |

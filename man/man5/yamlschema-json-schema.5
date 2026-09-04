@@ -602,7 +602,7 @@ The converter accepts the recognized Draft 4, 6, 7, 2019-09, and 2020-12
 dialect identifiers for the direct mappings it supports.
 The \fB$schema\fR keyword is implied by \fB\&.schema.json\fR output and is not encoded
 in YAMLSchema.
-Draft 4 root \fBid\fR imports as \fB\&.ysid\fR and normalizes to \fB$id\fR\&.
+Draft 4 root \fBid\fR imports as \fB\&.id\fR and normalizes to \fB$id\fR\&.
 
 .PP
 When the input is a file, generated JSON Schema also has a root \fB$comment\fR:
@@ -626,15 +626,17 @@ allbox;
 l l
 l l .
 \fBJSON Schema\fP	\fBYAMLSchema\fP
-\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.ysid\fR
+\fB$id\fR or Draft 4 root \fBid\fR	\fB\&.id\fR
 \fB$anchor\fR	\fB\&.name\fR
-\fBtitle\fR	\fB\&.title\fR
+\fBtitle\fR	\fB--"title"\fR or \fB--:\fR in .ysd; \fB\&.title\fR in .ysdc
 \fBdescription\fR	\fB-"description"\fR or \fB-:\fR in .ysd; \fB\&.desc\fR in .ysdc
 Known string \fBformat\fR	\fB+JSON-Schema/format\fR
 .TE
 
 .PP
-\fB\&.ysid\fR is the first mapping entry in generated YAMLSchema.
+Generated .ysd places \fB--:\fR and \fB-:\fR before \fB\&.id\fR when the corresponding
+annotations are present.
+Canonical .ysdc places \fB\&.id\fR, \fB\&.title\fR, and \fB\&.desc\fR first, in that order.
 \fB$anchor\fR becomes \fB\&.name\fR on the same schema node and exports back unchanged.
 The definition key and anchor name remain independent, so \fB$defs.product\fR
 with \fB$anchor: ProductSchema\fR becomes \fB+product\fR with

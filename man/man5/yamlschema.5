@@ -7,18 +7,23 @@ A schema defines types: sets of constraints for a scalar, mapping, or list of
 another type.
 
 .PP
-The optional top-level \fB\&.ysid\fR is a non-empty document identity string:
+Top-level titles and descriptions use annotation markers, followed by the
+optional non-empty \fB\&.id\fR document identity string:
 
 .EX
-\&.ysid: https://example.com/contact.ysd.yaml
+--: Contact schema
+-: Contact information for a person
+\&.id: https://example.com/contact.ysd.yaml
 .EE
 
 .PP
-Generated output places \fB\&.ysid\fR first, although input may place it anywhere.
+Generated .ysd places the title and description before \fB\&.id\fR\&.
+Canonical .ysdc orders \fB\&.id\fR, \fB\&.title\fR, and \fB\&.desc\fR before other entries.
+Input may place these directives anywhere.
 \&.ysd and .ysdc use \fB\&.ysd.yaml\fR, while JSON Schema uses \fB\&.schema.json\fR\&.
 Conversion replaces a recognized suffix and appends the target suffix when
 none is present.
-JSON Schema \fB$id\fR and Draft 4 root \fBid\fR both import as \fB\&.ysid\fR\&.
+JSON Schema \fB$id\fR and Draft 4 root \fBid\fR both import as \fB\&.id\fR\&.
 
 .PP
 The optional \fB\&.name\fR directive gives a schema node an externally addressable
@@ -663,10 +668,10 @@ enabled?: +Bool~
 .EE
 
 .PP
-Tight annotations follow all constraints:
+Tight annotations may occur anywhere among the clauses:
 
 .EX
-enabled?: +Bool~ =false title:"Enabled" -"Enable the service"
+enabled?: +Bool~ =false --"Enabled" -"Enable the service"
 label?: +Str ="pretty good"
 mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .EE
@@ -676,9 +681,11 @@ mode?: type:+Str enum:[debug,info] init:info desc:"Log level"
 .IP \(bu 2
 \fB="..."\fR is a string default that may contain spaces.
 .IP \(bu 2
-\fBtitle:"..."\fR is \fB\&.title\fR\&.
+\fB--"..."\fR is \fB\&.title\fR\&.
 .IP \(bu 2
 \fB-"..."\fR is \fB\&.desc\fR and may occur anywhere among the clauses.
+.IP \(bu 2
+\fBtitle:"..."\fR and \fBdesc:"..."\fR remain accepted aliases.
 .IP \(bu 2
 Labeled scalar clauses may occur in any order.
 They are \fBtype\fR, \fBmatch\fR, \fBfind\fR, \fBconst\fR, \fBrange\fR, \fBsize\fR, \fBitem\fR, \fBsolo\fR,
@@ -701,10 +708,12 @@ Use the explicit directive when that is needed.
 A scalar consisting entirely of a YAML-quoted string is a literal value, not
 an annotation, because YAML does not preserve its original quote style.
 The obsolete trailing single-quoted description form is an error.
-For compatibility, a final bare \fB"..."\fR and \fBdesc:"..."\fR are still accepted.
+For compatibility, a final bare \fB"..."\fR remains accepted as a description.
+The labeled \fBtitle:"..."\fR and \fBdesc:"..."\fR forms are also accepted.
 Generated .ysd always uses \fB-"..."\fR\&.
-For a description that cannot use the tight form, use \fB-:\fR in .ysd or
-canonical \fB\&.desc:\fR in .ysdc.
+Generated .ysd uses \fB--"..."\fR for tight titles.
+For annotations that cannot use the tight form, use \fB--:\fR and \fB-:\fR in .ysd,
+or canonical \fB\&.title:\fR and \fB\&.desc:\fR in .ysdc.
 
 .SH Hybrid Explicit Types
 When one constraint is clearer explicitly, \fB\&.type\fR may contain the complete
@@ -713,7 +722,7 @@ tight expression and sibling directives add the exceptional parts:
 .EX
 foo:
   .type: +Str[] ~~"a.*b" 10-20
-  .title: The "Good" Parts
+  --: The "Good" Parts
 .EE
 
 .PP
@@ -721,11 +730,11 @@ This is equivalent to:
 
 .EX
 foo:
+  .title: The "Good" Parts
   .list:
     .type: +Str
     .like: a.*b
   .size: [10, 20]
-  .title: The "Good" Parts
 .EE
 
 .PP
@@ -842,8 +851,8 @@ inferred automatically.
 Canonical directives are emitted in this order:
 
 .EX
-\&.desc .name .type .xref .open .need .list .one .any .all .not .like
-\&.enum .const .range .size .solo .uniq .null .init .title
+\&.title .desc .name .type .xref .open .need .list .one .any .all .not
+\&.like .enum .const .range .size .solo .uniq .null .init
 \&.also .with .when
 .EE
 

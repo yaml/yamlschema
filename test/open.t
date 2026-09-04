@@ -41,7 +41,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .title: Open rules
+    --: Open rules
     -: Open object test
 
     +person:

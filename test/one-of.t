@@ -41,7 +41,7 @@ test::
 - name: root-one-to-json-schema
   cmnd: bin/ysd -t jsc -
   stdi: |
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
     .one:
@@ -111,7 +111,7 @@ test::
     }
   want: |
     # Converted from JSON Schema
-    .ysid: https://example.com/device.ysd.yaml
+    .id: https://example.com/device.ysd.yaml
     .open: true
     deviceType: +Str
     .one:

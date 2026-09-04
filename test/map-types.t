@@ -130,8 +130,8 @@ test::
 
     direct?: +Map{}
     titleOnly?:
+      --: Open
       .type: +Map{}
-      .title: Open
     list?: +Map{}[]
     tuple?: +Tup{+Map{}?}
     choice?: +One(+Map{},+Str)
