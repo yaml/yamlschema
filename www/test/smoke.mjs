@@ -805,7 +805,9 @@ if (
   !appSource.includes('editorSettingsDialog.showModal()') ||
   !appSource.includes('yamlschema.scroll-sync') ||
   !appSource.includes('yamlschema.scroll-sync-source') ||
+  !appSource.includes('yamlschema.json-as-yaml') ||
   !appSource.includes('yamlschema.ysdc-json') ||
+  !appSource.includes('ysdcJson && !jsonAsYaml') ||
   !appSource.includes('`json-schema-to-ysdc-json${strict}`') ||
   !appSource.includes("yamlPaneFormat() === 'ysdc-json' ? json() : yaml()") ||
   !appSource.includes('yamlEditor.setLanguage(language)') ||
@@ -819,6 +821,11 @@ if (
 }
 if (
   !appSource.includes('prepareJsonSchemaInput(text)') ||
+  !appSource.includes("jsonAsYaml ? 'yaml' : input.serialization") ||
+  !appSource.includes("jsonSchemaOutputOperation('ysd-to-json-schema')") ||
+  !appSource.includes("'json-schema-normalize-yaml'") ||
+  !appSource.includes('ysdcJsonControl.disabled = jsonAsYaml') ||
+  !appSource.includes("jsonAsYamlControl.addEventListener('change'") ||
   !appSource.includes("jsonSerialization === 'yaml' ? 'jsc-yaml'") ||
   !appSource.includes("serialization === 'yaml' ? yaml() : json()") ||
   !appSource.includes('jsonEditor.setLanguage(language)') ||
@@ -922,7 +929,9 @@ if (
   !appSource.includes(
     'if (canonicalSource) canonicalSourceValues.json = jsonValue;',
   ) ||
-  !appSource.includes("const operation = 'ysd-to-json-schema';") ||
+  !appSource.includes(
+    "const operation = jsonSchemaOutputOperation('ysd-to-json-schema');",
+  ) ||
   !appSource.includes(
     'showGeneratingJSONSchema();\n' +
     '  const result = cached || await callWorker(operation, conversion.ysd);',
@@ -1164,7 +1173,7 @@ if (
   !indexHTML.includes('window.location.hostname === "::1"') ||
   !indexHTML.includes('localStorage.getItem("cookie_consent")') ||
   indexHTML.includes('<script id="__analytics">') ||
-  !indexHTML.includes('/assets/editor/app.js?v=24') ||
+  !indexHTML.includes('/assets/editor/app.js?v=25') ||
   mkdocsConfig.includes('- YAMLSchema:') ||
   !mkdocsConfig.includes(
     'nav:\n- Getting Started: getting-started.md\n- Demos: demo/index.md',
@@ -1260,6 +1269,8 @@ if (
   !indexHTML.includes('Understand roundtrip status') ||
   !indexHTML.includes('Generated JSON Schema is marked Normal') ||
   !indexHTML.includes('JSON Schema may be written as JSON or YAML') ||
+  !indexHTML.includes('JSON Schema loaded as YAML stays in YAML') ||
+  !indexHTML.includes('Format JSON as YAML forces JSON content') ||
   !indexHTML.includes('Editing the JSON Schema clears that mark') ||
   !indexHTML.includes('Select Normal to replace edited JSON Schema') ||
   !indexHTML.includes('Strict becomes available after editable JSON Schema') ||
@@ -1294,6 +1305,8 @@ if (
   !/name="scroll-sync-source" value="ysd"\s+checked/.test(indexHTML) ||
   !indexHTML.includes('name="scroll-sync-source" value="json"') ||
   !indexHTML.includes('name="scroll-sync-source" value="current"') ||
+  !indexHTML.includes('id="json-as-yaml"') ||
+  !indexHTML.includes('<strong>Format JSON as YAML</strong>') ||
   !indexHTML.includes('id="ysdc-json"') ||
   !indexHTML.includes('<strong>.ysdc as JSON</strong>') ||
   !indexHTML.includes('id="factory-reset"') ||

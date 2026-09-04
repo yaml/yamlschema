@@ -218,6 +218,15 @@
         </small>
       </fieldset>
       <label class="editor-setting">
+        <input type="checkbox" id="json-as-yaml" disabled>
+        <span>
+          <strong>Format JSON as YAML</strong>
+          <small>
+            Show JSON content in both panes using YAML syntax.
+          </small>
+        </span>
+      </label>
+      <label class="editor-setting">
         <input type="checkbox" id="ysdc-json">
         <span>
           <strong>.ysdc as JSON</strong>
@@ -321,8 +330,12 @@
           which is also the pane with the roundtrip indicator.
           You can turn scroll sync off when comparing different sections.
           The scroll source choice is saved between visits.
-          Settings can also show generated .ysdc content as JSON instead of
-          YAML.
+          JSON Schema loaded as YAML stays in YAML when regenerated from
+          YAMLSchema.
+          Format JSON as YAML forces JSON content in both panes to use YAML
+          syntax and disables .ysdc as JSON while selected.
+          Otherwise, settings can show generated .ysdc content as JSON
+          instead of YAML.
           Factory Reset immediately clears all site settings, examples,
           shared editor content, cookies, and consent, then reloads the
           default demo.
@@ -395,5 +408,5 @@
 </div>
 
 <script type="module"
-        src="{{ base_url }}/assets/editor/app.js?v=24"></script>
+        src="{{ base_url }}/assets/editor/app.js?v=25"></script>
 {% endblock %}
