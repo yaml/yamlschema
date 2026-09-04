@@ -2430,9 +2430,6 @@ defn labeled-type-block(token):
     usage: "invalid yamlschema type reference: $type"
   =>: +{'.type' type}
 
-defn reject-bare-map():
-  usage: 'incomplete +Map type requires key/value pairs'
-
 defn compact-enum-token?(token):
   token =~ /^(?:enum:)?\[[^\]]*\]$/
 
@@ -2644,9 +2641,6 @@ defn normalize-range-sequence(value):
   if open-upper:
     V+: range.0
     identity: range
-
-defn normalize-range-expression(value):
-  range-expression-info(value).range
 
 defn range-expression-info(value):
   text =: value:S
@@ -3362,87 +3356,6 @@ defn add-null-schema(result nullable):
           result + {'type' vec(result.type + 'null')}
         else: +{'anyOf' [result {'type' 'null'}]}
     else: result
-
-defn initial-block-state()::
-  result:: omap()
-  item:
-  props:: omap()
-  required: []
-  wildcard: false
-  additional:
-
-defn ysdc-block-step(state entry):
-  result =: state.result
-  key =: entry.0:S
-  val =: entry.1
-  case key:
-    '.type':
-      state.add-base-schema(val)
-    '.like':
-      result +=: +{'type' 'string'}
-      result +=: +{'pattern' val:S}
-      state +: +{'result' result}
-    '.enum':
-      state + {'result' (result + {'enum' val})}
-    '.init':
-      state + {'result' (result + {'default' val})}
-    '.list':
-      state + {'item' ysdc-value-to-schema(val)}
-    '.uniq':
-      state + {'result' (result + {'uniqueItems' val})}
-    '.title':
-      state + {'result' (result + {'title' val})}
-    '.Name':
-      reject-title-directive: key
-    '.desc':
-      state + {'result' (result + {'description' val})}
-    '.size':
-      state + {'result' add-size(result val)}
-    '.range':
-      state +:
-        +{'result' (result + dissoc(range-to-schema(val) 'type'))}
-    '.additionalProperties':
-      reject-additional-properties: key
-    else:
-      cond:
-        key == WILDCARD-KEY:
-          state +::
-            wildcard:: true
-            additional:: ysdc-value-to-schema(val)
-        legacy-directive?(key):
-          reject-legacy-directive: key
-        key =~ /^\./:
-          state
-        else:
-          add-property-schema(state key val)
-
-defn add-base-schema(state val):
-  result =: state.result
-  schema =: ysdc-scalar-to-schema(val)
-  if result.type == 'array':
-    then: state + {'item' schema}
-    else: state + {'result' merge(result schema)}
-
-defn add-size(result val):
-  lo =: val.0
-  hi =: val.1
-  t =: result.type
-  case t:
-    'string':
-      add-bounds: result lo hi 'minLength' 'maxLength'
-    'array':
-      add-bounds: result lo hi 'minItems' 'maxItems'
-    'object':
-      add-bounds: result lo hi 'minProperties' 'maxProperties'
-    else:
-      add-bounds: result lo hi 'minimum' 'maximum'
-
-defn add-bounds(result lo hi min-key max-key):
-  has-lo =: lo != '*'
-  has-hi =: hi != '*'
-  result:
-    .map-put-if(has-lo min-key lo)
-    .map-put-if(has-hi max-key hi)
 
 defn ysdc-scalar-to-schema(value):
   annotated =: split-scalar-description(value)
@@ -5181,18 +5094,6 @@ defn range-token(lo hi):
   lo-s =: lo:nil?.if('' lo)
   hi-s =: hi:nil?.if('' hi)
   =>: "${lo-s}..${hi-s}"
-
-# Return a 2-vector for the value of a `.size` directive. Unbounded
-# sides become the literal string "*"; yaml/dump quotes it as needed.
-defn size-pair(lo hi):
-  cond:
-    lo.? && hi.?: +[lo hi]
-    lo.?: +[lo]
-    hi.?: +[0 hi]
-    else: +[0]
-
-defn regex-literal(pattern):
-  =>: "/$pattern/"
 
 defn compact-enum-scalar(schema):
   values =: schema.enum
