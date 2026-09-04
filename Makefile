@@ -161,7 +161,8 @@ test-install: build
 	@echo 'Source installation checks passed'
 
 test-upgrade: build $(YS)
-	PATH='$(dir $(YS)):$(PATH)' test/upgrade
+	PATH='$(dir $(YS)):$(PATH)' \
+	  YSD='$(CURDIR)/$(YSD-CLI-SOURCE)' test/upgrade
 	YSD='$(CURDIR)/ysd' TEST_UPGRADE_ERRORS=0 test/upgrade
 
 test-man:
