@@ -101,6 +101,9 @@ const sampleSources = {
     'openqa-job-templates': {
       url: assetURL('examples/openqa-job-templates.schema.yaml'),
     },
+    'openqa-job-scenarios': {
+      url: assetURL('examples/openqa-job-scenarios.schema.yaml'),
+    },
     'openapi-3-schema': {
       url: assetURL('examples/openapi-3-schema.schema.json'),
     },

@@ -1133,6 +1133,7 @@ const exampleFiles = [
   'ansible-builder',
   'harbor-next',
   'openqa-job-templates',
+  'openqa-job-scenarios',
   'openapi-3-schema',
   'petstore',
   'netbox-generated',
@@ -1142,6 +1143,10 @@ const routedExamples = [
   ['yamlschema', 'ysd'],
   ...exampleFiles.map((name) => [name, 'json']),
 ];
+const yamlExampleFiles = new Set([
+  'openqa-job-templates',
+  'openqa-job-scenarios',
+]);
 const indexHTML = await readFile('site/demo/index.html', 'utf8');
 const demoPrimaryStart = indexHTML.indexOf('md-sidebar--primary');
 const demoSecondaryStart = indexHTML.indexOf('md-sidebar--secondary');
@@ -1633,7 +1638,7 @@ for (const name of exampleFiles) {
   if (yamlSelectHTML.includes(`value="${name}"`)) {
     throw new Error(`${name} is incorrectly in the YAMLSchema selector`);
   }
-  const suffix = name === 'openqa-job-templates'
+  const suffix = yamlExampleFiles.has(name)
     ? 'schema.yaml'
     : 'schema.json';
   const text = await readFile(
@@ -1641,7 +1646,7 @@ for (const name of exampleFiles) {
     'utf8',
   );
   let schema;
-  if (name === 'openqa-job-templates') {
+  if (yamlExampleFiles.has(name)) {
     const normalized = globalThis.gloat.exports[
       'json-schema-normalize'
     ](text);
@@ -1660,7 +1665,7 @@ for (const name of exampleFiles) {
   const dialect = name === 'openapi-3-schema'
     ? 'http://json-schema.org/draft-04/schema#'
     : 'https://json-schema.org/draft/2020-12/schema';
-  if (name !== 'openqa-job-templates' && schema.$schema &&
+  if (!yamlExampleFiles.has(name) && schema.$schema &&
       schema.$schema !== dialect) {
     throw new Error(`${name} has the wrong JSON Schema dialect`);
   }
@@ -1717,6 +1722,19 @@ for (const name of exampleFiles) {
       !converted.value.includes('+Str~ ~"[\\p{Word} _*.+-]+"')
     ) {
       throw new Error('openQA Job Templates schema is incorrect');
+    }
+  }
+  if (name === 'openqa-job-scenarios') {
+    if (
+      !text.includes(
+        '$id: http://open.qa/api/schema/JobScenarios-01.yaml',
+      ) ||
+      schema.description !== 'Definitions for openQA job scenarios' ||
+      roundtrip.value !== true ||
+      !converted.value.includes('job_templates:') ||
+      !converted.value.includes('+One(+Str,+Num)')
+    ) {
+      throw new Error('openQA Job Scenarios schema is incorrect');
     }
   }
   if (name === 'openapi-3-schema') {

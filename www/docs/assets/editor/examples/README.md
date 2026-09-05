@@ -41,3 +41,11 @@ It was copied from openQA repository commit
 `c5886df66ff7bf04a93108771091f6bdf173b992`.
 The source is distributed under the
 [GNU General Public License version 2](https://github.com/os-autoinst/openQA/blob/c5886df66ff7bf04a93108771091f6bdf173b992/COPYING).
+
+`openqa-job-scenarios.schema.yaml` is the original YAML serialization of the
+[openQA Job Scenarios schema](https://github.com/os-autoinst/openQA/blob/29b45941f176882cb15c9d8e076154ad190c2efb/public/schema/JobScenarios-01.yaml),
+including its YAML anchors and aliases.
+It was copied from openQA repository commit
+`29b45941f176882cb15c9d8e076154ad190c2efb`.
+The source is distributed under the
+[GNU General Public License version 2](https://github.com/os-autoinst/openQA/blob/29b45941f176882cb15c9d8e076154ad190c2efb/COPYING).
