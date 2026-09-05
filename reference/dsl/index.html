@@ -1,0 +1,1984 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Define a lot more with a lot less">
+      
+      
+        <meta name="author" content="Ingy dot Net">
+      
+      
+        <link rel="canonical" href="https://yamlschema.org/reference/dsl/">
+      
+      
+        <link rel="prev" href="../../cli/">
+      
+      
+        <link rel="next" href="../json-schema/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../img/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Language - YAMLSchema</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../css/extra.css">
+    
+      <link rel="stylesheet" href="../../assets/editor/editor.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <!-- Google Analytics with consent banner -->
+<style>
+  #gdpr-cookie-banner {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    display: none;
+    width: calc(100% - 40px);
+    max-width: 480px;
+    padding: 24px;
+    font-size: 1.4em;
+    background: var(--md-code-bg-color);
+    border: 1px solid var(--md-default-fg-color--lightest);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(50px);
+    transition:
+      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.4s ease;
+  }
+
+  #gdpr-cookie-banner.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #gdpr-cookie-banner p {
+    margin: 0 0 20px;
+    font-size: 1em;
+    line-height: 1.6;
+    color: var(--md-default-fg-color);
+  }
+
+  .cookie-btn-group {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  .cookie-btn {
+    padding: 12px 26px;
+    font-size: 0.8em;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  #cookie-decline {
+    color: var(--md-default-fg-color--light);
+    background: transparent;
+    border: 1px solid var(--md-default-fg-color--lightest);
+  }
+
+  #cookie-decline:hover {
+    color: var(--md-default-fg-color);
+    background: var(--md-default-bg-color--lightest);
+  }
+
+  #cookie-accept {
+    color: var(--md-primary-bg-color);
+    background: var(--md-primary-fg-color);
+    border: 1px solid var(--md-primary-fg-color);
+  }
+
+  #cookie-accept:hover {
+    background: var(--md-accent-fg-color);
+    border-color: var(--md-accent-fg-color);
+    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    #gdpr-cookie-banner {
+      right: 20px;
+      left: 20px;
+      width: auto;
+    }
+  }
+</style>
+
+<div id="gdpr-cookie-banner">
+  <p>
+    We use cookies to analyze site traffic and improve your experience with
+    Google Analytics.
+  </p>
+  <div class="cookie-btn-group">
+    <button id="cookie-decline" class="cookie-btn"
+            type="button">Decline</button>
+    <button id="cookie-accept" class="cookie-btn"
+            type="button">Accept</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var gaMeasurementId = "G-EFBDLGET7X";
+
+  function isLocalDevelopment() {
+    return window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "::1";
+  }
+
+  function loadGoogleAnalytics() {
+    if (!gaMeasurementId || window.gtag) {
+      return;
+    }
+
+    var script = document.createElement("script");
+    script.async = true;
+    script.src = "https://www.googletagmanager.com/gtag/js?id=" +
+      gaMeasurementId;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function() {
+      window.dataLayer.push(arguments);
+    };
+    window.gtag("js", new Date());
+    window.gtag("config", gaMeasurementId);
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (isLocalDevelopment()) {
+      return;
+    }
+
+    var consent = localStorage.getItem("cookie_consent");
+
+    if (consent === "accepted") {
+      loadGoogleAnalytics();
+      return;
+    }
+
+    if (consent === "declined") {
+      return;
+    }
+
+    var banner = document.getElementById("gdpr-cookie-banner");
+    var accept = document.getElementById("cookie-accept");
+    var decline = document.getElementById("cookie-decline");
+
+    if (!banner || !accept || !decline) {
+      return;
+    }
+
+    banner.style.display = "block";
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        banner.classList.add("show");
+      });
+    });
+
+    accept.addEventListener("click", function() {
+      localStorage.setItem("cookie_consent", "accepted");
+      banner.classList.remove("show");
+      setTimeout(function() {
+        banner.style.display = "none";
+      }, 400);
+      loadGoogleAnalytics();
+    });
+
+    decline.addEventListener("click", function() {
+      localStorage.setItem("cookie_consent", "declined");
+      banner.classList.remove("show");
+      setTimeout(function() {
+        banner.style.display = "none";
+      }, 400);
+    });
+  });
+})();
+</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#yamlschema-yamlschema-language-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="YAMLSchema"
+       class="md-header__button md-logo" aria-label="YAMLSchema"
+       data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8zm4 18H6V4h7v5h5zm-8.46-4.35 2.09 2.09L10.35 19 7 15.65l3.35-3.35 1.28 1.26zm7.46 0L13.65 19l-1.27-1.26 2.09-2.09-2.09-2.09 1.27-1.26z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <a href="../.." class="md-header__title"
+       data-md-component="header-title"
+       aria-label="YAMLSchema home">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">YAMLSchema</span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Language
+            
+          </span>
+        </div>
+      </div>
+    </a>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yaml/yamlschema" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yaml/yamlschema
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../demo/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Demos
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../examples/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Examples
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../cheat-sheet/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Cheat Sheet
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../cli/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  CLI
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../blog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Blog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+  
+  
+  
+    
+  
+  
+  <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation"
+       data-md-level="0">
+    <label class="md-nav__title" for="__drawer">
+      <a href="../.."
+         title="YAMLSchema"
+         class="md-nav__button md-logo"
+         aria-label="YAMLSchema" data-md-component="logo">
+        
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.11.89 2 2 2h12c1.11 0 2-.89 2-2V8zm4 18H6V4h7v5h5zm-8.46-4.35 2.09 2.09L10.35 19 7 15.65l3.35-3.35 1.28 1.26zm7.46 0L13.65 19l-1.27-1.26 2.09-2.09-2.09-2.09 1.27-1.26z"/></svg>
+
+      </a>
+      YAMLSchema
+    </label>
+    
+      <div class="md-nav__source">
+        <a href="https://github.com/yaml/yamlschema" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yaml/yamlschema
+  </div>
+</a>
+      </div>
+    
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        
+        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+        
+        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+        
+        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+        
+        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cheat-sheet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cheat Sheet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+        
+        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+        
+        
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#types-in-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Types in Mappings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keyvalue-pair-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key/Value Pair Constraints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ysd-scalar-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YSD Scalar DSL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lists-and-sizes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lists and Sizes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nulls-and-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nulls and Annotations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hybrid-explicit-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid Explicit Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combinators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical Expansion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../json-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JSON Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+      
+        
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../blog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </nav>
+
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#types-in-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Types in Mappings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keyvalue-pair-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key/Value Pair Constraints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#built-in-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Built-in Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ysd-scalar-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YSD Scalar DSL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lists-and-sizes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lists and Sizes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nulls-and-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Nulls and Annotations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hybrid-explicit-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid Explicit Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#combinators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Combinators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#canonical-expansion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical Expansion
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="yamlschema-yamlschema-language-reference">yamlschema - YAMLSchema language reference<a class="headerlink" href="#yamlschema-yamlschema-language-reference" title="Permanent link">&para;</a></h1>
+<p>This page specifies the human-authored YAMLSchema DSL and its expansion to the
+canonical <code>.ysdc</code> model, serialized as <code>.ysdc.yaml</code> or <code>.ysdc.json</code>.
+A schema defines types: sets of constraints for a scalar, mapping, or list of
+another type.</p>
+<p>Top-level titles and descriptions use annotation markers, followed by the
+optional non-empty <code>.id</code> document identity string:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">--</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Contact schema</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">-</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Contact information for a person</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">.id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.com/contact.ysd.yaml</span>
+</span></code></pre></div>
+<p>Generated .ysd places the title and description before <code>.id</code>.
+Canonical .ysdc orders <code>.id</code>, <code>.title</code>, and <code>.desc</code> before other entries.
+Input may place these directives anywhere.
+.ysd and .ysdc use <code>.ysd.yaml</code>, while JSON Schema uses <code>.schema.json</code>.
+Conversion replaces a recognized suffix and appends the target suffix when
+none is present.
+JSON Schema <code>$id</code> and Draft 4 root <code>id</code> both import as <code>.id</code>.</p>
+<p>The optional <code>.name</code> directive gives a schema node an externally addressable
+name:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">.name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersonSchema</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">+address</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">.name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AddressSchema</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">street</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>At the document top it names the root schema.
+Inside a definition or property type it names that schema node.
+It maps directly to JSON Schema <code>$anchor</code>, while a definition key such as
+<code>+address</code> remains the local YAMLSchema type name.
+Names must match <code>[A-Za-z_][A-Za-z0-9._-]*</code> and must be unique in one schema
+document.</p>
+<p>The optional <code>.root</code> directive distinguishes an explicit root type from a
+document that only publishes named definitions:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">.root</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">+kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>This example has a closed, empty mapping as its root type, so only <code>{}</code> is
+valid at the document root.
+Without <code>.root</code>, the document only defines <code>+kind</code> and leaves its JSON Schema
+root unconstrained.
+<code>.root</code> may also reference a named type, as in <code>.root: +kind</code>.</p>
+<h2 id="types-in-mappings">Types in Mappings<a class="headerlink" href="#types-in-mappings" title="Permanent link">&para;</a></h2>
+<p>A normal mapping entry has the data key on the left and its type on the right:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="l l-Scalar l-Scalar-Plain">nickname?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>Keys are required unless they end in <code>?</code>.
+The <code>?</code> remains on the key in canonical YAMLSchema.
+A key enclosed by <code>/</code> is a JSON Schema property-name pattern:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">/^x-/</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Any</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">headers</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="s">'/^[A-Za-z][A-Za-z0-9-]*$/'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>Pattern keys may match zero or more mapping keys, so they are never required.
+The text between the first and last slash is the exact
+<code>patternProperties</code> key.
+No anchors are added and no characters are unescaped.
+For example, <code>//foo//</code> represents the JSON Schema pattern <code>/foo/</code>.
+Pattern keys cannot use <code>.need</code> or appear in <code>.keys</code> rules.
+They may coexist with ordinary properties and the <code>+Str</code> wildcard.
+The slash-delimited form is reserved, so an exact property name such as
+<code>/name/</code> cannot be represented as an ordinary mapping key.
+A value may be a reference, an anonymous type, or a reference refined by more
+constraints:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+email</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">code</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str ~"{upper}{digit}+"</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">work_email</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+email ~~"@example\.com$"</span>
+</span></code></pre></div>
+<p>Definitions use a <code>+slug</code> key.
+The key names the type and references use the same slug:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">+resources</span><span class="p">:</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">requests?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{}</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">limits?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{}</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="l l-Scalar l-Scalar-Plain">resources?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+resources</span>
+</span></code></pre></div>
+<p>Local references name definitions with <code>+name</code>.
+External JSON Schema references use <code>+Ref(...)</code> and preserve the reference
+text without fetching or resolving it:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Ref(https://example.com/user-profile.schema.json)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="l l-Scalar l-Scalar-Plain">profile?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Ref(../schemas/profile.json#/$defs/profile)</span>
+</span></code></pre></div>
+<p>The compact form requires a non-empty reference without whitespace or <code>)</code>.
+It accepts the normal list and nullable suffixes, such as <code>+Ref(#item)[]</code> and
+<code>+Ref(profile.json)~</code>.
+Use the canonical <code>.xref</code> directive for every other reference string or when
+the reference has sibling constraints:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">author</span><span class="p">:</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">-</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">An externally defined author</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">.xref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.com/user-profile.schema.json</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="nt">empty</span><span class="p">:</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="nt">.xref</span><span class="p">:</span><span class="w"> </span><span class="s">''</span>
+</span></code></pre></div>
+<p><code>.xref</code> accepts any string and exports it unchanged as JSON Schema <code>$ref</code>.
+It is separate from <code>.from</code>, which imports schemas or namespaces.</p>
+<p>Anonymous mapping shapes need no <code>.type</code> marker.
+Shaped mappings are closed by default; key-side <code>+Str</code> admits otherwise
+unmatched string keys:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">fixed?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">+Str</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>String-keyed maps can name their value type directly:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nt">config</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{}</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{+Str}</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="nt">flags</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{+flag}</span>
+</span></code></pre></div>
+<p><code>+Map{}</code> expands to <code>+Str: +Any</code>.
+<code>+Map{+Type}</code> expands to <code>+Str: +Type</code>.
+The value type must be one built-in, user-defined, or namespaced reference.
+Map parameters use braces; parenthesized forms such as <code>+Map(+Any)</code> are
+invalid.
+An incomplete <code>+Map</code> must be completed by sibling key/value pairs.</p>
+<p>Lists of maps append the list suffix to the value type:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">maps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{}[]</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nt">other</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{+Str}[]</span>
+</span></code></pre></div>
+<p>The two-reference form requires <code>+Str</code> as its key type.
+<code>+Map{+Str,+Value}</code> is the explicit equivalent of <code>+Map{+Value}</code>.
+Therefore <code>+Map{}</code>, <code>+Map{+Any}</code>, and <code>+Map{+Str,+Any}</code> all describe an open
+mapping with string keys and unrestricted values.
+Generated YAMLSchema uses the shortest form, <code>+Map{}</code>.</p>
+<p>Mappings are closed by default.
+Top-level <code>.open: true</code> changes the default for the document mapping and every
+mapping shape defined beneath it:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">.open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="nt">+person</span><span class="p">:</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="nt">server</span><span class="p">:</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span><span class="nt">.open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>Here the document and <code>+person</code> are open, while <code>server</code> and every mapping
+shape nested beneath it are closed unless locally reopened.</p>
+<p>A nested <code>.open</code> must be Boolean and overrides the inherited value.
+An explicit <code>+Str</code> wildcard controls the current shape directly.
+Combining <code>.open: false</code> with such a wildcard is an error.
+Canonical .ysdc keeps <code>.open: true</code> only at the document top.
+It uses <code>.open: false</code> to close a shape under an open default and a final
+<code>+Str: +Any</code> wildcard to open a shape under a closed default.</p>
+<p>The <code>.size</code> directive constrains the number of properties in a mapping.
+It works on anonymous mapping shapes and at the document root:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">.size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1+</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="nt">/^x-/</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Any</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="nt">bounded</span><span class="p">:</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">  </span><span class="nt">.size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1-3</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">  </span><span class="nt">/^item-/</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>These forms map to <code>minProperties: 1</code>, and to <code>minProperties: 1</code> plus
+<code>maxProperties: 3</code>, respectively.
+Canonical .ysdc expands them to <code>.size: [1]</code> and <code>.size: [1, 3]</code>.</p>
+<h2 id="keyvalue-pair-constraints">Key/Value Pair Constraints<a class="headerlink" href="#keyvalue-pair-constraints" title="Permanent link">&para;</a></h2>
+<p>Use a top-level <code>.keys</code> sequence when a constraint relates multiple mapping
+pairs:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="l l-Scalar l-Scalar-Plain">token?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="l l-Scalar l-Scalar-Plain">existingSecret?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="nt">.keys</span><span class="p">:</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">.any</span><span class="p">:</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str 8+</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">existingSecret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str 1+</span>
+</span></code></pre></div>
+<p>Each <code>.any</code> branch is a partial mapping constraint.
+The example requires at least one branch to match: <code>token</code> must be present and
+have at least eight characters, or <code>existingSecret</code> must be present and have
+at least one character.</p>
+<p>Plain branch keys are required.
+A branch key ending in <code>?</code> is optional.
+Unmentioned properties remain unaffected, and a branch does not create or
+close an object type.</p>
+<p>One <code>.keys</code> rule becomes a root JSON Schema <code>anyOf</code>.
+Multiple rules all apply and become ordered members of a root <code>allOf</code>.
+Each rule must currently contain exactly one <code>.any</code> entry with at least two
+non-empty property-to-type mappings.</p>
+<h2 id="built-in-types">Built-in Types<a class="headerlink" href="#built-in-types" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Accepted value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>+Any</code></td>
+<td>Any YAML value</td>
+</tr>
+<tr>
+<td><code>+Str</code></td>
+<td>A string</td>
+</tr>
+<tr>
+<td><code>+Int</code></td>
+<td>An integer</td>
+</tr>
+<tr>
+<td><code>+Float</code></td>
+<td>A YAML float-tagged value</td>
+</tr>
+<tr>
+<td><code>+Num</code></td>
+<td>Any numeric value: <code>+Int</code> or <code>+Float</code></td>
+</tr>
+<tr>
+<td><code>+Bool</code></td>
+<td><code>true</code> or <code>false</code></td>
+</tr>
+<tr>
+<td><code>+Null</code></td>
+<td><code>null</code></td>
+</tr>
+<tr>
+<td><code>+Map</code></td>
+<td>A mapping shape completed by sibling property definitions</td>
+</tr>
+<tr>
+<td><code>+Map{}</code></td>
+<td>An open mapping with string keys and unrestricted values</td>
+</tr>
+<tr>
+<td><code>+Map{+Type}</code></td>
+<td>A mapping with string keys and <code>+Type</code> values</td>
+</tr>
+<tr>
+<td><code>+Map{+Str,+Type}</code></td>
+<td>The explicit string-key form of <code>+Map{+Type}</code></td>
+</tr>
+<tr>
+<td><code>+Tup{...}</code></td>
+<td>A positional sequence</td>
+</tr>
+</tbody>
+</table>
+<p>Capitalized type names are reserved for these built-ins and the <code>+One</code>,
+<code>+All</code>, and <code>+Not</code> combinator heads.
+A type reference beginning with a capital letter is rejected when it is not
+one of those known names.
+User-defined type references must not begin with a capital letter.</p>
+<p>Examples:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nt">anything</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Any</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="nt">age</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Float</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Num</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Bool</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="nt">nothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Null</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="nt">metadata</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{}</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{+Str}</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="nt">point</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Num,+Num}</span>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="nt">person</span><span class="p">:</span>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map</span>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">age?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span></code></pre></div>
+<p><code>+Float</code> follows YAML tagging rather than JSON Schema numeric semantics.
+It accepts float-tagged values such as <code>1.0</code>, <code>.inf</code>, and <code>.nan</code>, but not the
+integer-tagged value <code>1</code>.
+Use <code>+Num</code> when both integer- and float-tagged values are valid.</p>
+<p>JSON Schema has no float-only numeric type.
+Exporting <code>+Float</code> therefore emits <code>type: "number"</code> and a warning for that
+loss of precision.</p>
+<p>Draft 2020-12 string formats use qualified YAMLSchema types:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nt">dateOfBirth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+JSON-Schema/date</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="nt">createdAt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+JSON-Schema/date-time</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="l l-Scalar l-Scalar-Plain">contact?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+JSON-Schema/email</span>
+</span></code></pre></div>
+<p>The complete supported set is:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>date-time date time duration email idn-email hostname idn-hostname
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>ipv4 ipv6 uri uri-reference iri iri-reference uuid uri-template
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>json-pointer relative-json-pointer regex
+</span></code></pre></div>
+<p>Each <code>+JSON-Schema/name</code> type exports as JSON Schema <code>type: string</code> with
+<code>format: name</code>.
+Normal nullable and list suffixes apply, for example
+<code>+JSON-Schema/date-time~</code> and <code>+JSON-Schema/email[]</code>.
+Unknown qualified format names are rejected.</p>
+<p>Bare <code>+Map</code> is intentionally incomplete.
+It must have sibling property definitions, as in <code>person</code>, and its <code>.type</code>
+marker disappears during canonical expansion because the mapping shape already
+implies the type.
+Use <code>+Map{}</code> for an otherwise unconstrained string-keyed mapping, or
+<code>+Map{+Type}</code> to constrain every value.
+<code>+Map{+Any}</code> and <code>+Map{+Str,+Any}</code> are equivalent input aliases for
+<code>+Map{}</code>.
+The two-argument form accepts only <code>+Str</code> as its key type.</p>
+<p>Built-ins can be modified by the rest of the DSL.
+<code>+Type[]</code> is a list of that type, <code>+Type~</code> also accepts null, and <code>+Any(...)</code>,
+<code>+One(...)</code>, <code>+All(...)</code>, and <code>+Not(...)</code> combine referenced types.
+These are type expressions built from the built-ins, not additional built-in
+scalar types.</p>
+<h2 id="tuples">Tuples<a class="headerlink" href="#tuples" title="Permanent link">&para;</a></h2>
+<p>Tuple members are written in braces:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nt">pair</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num}</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="nt">optional</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num?}</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str?,+Any...}</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="nt">numbers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num...}</span>
+</span></code></pre></div>
+<p>An ordinary member is required.
+<code>?</code> makes that position optional, and <code>...</code> makes the final member repeat zero
+or more times.
+Required members must precede optional members, and a repeating member must be
+last.</p>
+<p>Without a repeating member, no additional items are accepted.
+<code>+Tup{+Str,+Num}</code> therefore accepts exactly two items.
+<code>+Tup{+Str?,+Any...}</code> accepts an empty sequence or a sequence whose first item
+is a string and whose remaining items have any type.
+It is the compact form of JSON Schema <code>prefixItems</code> with an unrestricted
+<code>items</code> remainder.</p>
+<p>Tuple members can use other compact type expressions, including nested tuples:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nt">record</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Tup{+Str,+Int},+Map{}}</span>
+</span></code></pre></div>
+<p>List and nullable suffixes follow the complete tuple expression:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nt">rows</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num}[]</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nt">rowOrRows</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num}[$]</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="nt">maybeRow</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Tup{+Str,+Num}~</span>
+</span></code></pre></div>
+<p>These mean a list of tuples, one tuple or a list of tuples, and a nullable
+tuple respectively.</p>
+<h2 id="ysd-scalar-dsl">YSD Scalar DSL<a class="headerlink" href="#ysd-scalar-dsl" title="Permanent link">&para;</a></h2>
+<p>A YSD scalar DSL expression is a YAML plain scalar.
+A type reference is normally first, but labeled clauses may appear in any
+order:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>+Base [(alternatives)] [list-suffix] [~] [pattern-or-range]
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>      [enum] [size] [constant] [default] [title] [-"description"]
+</span></code></pre></div>
+<p>The core is normally a <code>+Type</code> reference, which later clauses refine:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nt">foo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str ~~"a.*b"</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int 1..65535</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str [debug, info, error]</span>
+</span></code></pre></div>
+<p>A bare regex or numeric range can still infer a built-in type.
+A fractional range infers <code>+Num</code> because its interval may include integers.
+Generated .ysd includes the inferred reference explicitly.</p>
+<p>These expand to explicit directives.
+Refined types are always materialized:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nt">foo</span><span class="p">:</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span><span class="nt">.like</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">a.*b</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="nt">port</span><span class="p">:</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">  </span><span class="nt">.range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">65535</span><span class="p p-Indicator">]</span>
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="nt">mode</span><span class="p">:</span>
+</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-23-9"><a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a><span class="w">  </span><span class="nt">.enum</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">debug</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">info</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">error</span><span class="p p-Indicator">]</span>
+</span></code></pre></div>
+<p><code>~"pattern"</code> matches the complete string; leading <code>^</code> and trailing <code>$</code>
+anchors are implied.
+<code>match:"pattern"</code> is an accepted alias.
+<code>~~"pattern"</code> searches within the string.
+<code>find:"pattern"</code> is an accepted alias.
+The quoted bodies cannot contain <code>"</code>.
+In .ysd, use explicit <code>.match</code> or <code>.find</code> when no scalar DSL form can
+represent the pattern.
+Both imply <code>+Str</code>.
+Generated .ysd uses the canonical <code>~"pattern"</code> and <code>~~"pattern"</code> spellings.</p>
+<p>Inside either form, <code>{digit}</code>, <code>{upper}</code>, <code>{lower}</code>, and <code>{plus}</code> are shorthand
+for <code>[0-9]</code>, <code>[A-Z]</code>, <code>[a-z]</code>, and <code>\+</code> respectively.
+Both <code>\d</code> and <code>[0-9]</code> import as <code>{digit}</code>.
+Generated .ysd uses these named forms.</p>
+<p>Canonical .ysdc stores both forms as <code>.like</code>, containing the exact JSON Schema
+pattern.
+A match is bookended with <code>^</code> and <code>$</code>; a find is stored unchanged:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nt">whole</span><span class="p">:</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">  </span><span class="nt">.like</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">^pattern$</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="nt">search</span><span class="p">:</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">  </span><span class="nt">.like</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pattern</span>
+</span></code></pre></div>
+<p><code>.like</code> is accepted only in <code>.ysdc.yaml</code> and <code>.ysdc.json</code>.
+Conversely, <code>.match</code> and <code>.find</code> are .ysd directives and are rejected in .ysdc
+input.</p>
+<p>Compact enums require an explicit type reference and comma-separated members:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str [debug, info, error]</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int [1, 2, 3]</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="nt">logLevel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str [debug, =info, warning, error, fatal]</span>
+</span></code></pre></div>
+<p>Members may contain letters, digits, whitespace, <code>.</code>, <code>-</code>, <code>_</code>, and <code>+</code>.
+Whitespace around each comma-separated member is trimmed; whitespace inside a
+member is preserved.
+Thus <code>[foo,bar,foo bar]</code> and <code>[ foo, bar, foo bar ]</code> have the same meaning.
+Quotes are not supported inside compact enums; use explicit <code>.enum</code> with a
+YAML sequence for quoted or other punctuated values.
+The base controls scalar parsing, so <code>+Str [true,1]</code> contains two strings.
+Prefix one member with <code>=</code> to also set <code>.init</code> to that value.
+At most one member may be marked.
+Generated .ysd uses one space after every compact-enum comma.</p>
+<p><code>+Str ==User</code> becomes <code>.const: User</code>, the exact-value constraint corresponding
+to JSON Schema <code>const</code>.
+<code>+Str =="foo bar"</code> is the quoted form, and <code>const:User</code> is the labeled
+alternative.
+A bare literal remains an accepted inferred-type shorthand.
+It also means a constant, while <code>=value</code> means only a default.
+The <code>+</code> prefix is reserved for type expressions, so an unrecognized
+plus-prefixed value is an error instead of an inferred string constant.</p>
+<h2 id="lists-and-sizes">Lists and Sizes<a class="headerlink" href="#lists-and-sizes" title="Permanent link">&para;</a></h2>
+<p>List suffixes are part of the value-side type expression:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="l l-Scalar l-Scalar-Plain">names?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str[1+]</span>
+</span></code></pre></div>
+<p>This expands to <code>.list: +Str</code> and <code>.size: [1]</code>.
+The <code>[]</code> is part of the succinct list expression; <code>.list</code> contains the item
+schema and <code>.size</code> carries the list bounds in canonical <code>.ysdc</code>.
+Key-side list suffixes are rejected.</p>
+<table>
+<thead>
+<tr>
+<th>Suffix</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[]</code></td>
+<td>List with no size constraint</td>
+</tr>
+<tr>
+<td><code>[n]</code></td>
+<td>Exactly <code>n</code> items</td>
+</tr>
+<tr>
+<td><code>[n-m]</code></td>
+<td>Between <code>n</code> and <code>m</code> items</td>
+</tr>
+<tr>
+<td><code>[n+]</code></td>
+<td>At least <code>n</code> items</td>
+</tr>
+<tr>
+<td><code>[!]</code></td>
+<td>Unique items</td>
+</tr>
+<tr>
+<td><code>[$]</code></td>
+<td>Scalar or list</td>
+</tr>
+<tr>
+<td><code>[n-m,$!]</code></td>
+<td>Scalar or a unique list with the given size</td>
+</tr>
+</tbody>
+</table>
+<p>The scalar-or-list form is the compact spelling of a JSON Schema <code>anyOf</code>
+whose two branches are the same item schema and a list of that item schema:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="l l-Scalar l-Scalar-Plain">python?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str[$]</span>
+</span></code></pre></div>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="p">{</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="w">  </span><span class="nt">"anyOf"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="w">    </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">},</span>
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">    </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"array"</span><span class="p">,</span><span class="w"> </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">}}</span>
+</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="w">  </span><span class="p">]</span>
+</span><span id="__span-28-6"><a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The converter recognizes either branch order and matching item constraints,
+references, and JSON Schema format types.
+An <code>anyOf</code> with extra branches or different scalar and item schemas stays
+explicit.</p>
+<p>A list of shaped mappings uses the incomplete <code>+Map</code> base and defines the item
+properties alongside it:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="l l-Scalar l-Scalar-Plain">extraEnv?</span><span class="p p-Indicator">:</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map[1-10,$!]</span>
+</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">value?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>Here the value is either one mapping or a unique list of one through ten
+mappings.
+Each mapping has the sibling <code>name</code> and <code>value</code> properties.</p>
+<p>List properties may be comma-separated, whitespace-separated, or adjacent.
+For example, <code>[1-10,$!]</code>, <code>[1-10,$,!]</code>, <code>[1-10 $ !]</code>, and <code>[1-10$!]</code> are
+equivalent.
+Generated DSL uses the canonical <code>[size,$!]</code> order.
+<code>[+]</code> is an input alias for <code>[1+]</code>.
+The former <code>|</code> separator is rejected.
+Multiple sizes or repeated <code>$</code> and <code>!</code> flags are errors.</p>
+<p>Use <code>.list</code> when an item schema is clearer in full form:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nt">values</span><span class="p">:</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="w">  </span><span class="nt">.list</span><span class="p">:</span>
+</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="w">    </span><span class="nt">.any</span><span class="p">:</span>
+</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="w">  </span><span class="nt">.size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span></code></pre></div>
+<p>Canonical <code>.ysdc</code> uses <code>.list</code> for every list, including <code>.list: +Str</code> for a
+simple list.
+It does not use <code>.item</code> or append <code>[]</code> to <code>.type</code>.</p>
+<p>A size clause also works after string, list, or mapping constraints:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="nt">code</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str 8</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a><span class="nt">names</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str[] 1+</span>
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Map{} 1-20</span>
+</span></code></pre></div>
+<p>Canonical sizes contain one number for an open upper bound and two for a
+bounded or exact size:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>1+    -&gt; [1]
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>10    -&gt; [10, 10]
+</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>10-20 -&gt; [10, 20]
+</span></code></pre></div>
+<p>Canonical ranges use the same structural convention, with <code>null</code> for a missing
+lower bound:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>0..          -&gt; [0]
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>1..10        -&gt; [1, 10]
+</span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>..-1         -&gt; [null, -1]
+</span><span id="__span-33-4"><a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>0...         -&gt; [0] plus .xmin: true
+</span><span id="__span-33-5"><a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>...10        -&gt; [null, 10] plus .xmax: true
+</span><span id="__span-33-6"><a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a>0..10 :xmin  -&gt; [0, 10] plus .xmin: true
+</span><span id="__span-33-7"><a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a>0..10 :xmax  -&gt; [0, 10] plus .xmax: true
+</span></code></pre></div>
+<p>Both modifiers may follow one bounded range.
+The explicit directives must be <code>true</code> and require their corresponding range
+bounds.
+The spelling <code>0...10</code> is ambiguous and is rejected.</p>
+<p>The old <code>"*"</code> bound is invalid.</p>
+<h2 id="nulls-and-annotations">Nulls and Annotations<a class="headerlink" href="#nulls-and-annotations" title="Permanent link">&para;</a></h2>
+<p>Nullability is a value-side suffix:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="l l-Scalar l-Scalar-Plain">enabled?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Bool~</span>
+</span></code></pre></div>
+<p>Scalar DSL annotations may occur anywhere among the clauses:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="l l-Scalar l-Scalar-Plain">enabled?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Bool~ =false --"Enabled" -"Enable the service"</span>
+</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a><span class="l l-Scalar l-Scalar-Plain">label?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str ="pretty good"</span>
+</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="l l-Scalar l-Scalar-Plain">mode?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">type:+Str enum:[debug,info] init:info desc:"Log level"</span>
+</span></code></pre></div>
+<ul>
+<li><code>=value</code> is a single YAML scalar default.</li>
+<li><code>="..."</code> is a string default that may contain spaces.</li>
+<li><code>--"..."</code> is <code>.title</code>.</li>
+<li><code>-"..."</code> is <code>.desc</code> and may occur anywhere among the clauses.</li>
+<li><code>title:"..."</code> and <code>desc:"..."</code> remain accepted aliases.</li>
+<li>Labeled scalar clauses may occur in any order.
+  They are <code>type</code>, <code>match</code>, <code>find</code>, <code>const</code>, <code>range</code>, <code>size</code>, <code>item</code>, <code>solo</code>,
+  <code>uniq</code>, <code>null</code>, <code>init</code>, <code>title</code>, <code>desc</code>, and scalar <code>also</code>.</li>
+<li><code>enum:[...]</code> is the compact enum form.</li>
+<li><code>:need(name1,name2)</code> lists sibling properties required when this property
+  is present.
+  Structural <code>.one</code>, <code>.any</code>, <code>.all</code>, <code>.not</code>, <code>.with</code>, and <code>.when</code> values
+  remain explicit.</li>
+</ul>
+<p>Two exact triplets protect text that YAML forbids in a plain scalar: <code>:\</code>
+represents colon-space, and <code>\#</code> represents space-hash.
+No other backslash sequence is special, so <code>foo\ bar</code>, <code>\n</code>, and <code>\t</code> remain
+literal.
+A body cannot contain a double quote.
+Use the explicit directive when that is needed.
+A scalar consisting entirely of a YAML-quoted string is a literal value, not
+an annotation, because YAML does not preserve its original quote style.
+The obsolete trailing single-quoted description form is an error.
+For compatibility, a final bare <code>"..."</code> remains accepted as a description.
+The labeled <code>title:"..."</code> and <code>desc:"..."</code> forms are also accepted.
+Generated .ysd always uses <code>-"..."</code>.
+Generated .ysd uses <code>--"..."</code> for scalar DSL titles.
+For annotations that cannot use the scalar DSL form, use <code>--:</code> and <code>-:</code> in
+.ysd, or canonical <code>.title:</code> and <code>.desc:</code> in .ysdc.</p>
+<h2 id="hybrid-explicit-types">Hybrid Explicit Types<a class="headerlink" href="#hybrid-explicit-types" title="Permanent link">&para;</a></h2>
+<p>When one constraint is clearer explicitly, <code>.type</code> may contain the complete
+scalar DSL expression and sibling directives add the exceptional parts:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nt">foo</span><span class="p">:</span>
+</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="w">  </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str[] ~~"a.*b" 10-20</span>
+</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="w">  </span><span class="nt">--</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The "Good" Parts</span>
+</span></code></pre></div>
+<p>This is equivalent to:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-37-1"><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="nt">foo</span><span class="p">:</span>
+</span><span id="__span-37-2"><a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="w">  </span><span class="nt">.title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The "Good" Parts</span>
+</span><span id="__span-37-3"><a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="w">  </span><span class="nt">.list</span><span class="p">:</span>
+</span><span id="__span-37-4"><a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="w">    </span><span class="nt">.type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-37-5"><a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a><span class="w">    </span><span class="nt">.like</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">a.*b</span>
+</span><span id="__span-37-6"><a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a><span class="w">  </span><span class="nt">.size</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">20</span><span class="p p-Indicator">]</span>
+</span></code></pre></div>
+<p>Directive order is insignificant.
+Expansion normalizes <code>.size</code> and emits a stable directive order.
+A directive supplied by both the <code>.type</code> expression and a sibling is an error,
+even when the values agree.</p>
+<h2 id="combinators">Combinators<a class="headerlink" href="#combinators" title="Permanent link">&para;</a></h2>
+<p>Reference-only alternatives have compact forms:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="nt">one</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+One(+Str,+Int)</span>
+</span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="nt">any</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Any(+foo,+bar)</span>
+</span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a><span class="nt">all</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+All(+foo,+bar)</span>
+</span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="nt">neither</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Not(+foo,+bar)</span>
+</span><span id="__span-38-5"><a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Any(+foo,+bar)[]</span>
+</span></code></pre></div>
+<p><code>One</code>, <code>Any</code>, and <code>All</code> require at least two references.
+<code>Not</code> requires at least one; multiple references mean the value must match
+none of them.
+A list suffix follows the complete combinator type.</p>
+<p>Multiple references without parentheses are an implicit conjunction.
+The first is the base and the rest are additional constraint groups:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-39-1"><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+base +constraint +other</span>
+</span></code></pre></div>
+<p>Branches containing complete type definitions use explicit directives:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-40-1"><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="nt">value</span><span class="p">:</span>
+</span><span id="__span-40-2"><a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="w">  </span><span class="nt">.one</span><span class="p">:</span>
+</span><span id="__span-40-3"><a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str 1+</span>
+</span><span id="__span-40-4"><a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span></code></pre></div>
+<p>To apply a combinator to every item in a list, append the list suffix to its
+directive in <code>.ysd</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-41-1"><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="nt">values</span><span class="p">:</span>
+</span><span id="__span-41-2"><a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">.any[1-3,!]</span><span class="p p-Indicator">:</span>
+</span><span id="__span-41-3"><a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-41-4"><a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span></code></pre></div>
+<p>The same suffix grammar works with <code>.one</code>, <code>.any</code>, <code>.all</code>, and <code>.not</code>.
+The canonical <code>.ysdc</code> expansion is:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-42-1"><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="nt">values</span><span class="p">:</span>
+</span><span id="__span-42-2"><a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="w">  </span><span class="nt">.list</span><span class="p">:</span>
+</span><span id="__span-42-3"><a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a><span class="w">    </span><span class="nt">.any</span><span class="p">:</span>
+</span><span id="__span-42-4"><a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-42-5"><a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Int</span>
+</span><span id="__span-42-6"><a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a><span class="w">  </span><span class="nt">.size</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">]</span>
+</span><span id="__span-42-7"><a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a><span class="w">  </span><span class="nt">.uniq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span></code></pre></div>
+<p>At the document root, <code>.one</code> constrains the root value in addition to its
+declared properties:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-43-1"><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="nt">deviceType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str</span>
+</span><span id="__span-43-2"><a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a><span class="nt">.one</span><span class="p">:</span>
+</span><span id="__span-43-3"><a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">.xref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.com/smartphone.schema.json</span>
+</span><span id="__span-43-4"><a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">deviceType?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str ==smartphone</span>
+</span><span id="__span-43-5"><a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">.xref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.com/laptop.schema.json</span>
+</span><span id="__span-43-6"><a id="__codelineno-43-6" name="__codelineno-43-6" href="#__codelineno-43-6"></a><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">deviceType?</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+Str ==laptop</span>
+</span></code></pre></div>
+<p>Root branches are partial constraints, not standalone closed object types.
+An optional property constrains that property when present without requiring
+it again inside the branch.
+Directives such as <code>.xref</code> apply alongside the branch properties.</p>
+<p>A JSON Schema <code>oneOf</code> with exactly one required-only branch is equivalent to
+that ordinary <code>required</code> constraint.
+The importer therefore marks those property keys as required instead of
+emitting a redundant <code>.one</code> block.
+Other <code>oneOf</code> branches remain explicit, including branches with annotations
+or additional constraints.</p>
+<h2 id="canonical-expansion">Canonical Expansion<a class="headerlink" href="#canonical-expansion" title="Permanent link">&para;</a></h2>
+<p>Compile human-authored YAML to canonical JSON with:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-44-1"><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>ysd<span class="w"> </span>-t<span class="w"> </span>ysdc<span class="w"> </span>-J<span class="w"> </span>contact.ysd.yaml
+</span><span id="__span-44-2"><a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a>ysd<span class="w"> </span>-t<span class="w"> </span>ysdc<span class="w"> </span>-J<span class="w"> </span>-C<span class="w"> </span>contact.ysd.yaml
+</span><span id="__span-44-3"><a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>ysd<span class="w"> </span>-t<span class="w"> </span>ysdc<span class="w"> </span>-J<span class="w"> </span>values.schema.json
+</span></code></pre></div>
+<p>Omit <code>-J</code> or use <code>-Y</code> for canonical YAML.
+Use <code>-f/--from ysd</code>, <code>ysdc</code>, or <code>jsc</code> when a filename or stdin does not make
+the source format clear.
+File suffixes <code>.ysd.yaml</code>, <code>.ysd.json</code>, <code>.ysdc.yaml</code>, <code>.ysdc.json</code>,
+<code>.schema.json</code>, <code>.schema.json.yaml</code>, <code>.schema.yaml</code>, and <code>.schema.yml</code> are
+inferred automatically.</p>
+<p>Canonical directives are emitted in this order:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-45-1"><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a>.title .desc .name .type .xref .open .need .list .one .any .all .not
+</span><span id="__span-45-2"><a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a>.like .enum .const .range .size .solo .uniq .null .init
+</span><span id="__span-45-3"><a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a>.also .with .when
+</span></code></pre></div>
+<p>An unrefined built-in or named reference is emitted directly as a <code>+Type</code>
+scalar.
+This is the compact form of a mapping whose only pair would be <code>.type: +Type</code>.
+An external reference may similarly use <code>+Ref(...)</code>; its canonical form is
+<code>.xref</code> rather than <code>.type</code>.
+When annotations, validation constraints, or shape entries share the mapping,
+the reference or complete scalar DSL expression remains under <code>.type</code>.</p>
+<p>Canonical list types use <code>.list</code>, whose value is the item schema.
+An unconstrained canonical list is <code>.list: +Any</code>.
+Item constraints are nested under <code>.list</code>, while <code>.size</code>, <code>.solo</code>, and <code>.uniq</code>
+remain beside it as list constraints.
+Human-authored <code>.ysd</code> still accepts scalar DSL forms such as <code>+Str[]</code> and the
+full <code>.list</code> form.
+Canonical <code>.ysdc</code> rejects the retired <code>.item</code> directive and old
+<code>.type: +Str[]</code> spelling.</p>
+<p>Unknown directives are errors.
+<code>.need</code> is valid only in a property definition and contains a sequence of
+sibling property names.
+For example, <code>.need: [password]</code> on <code>user</code> means that the presence of <code>user</code>
+requires <code>password</code>.
+<code>.also</code>, <code>.with</code>, and <code>.when</code> may be retained in explicit YAMLSchema, but an
+export that cannot represent one fails rather than silently discarding it.
+<code>.pick</code> and the former <code>.oneof</code>, <code>.anyof</code>, and <code>.allof</code> names are rejected
+with guidance to use <code>.one</code>, <code>.any</code>, and <code>.all</code>.</p>
+<p>The former names <code>.titl</code>, <code>.just</code>, <code>.only</code>, <code>.mini</code>, and <code>.maxi</code> are rejected
+with replacement diagnostics.
+Their replacements are <code>.title</code>, <code>.const</code>, and <code>.range</code>.</p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Ingy dot Net
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/yaml/yamlschema" target="_blank" rel="noopener" title="YAMLSchema on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/external-links.js"></script>
+      
+        <script src="../../javascripts/carousel.js"></script>
+      
+    
+  </body>
+</html>
