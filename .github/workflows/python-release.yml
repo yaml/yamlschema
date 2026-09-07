@@ -164,7 +164,7 @@ jobs:
           artifact: python-windows-x64
     runs-on: ${{ matrix.runner }}
     steps:
-    - uses: actions/download-artifact@v7
+    - uses: actions/download-artifact@v8
       with:
         name: ${{ matrix.artifact }}
         path: artifacts
@@ -193,7 +193,7 @@ jobs:
     needs: [verify, test-wheels]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v7
+    - uses: actions/download-artifact@v8
       with:
         pattern: python-*
         path: artifacts
