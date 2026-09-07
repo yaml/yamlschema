@@ -168,7 +168,7 @@ jobs:
       with:
         name: ${{ matrix.artifact }}
         path: artifacts
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v7
       with:
         python-version: "3.10"
     - name: Install and smoke test wheel
@@ -198,7 +198,7 @@ jobs:
         pattern: python-*
         path: artifacts
         merge-multiple: true
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v7
       with:
         python-version: "3.14"
     - name: Verify artifacts
