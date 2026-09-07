@@ -81,7 +81,7 @@ $(NODE-MODULES): package.json package-lock.json $(NODE)
 	npm ci
 
 $(WASM): \
-  ../lib/ysd/core.ys ../lib/ysd/cli.ys ../util/compose-ysd $(GLOAT)
+  ../lib/ysd/core.ys ../bin/ysd ../util/compose-ysd $(GLOAT)
 	$(MAKE) -C .. .cache/ysd-cli.ys
 	$(GLOAT) -qf -t js -o $@ ../.cache/ysd-cli.ys
 

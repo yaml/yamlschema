@@ -17,6 +17,7 @@ for my $file ($core, $entry) {
     or die "compose-ysd: cannot read $file: $!\n";
   while (my $line = <$in>) {
     next if $line =~ /^#!/;
+    next if $line =~ /^!ys-0\s*$/;
     next if $line =~ m{^ys::ys/load-file:};
     print {$out} $line;
   }

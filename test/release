@@ -102,6 +102,7 @@ expected=$(printf '%s\n' update clean test)
    "Prepare release $version" ]]
 grep -Fqx "YSD-VERSION := $version" "$repo/Makefile"
 grep -Fqx "VERSION =: '$version'" "$repo/lib/ysd/core.ys"
+[[ ! -x $repo/lib/ysd/core.ys ]]
 grep -Fqx -- "- version: $version" "$repo/Changes"
 
 changed=$(

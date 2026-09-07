@@ -101,7 +101,7 @@ set_source_version() {
     END { exit 1 unless $found }
   ' "$source_file" > "$temporary"
   mv "$temporary" "$source_file"
-  chmod 0755 "$source_file"
+  chmod 0644 "$source_file"
 }
 
 prepare() {
