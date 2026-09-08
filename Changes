@@ -1,5 +1,11 @@
 # YAMLSchema release history
 
+- version: 0.1.11
+  date:    Tue Sep  8 03:39:32 PM EDT 2026
+  changes:
+  - Restore YAMLScript CLI entrypoint
+  - Add openQA Job Scenarios demo
+
 - version: 0.1.10
   date:    Fri Sep  4 04:05:12 PM EDT 2026
   changes:
