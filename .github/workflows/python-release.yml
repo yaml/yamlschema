@@ -69,7 +69,7 @@ jobs:
         archive="dist/libysd-${{ needs.verify.outputs.version }}"
         archive="$archive-linux-${{ matrix.arch }}.tar.gz"
         tar -czf "$archive" libysd.so lib/ysd.h
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: python-linux-${{ matrix.arch }}
         path: |
@@ -103,7 +103,7 @@ jobs:
         archive="dist/libysd-${{ needs.verify.outputs.version }}"
         archive="$archive-macos-${{ matrix.arch }}.tar.gz"
         tar -czf "$archive" libysd.dylib lib/ysd.h
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: python-macos-${{ matrix.arch }}
         path: |
@@ -139,7 +139,7 @@ jobs:
         cd dist && zip -qr \
           "libysd-${{ needs.verify.outputs.version }}-windows-x64.zip" \
           libysd
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: python-windows-x64
         path: |
