@@ -1,5 +1,17 @@
 # YAMLSchema release history
 
+- version: 0.1.12
+  date:    Wed Sep  9 07:12:27 PM EDT 2026
+  changes:
+  - Bump @codemirror/search from 6.7.1 to 6.7.2 in /www (#9)
+  - Bump actions/setup-python from 6 to 7 (#8)
+  - Bump @codemirror/state from 6.7.1 to 6.7.3 in /www (#6)
+  - Bump actions/download-artifact from 7 to 8 (#5)
+  - Bump actions/upload-artifact from 6 to 7 (#4)
+  - Bump rollup from 4.62.5 to 4.63.1 in /www (#3)
+  - Bump mkdocs-material from 9.7.6 to 9.7.7 in /www (#2)
+  - Bump actions/cache from 5 to 6 (#1)
+
 - version: 0.1.11
   date:    Tue Sep  8 03:39:32 PM EDT 2026
   changes:
